@@ -1,0 +1,28 @@
+/**
+ * Styles formulaire public
+ */
+.lmd-form-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+.lmd-form-wrapper[data-style="contact"] {
+    grid-template-columns: 1fr;
+}
+.lmd-form-wrapper input[type="text"],
+.lmd-form-wrapper input[type="email"],
+.lmd-form-wrapper textarea,
+.lmd-form-wrapper select {
+    width: 100%;
+    max-width: 400px;
+}
+.lmd-form-wrapper .lmd-civility-options { display: flex; gap: 16px; margin-top: 4px; }
+.lmd-form-wrapper .lmd-field-cp { display: flex; flex-direction: column; gap: 8px; }
+.lmd-form-wrapper .lmd-field-cp label { display: block; }
+.lmd-form-wrapper .lmd-optional { font-size: 0.9em; color: #6b7280; font-weight: normal; }
+.lmd-form-wrapper .lmd-field-photos label { display: block; margin-bottom: 8px; }
+.lmd-form-wrapper .lmd-photos-vignettes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.lmd-form-wrapper .lmd-vignette-wrap { width: 64px; height: 64px; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb; background: #f9fafb; }
+.lmd-form-wrapper .lmd-vignette-img { width: 100%; height: 100%; object-fit: contain; display: block; }
