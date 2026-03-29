@@ -7,9 +7,9 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
 
 - [ ] Corriger la fuite de contexte multisite dans le hub parent.
   Fichiers concernés:
-  - `wp-content/plugins/lmd-apps-ia/includes/class-lmd-activity-analytics.php`
-  - `wp-content/plugins/lmd-apps-ia/admin/views/hub.php`
-  - `wp-content/plugins/lmd-apps-ia/admin/views/api-config.php`
+  - `wp-content/plugins/apps-ia/includes/class-lmd-activity-analytics.php`
+  - `wp-content/plugins/apps-ia/admin/views/hub.php`
+  - `wp-content/plugins/apps-ia/admin/views/api-config.php`
   Problème:
   - le hub du site principal appelle `LMD_Activity_Analytics::get_feature_usage()` pour agréger l'usage réseau;
   - cette méthode fait des `switch_to_blog()` successifs sans restaurer correctement le blog courant;
@@ -26,8 +26,8 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
 
 - [ ] Corriger les fuites de contexte multisite dans les fonctions qui utilisent `switch_to_blog()`.
   Fichiers concernés:
-  - `wp-content/plugins/lmd-apps-ia/lmd-apps-ia.php`
-  - `wp-content/plugins/lmd-apps-ia/includes/class-lmd-full-export-import.php`
+  - `wp-content/plugins/apps-ia/lmd-apps-ia.php`
+  - `wp-content/plugins/apps-ia/includes/class-lmd-full-export-import.php`
   À corriger:
   - `lmd_send_monthly_consumption_report()` doit toujours exécuter `restore_current_blog()` avant chaque `return` après un `switch_to_blog(1)`.
   - `LMD_Full_Export_Import::export()` doit restaurer le blog courant de façon fiable après export, y compris en cas d'erreur.
@@ -35,8 +35,8 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
 
 - [ ] Corriger la logique parent/enfant de la configuration API.
   Fichiers concernés:
-  - `wp-content/plugins/lmd-apps-ia/admin/views/api-config.php`
-  - `wp-content/plugins/lmd-apps-ia/includes/class-lmd-api-manager.php`
+  - `wp-content/plugins/apps-ia/admin/views/api-config.php`
+  - `wp-content/plugins/apps-ia/includes/class-lmd-api-manager.php`
   - éventuellement les autres classes qui lisent directement des options API
   Problème:
   - les écrans de config API sont pensés comme "site principal uniquement";
@@ -48,9 +48,9 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
 
 - [ ] Uniformiser les protections serveur des écrans et routes parent-only.
   Fichiers concernés:
-  - `wp-content/plugins/lmd-apps-ia/admin/class-lmd-admin.php`
-  - `wp-content/plugins/lmd-apps-ia/admin/views/api-config.php`
-  - `wp-content/plugins/lmd-apps-ia/admin/class-lmd-ajax.php`
+  - `wp-content/plugins/apps-ia/admin/class-lmd-admin.php`
+  - `wp-content/plugins/apps-ia/admin/views/api-config.php`
+  - `wp-content/plugins/apps-ia/admin/class-lmd-ajax.php`
   Problème:
   - certaines pages/exports sont protégées explicitement avec `is_main_site()`;
   - d'autres reposent surtout sur le menu ou l'interface, ce qui n'est pas suffisant.
@@ -62,7 +62,7 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
 
 - [ ] Corriger l'export multisite pour qu'il embarque les bonnes options parent.
   Fichier concerné:
-  - `wp-content/plugins/lmd-apps-ia/includes/class-lmd-full-export-import.php`
+  - `wp-content/plugins/apps-ia/includes/class-lmd-full-export-import.php`
   Problème:
   - lors de l'export d'un site enfant, le code ne récupère pas correctement certaines options censées venir du parent, à cause d'une condition évaluée après `switch_to_blog($site_id)`.
   À corriger:
@@ -74,8 +74,8 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
 
 - [ ] Revoir la stratégie de navigation admin du site principal.
   Fichiers concernés:
-  - `wp-content/plugins/lmd-apps-ia/admin/class-lmd-admin.php`
-  - `wp-content/plugins/lmd-apps-ia/admin/views/hub.php`
+  - `wp-content/plugins/apps-ia/admin/class-lmd-admin.php`
+  - `wp-content/plugins/apps-ia/admin/views/hub.php`
   Constat:
   - plusieurs pages sont enregistrées avec `menu_title = null`, donc elles sont volontairement masquées dans le menu latéral WordPress;
   - sur le site principal, cela donne l'impression qu'une partie des menus "manque", alors qu'ils sont en réalité déplacés dans les onglets du hub.
@@ -86,7 +86,7 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
 
 - [ ] Corriger la suppression des tags par avis.
   Fichier concerné:
-  - `wp-content/plugins/lmd-apps-ia/admin/class-lmd-ajax.php`
+  - `wp-content/plugins/apps-ia/admin/class-lmd-ajax.php`
   Problème:
   - la suppression/remplacement d'un tag ne semble pas filtrer correctement sur `modified_by_avis`;
   - enregistrer un tag pour l'avis 1 peut supprimer celui de l'avis 2, et inversement.
@@ -96,8 +96,8 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
 
 - [ ] Corriger l'incohérence du paramètre de token dans le système de délégation externe.
   Fichiers concernés:
-  - `wp-content/plugins/lmd-apps-ia/admin/class-lmd-ajax.php`
-  - `wp-content/plugins/lmd-apps-ia/public/class-lmd-delegation-view.php`
+  - `wp-content/plugins/apps-ia/admin/class-lmd-ajax.php`
+  - `wp-content/plugins/apps-ia/public/class-lmd-delegation-view.php`
   Problème:
   - le lien généré côté admin utilise `lmd_delegation_token`;
   - le shortcode/vue publique lit `token`.
@@ -108,9 +108,9 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
 
 - [ ] Vérifier la cohérence globale du workflow de deuxième avis externe.
   Fichiers concernés:
-  - `wp-content/plugins/lmd-apps-ia/admin/class-lmd-ajax.php`
-  - `wp-content/plugins/lmd-apps-ia/public/class-lmd-delegation-view.php`
-  - `wp-content/plugins/lmd-apps-ia/admin/views/estimation-detail.php`
+  - `wp-content/plugins/apps-ia/admin/class-lmd-ajax.php`
+  - `wp-content/plugins/apps-ia/public/class-lmd-delegation-view.php`
+  - `wp-content/plugins/apps-ia/admin/views/estimation-detail.php`
   Constat:
   - le système actuel partage bien un dossier par lien tokenisé;
   - mais il ne fournit pas encore un vrai workflow complet de retour externe de l'avis 2.
@@ -122,7 +122,7 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
 
 - [ ] Aligner la version du plugin entre l'en-tête WordPress et la constante interne.
   Fichier concerné:
-  - `wp-content/plugins/lmd-apps-ia/lmd-apps-ia.php`
+  - `wp-content/plugins/apps-ia/lmd-apps-ia.php`
   Problème:
   - la version déclarée dans l'entête du plugin et `LMD_VERSION` ne sont pas identiques.
   À corriger:
