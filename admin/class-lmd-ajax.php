@@ -29,6 +29,19 @@ class LMD_Ajax {
         add_action('wp_ajax_lmd_add_delegation_recipient', [$this, 'add_delegation_recipient']);
         add_action('wp_ajax_lmd_get_category_settings', [$this, 'get_category_settings']);
         add_action('wp_ajax_lmd_save_category_settings', [$this, 'save_category_settings']);
+        add_action('wp_ajax_lmd_save_preferences', [$this, 'save_preferences']);
+    }
+
+    public function save_preferences() {
+        check_ajax_referer('lmd_admin', 'nonce');
+        if (! current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Non autorisé']);
+        }
+        if (! function_exists('lmd_save_preferences_bulk_from_post')) {
+            wp_send_json_error(['message' => 'Préférences indisponibles']);
+        }
+        lmd_save_preferences_bulk_from_post(wp_unslash($_POST));
+        wp_send_json_success(['saved' => true]);
     }
 
     public function get_category_settings() {

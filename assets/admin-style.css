@@ -1243,6 +1243,126 @@ body.lmd-suite-admin .wrap.lmd-page p.submit {
     padding-top: 8px;
 }
 
+/* —— App « Aide à l’estimation » : liseré unique (onglets + cartouche) —— */
+body.lmd-suite-admin .lmd-app-shell--estimation .lmd-app-col--estimation {
+    margin-top: 8px;
+    max-width: 100%;
+}
+body.lmd-suite-admin .lmd-app-shell--estimation .lmd-app-estimation-outline {
+    border: 2px solid #059669;
+    border-radius: 14px;
+    background: #ecfdf5;
+    padding: 12px;
+    box-shadow: 0 6px 24px rgba(5, 150, 105, 0.08);
+}
+body.lmd-suite-admin .lmd-app-shell--estimation .lmd-app-estimation-outline__tabs {
+    margin: 0 0 12px;
+    padding: 0;
+}
+body.lmd-suite-admin .lmd-app-shell--estimation .lmd-app-estimation-outline__body {
+    margin: 0;
+    padding: 0;
+}
+body.lmd-suite-admin .lmd-app-shell--estimation .lmd-app-tabs--liseret {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 8px;
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid #a7f3d0;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+body.lmd-suite-admin .lmd-app-shell--estimation .lmd-app-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #4b5563;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    line-height: 1.2;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+body.lmd-suite-admin .lmd-app-shell--estimation .lmd-app-tab .dashicons {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #059669;
+    opacity: 0.9;
+}
+body.lmd-suite-admin .lmd-app-shell--estimation .lmd-app-tab:hover {
+    background: #f0fdf4;
+    border-color: #a7f3d0;
+    color: #065f46;
+}
+body.lmd-suite-admin .lmd-app-shell--estimation .lmd-app-tab.is-active {
+    background: #fff;
+    border: 2px solid #059669;
+    color: #065f46;
+    box-shadow: 0 0 0 1px rgba(5, 150, 105, 0.12);
+    padding: 9px 15px;
+}
+body.lmd-suite-admin .lmd-app-shell--estimation .lmd-app-tab-cartouche--estimation {
+    position: relative;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+}
+body.lmd-suite-admin .lmd-app-shell--estimation .lmd-app-tab-cartouche--estimation .lmd-app-shell-panel {
+    margin: 0;
+    padding: 18px 20px 22px;
+    background: #fff;
+    border: 1px solid #d1fae5;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+}
+body.lmd-suite-admin .lmd-app-shell--estimation .lmd-app-tab-cartouche--estimation .lmd-app-shell-panel .wrap {
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+}
+body.lmd-suite-admin .lmd-app-shell--estimation .lmd-dashboard--inner .lmd-dashboard-subtabs {
+    margin: 0 0 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+}
+body.lmd-suite-admin .lmd-app-shell--estimation .lmd-dashboard--inner .lmd-dashboard-subtab {
+    border-radius: 999px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+}
+body.lmd-suite-admin .lmd-app-shell--estimation .lmd-dashboard--inner .lmd-dashboard-subtab.is-active {
+    border-color: #059669;
+    border-width: 2px;
+    padding: 9px 17px;
+    color: #065f46;
+    font-weight: 700;
+    box-shadow: 0 1px 4px rgba(5, 150, 105, 0.12);
+}
+
+/* Nouvelle demande — cartouche (plus de sous-onglets Envoi / Conseils) */
+body.lmd-suite-admin .lmd-new-estimation .lmd-new-estimation-dash-gutter {
+    margin-top: 0;
+    padding: 16px;
+    background: #f0fdf4;
+    border-radius: 12px;
+    border: 1px solid #bbf7d0;
+}
 /* Onglets application — accent vert comme la grille estimations */
 body.lmd-suite-admin .lmd-app-shell .lmd-app-tabs.nav-tab-wrapper {
     border-bottom-color: #e5e7eb;
@@ -1290,35 +1410,12 @@ body.lmd-suite-admin .lmd-app-shell-panel .wrap {
 }
 
 /* —— Aide (guide long) — même famille que Mes estimations —— */
-body.lmd-suite-admin .wrap.lmd-help.lmd-page {
+body.lmd-suite-admin .wrap.lmd-help.lmd-page,
+body.lmd-suite-admin .lmd-help.lmd-help--embed.lmd-page {
     max-width: 900px;
 }
-body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-help-nav {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 10px;
-    margin: 20px 0 24px;
-    padding: 14px 16px;
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-}
-body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-help-nav a {
-    padding: 8px 12px;
-    border-radius: 8px;
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    text-decoration: none;
-    color: #374151;
-    font-size: 13px;
-    font-weight: 600;
-}
-body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-help-nav a:hover {
-    border-color: #22c55e;
-    color: #065f46;
-    background: #f0fdf4;
-}
-body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-help-section {
+body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-help-section,
+body.lmd-suite-admin .lmd-help.lmd-help--embed.lmd-page .lmd-help-section {
     margin-bottom: 28px;
     padding: 22px 24px;
     background: #fff;
@@ -1326,7 +1423,8 @@ body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-help-section {
     border-radius: 12px;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
-body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-help-section h2 {
+body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-help-section h2,
+body.lmd-suite-admin .lmd-help.lmd-help--embed.lmd-page .lmd-help-section h2 {
     margin: 0 0 14px;
     font-size: 18px;
     font-weight: 700;
@@ -1335,23 +1433,28 @@ body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-help-section h2 {
     border: none;
 }
 body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-help-section p,
-body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-help-section li {
+body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-help-section li,
+body.lmd-suite-admin .lmd-help.lmd-help--embed.lmd-page .lmd-help-section p,
+body.lmd-suite-admin .lmd-help.lmd-help--embed.lmd-page .lmd-help-section li {
     font-size: 14px;
     line-height: 1.55;
     color: #4b5563;
 }
-body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-help-schema {
+body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-help-schema,
+body.lmd-suite-admin .lmd-help.lmd-help--embed.lmd-page .lmd-help-schema {
     margin: 16px 0;
     padding: 16px;
     background: #f9fafb;
     border-radius: 10px;
     border: 1px solid #e5e7eb;
 }
-body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-schema-grid {
+body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-schema-grid,
+body.lmd-suite-admin .lmd-help.lmd-help--embed.lmd-page .lmd-schema-grid {
     display: grid;
     gap: 10px;
 }
-body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-schema-item {
+body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-schema-item,
+body.lmd-suite-admin .lmd-help.lmd-help--embed.lmd-page .lmd-schema-item {
     font-size: 13px;
     line-height: 1.45;
 }
@@ -1369,7 +1472,8 @@ body.lmd-suite-admin .wrap.lmd-page ul.subsubsub.lmd-subsubsub .current {
     color: #065f46;
 }
 
-body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-schema-num {
+body.lmd-suite-admin .wrap.lmd-help.lmd-page .lmd-schema-num,
+body.lmd-suite-admin .lmd-help.lmd-help--embed.lmd-page .lmd-schema-num {
     display: inline-flex;
     align-items: center;
     justify-content: center;

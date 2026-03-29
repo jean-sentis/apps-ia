@@ -99,6 +99,9 @@ $sender_label = $sender_rank > 1 ? $sender_name . ' (' . $sender_rank . ')' : $s
 $delete_url = wp_nonce_url(admin_url('admin-post.php?action=lmd_delete_estimation&id=' . $id), 'lmd_delete_estimation_' . $id);
 $interet_slug = isset($tags_by_type['interet']) ? $tags_by_type['interet']->slug : (trim($ai['interet'] ?? '') ?: '');
 $estimation_slug = isset($tags_by_type['estimation']) ? $tags_by_type['estimation']->slug : (trim($ai['estimation'] ?? '') ?: '');
+$cp_for_mailto = function_exists('lmd_get_cp_settings_for_user') ? lmd_get_cp_settings_for_user() : ['copy_emails' => []];
+$prefs_for_mailto = function_exists('lmd_get_prefs') ? lmd_get_prefs() : [];
+$bcc_exclude_slugs_mail = isset($prefs_for_mailto['bcc_exclude_response_slugs']) && is_array($prefs_for_mailto['bcc_exclude_response_slugs']) ? $prefs_for_mailto['bcc_exclude_response_slugs'] : [];
 $theme_slug = isset($tags_by_type['theme_vente']) ? $tags_by_type['theme_vente']->slug : (trim($ai['theme_vente'] ?? '') ?: '');
 $theme_suggested_parent = trim($ai['theme_vente_suggested_parent'] ?? '') ?: '';
 $theme_opts_slugs = array_map(function ($o) { return is_object($o) ? $o->slug : ($o['slug'] ?? ''); }, $categories['theme_vente']['options'] ?? []);
@@ -205,6 +208,7 @@ $ai_summary_rest = $ai_summary && $ai_summary_first ? trim(substr($ai_summary, s
 .lmd-estimation-detail .ed-vente-calendar-grid .ed-vente-day { padding: 10px !important; text-align: center !important; border-radius: 6px !important; cursor: pointer !important; }
 .lmd-estimation-detail .ed-vente-calendar-grid .ed-vente-day:hover { background: #f3f4f6 !important; }
 .lmd-estimation-detail .ed-vente-calendar-grid .ed-vente-day.has-vente { background: #eef2ff !important; color: #4f46e5 !important; font-weight: 600 !important; }
+.lmd-estimation-detail .ed-vente-calendar-grid .ed-vente-day.has-hotel-prep { box-shadow: inset 0 0 0 2px #10b981 !important; background: #ecfdf5 !important; color: #065f46 !important; font-weight: 600 !important; }
 .lmd-estimation-detail .ed-vente-calendar-grid .ed-vente-day.other-month { color: #d1d5db !important; }
 .lmd-estimation-detail .ed-vente-list { max-height: 220px !important; overflow-y: auto !important; margin-bottom: 14px !important; border: 1px solid #e5e7eb !important; border-radius: 8px !important; padding: 8px !important; }
 .lmd-estimation-detail .ed-vente-list-item { display: flex !important; align-items: center !important; gap: 10px !important; padding: 8px 10px !important; border-radius: 6px !important; margin-bottom: 6px !important; }
@@ -290,6 +294,14 @@ $ai_summary_rest = $ai_summary && $ai_summary_first ? trim(substr($ai_summary, s
 .lmd-estimation-detail .ed-action-cartouche-deleguer.ed-active { display: flex !important; }
 .lmd-estimation-detail .ed-actions-cartouche .ed-email-objet { width: 100% !important; padding: 6px 10px !important; margin-bottom: 0 !important; border: 1px solid #e5e7eb !important; border-radius: 6px !important; font-size: 13px !important; flex-shrink: 0 !important; }
 .lmd-estimation-detail .ed-actions-cartouche .ed-email-corps { width: 100% !important; min-height: 120px !important; flex: 1 !important; padding: 10px !important; margin-bottom: 0 !important; border: 1px solid #e5e7eb !important; border-radius: 6px !important; font-size: 13px !important; resize: vertical !important; }
+.lmd-estimation-detail .ed-reponse-preview-wrap { flex-shrink: 0 !important; margin-top: 10px !important; padding: 12px !important; background: #f8fafc !important; border: 1px solid #e2e8f0 !important; border-radius: 8px !important; font-size: 12px !important; color: #334155 !important; }
+.lmd-estimation-detail .ed-reponse-preview-title { font-weight: 700 !important; font-size: 13px !important; margin: 0 0 6px !important; color: #0f172a !important; }
+.lmd-estimation-detail .ed-reponse-preview-hint { margin: 0 0 10px !important; line-height: 1.45 !important; color: #64748b !important; font-size: 11px !important; }
+.lmd-estimation-detail .ed-reponse-preview-label { font-weight: 600 !important; margin: 0 0 6px !important; font-size: 11px !important; text-transform: uppercase !important; letter-spacing: 0.02em !important; color: #475569 !important; }
+.lmd-estimation-detail .ed-reponse-preview-plain { margin: 0 0 12px !important; padding: 10px 12px !important; background: #fff !important; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; font-family: ui-monospace, monospace !important; font-size: 12px !important; line-height: 1.45 !important; white-space: pre-wrap !important; word-break: break-word !important; max-height: 220px !important; overflow-y: auto !important; }
+.lmd-estimation-detail .ed-reponse-preview-sig-label { font-weight: 600 !important; margin: 0 0 6px !important; font-size: 11px !important; color: #475569 !important; }
+.lmd-estimation-detail .ed-reponse-preview-sig { padding: 10px 12px !important; background: #fff !important; border: 1px dashed #cbd5e1 !important; border-radius: 6px !important; font-size: 13px !important; line-height: 1.5 !important; max-height: 180px !important; overflow-y: auto !important; }
+.lmd-estimation-detail .ed-reponse-preview-sig img { max-width: 100% !important; height: auto !important; }
 .lmd-estimation-detail .ed-actions-send-row { display: flex !important; justify-content: space-between !important; gap: 12px !important; margin: 8px 0 !important; flex-shrink: 0 !important; }
 .lmd-estimation-detail .ed-actions-send-row .ed-send-btn { padding: 10px 20px !important; font-weight: 600 !important; border-radius: 8px !important; cursor: pointer !important; font-size: 13px !important; }
 .lmd-estimation-detail .ed-actions-send-row .ed-send-btn-left { background: #3b82f6 !important; color: #fff !important; border: none !important; }
@@ -845,6 +857,16 @@ foreach ($tags_right as $type) :
                 <div class="ed-action-panel" id="action-panel-reponse">
                     <input type="text" class="ed-email-objet" id="reponse-objet-<?php echo (int) $id; ?>" placeholder="Objet" value="<?php echo esc_attr(wp_unslash($reponse_subject)); ?>" />
                     <textarea class="ed-email-corps" id="reponse-corps-<?php echo (int) $id; ?>" placeholder="Corps du message"><?php echo esc_textarea(wp_unslash($estimation->reponse_body ?? $reponse_body_default)); ?></textarea>
+                    <?php if (!$reponse_sent_at) : ?>
+                    <div class="ed-reponse-preview-wrap" id="ed-reponse-preview-wrap-<?php echo (int) $id; ?>">
+                        <div class="ed-reponse-preview-title"><?php echo esc_html__('Aperçu — message pour le vendeur', 'lmd-apps-ia'); ?></div>
+                        <p class="ed-reponse-preview-hint"><?php echo esc_html__('Le bouton Envoi ouvre votre messagerie avec un message en texte brut (compatible tous les clients). Les liens et les logos (images) ne restent pas en HTML dans ce message : chaque lien est recopié sous la forme libellé + adresse, chaque image sous la forme légende ou [Image] + adresse du fichier, pour que tout soit cliquable ou recopiable depuis le texte.', 'lmd-apps-ia'); ?></p>
+                        <div class="ed-reponse-preview-label"><?php echo esc_html__('Texte exact envoyé (corps + signature)', 'lmd-apps-ia'); ?></div>
+                        <pre class="ed-reponse-preview-plain" id="ed-reponse-preview-plain-<?php echo (int) $id; ?>" aria-live="polite"></pre>
+                        <div class="ed-reponse-preview-sig-label" id="ed-reponse-preview-sig-label-<?php echo (int) $id; ?>"><?php echo esc_html__('Rendu HTML de la signature (aperçu)', 'lmd-apps-ia'); ?></div>
+                        <div class="ed-reponse-preview-sig" id="ed-reponse-preview-sig-<?php echo (int) $id; ?>"></div>
+                    </div>
+                    <?php endif; ?>
                     <?php if ($reponse_sent_at) : ?>
                     <div class="ed-courrier-parti" style="margin-top: 8px; padding: 12px; background: #f0fdf4; border: 1px solid #22c55e; border-radius: 8px; font-weight: 700; text-transform: uppercase; font-size: 12px; color: #166534;">
                         Ce courrier est parti le <?php echo esc_html(date_i18n('d/m/Y', strtotime($reponse_sent_at))); ?> à <?php echo esc_html(date_i18n('H:i', strtotime($reponse_sent_at))); ?>
@@ -1191,6 +1213,13 @@ foreach ($tags_right as $type) :
 </div>
 
 <script>
+var lmdEdMailto = <?php echo wp_json_encode([
+    'copyEmails' => array_values(array_filter($cp_for_mailto['copy_emails'] ?? [])),
+    'bccExcludeSlugs' => array_values($bcc_exclude_slugs_mail),
+    'interetSlug' => (string) $interet_slug,
+    'estimationSlug' => (string) $estimation_slug,
+    'signatureHtml' => (string) ($cp_for_mailto['signature'] ?? ''),
+]); ?>;
 (function($){
     var ajaxurl = typeof lmdAdmin !== 'undefined' ? lmdAdmin.ajaxurl : '<?php echo esc_js(admin_url("admin-ajax.php")); ?>';
     var nonce = typeof lmdAdmin !== 'undefined' ? lmdAdmin.nonce : '<?php echo wp_create_nonce("lmd_admin"); ?>';
@@ -1398,11 +1427,12 @@ foreach ($tags_right as $type) :
     });
 
     /* Date de vente - calendrier */
-    var venteCalMonth = new Date().getMonth(), venteCalYear = new Date().getFullYear(), venteList = [];
+    var venteCalMonth = new Date().getMonth(), venteCalYear = new Date().getFullYear(), venteList = [], hotelList = [];
     var monthsFr = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
     function loadVentes(cb) {
         $.post(ajaxurl, { action: 'lmd_list_ventes', nonce: nonce }).done(function(r){
             if (r.success && r.data && r.data.ventes) venteList = r.data.ventes;
+            hotelList = (r.success && r.data && r.data.hotel_calendar) ? r.data.hotel_calendar : [];
             if (cb) cb();
         });
     }
@@ -1420,7 +1450,10 @@ foreach ($tags_right as $type) :
         for (var d = 1; d <= days; d++) {
             var dt = venteCalYear + '-' + String(venteCalMonth + 1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
             var hasV = venteList.some(function(v){ return slugToDate(v.slug) === dt; });
-            html += '<div class="ed-vente-day' + (hasV ? ' has-vente' : '') + '" data-date="' + dt + '">' + d + '</div>';
+            var hotelH = hotelList.filter(function(h){ return h.date === dt; });
+            var hasHotel = hotelH.length > 0;
+            var ht = hasHotel ? hotelH.map(function(h){ return (h.title || '').replace(/"/g,'&quot;'); }).join(' · ') : '';
+            html += '<div class="ed-vente-day' + (hasV ? ' has-vente' : '') + (hasHotel ? ' has-hotel-prep' : '') + '" data-date="' + dt + '" title="' + (hasHotel ? ('Calendrier hôtel — ' + ht) : '') + '">' + d + '</div>';
         }
         var remaining = 42 - (startDay - 1 + days);
         for (var j = 1; j <= remaining; j++) html += '<div class="ed-vente-day other-month">' + j + '</div>';
@@ -1432,6 +1465,14 @@ foreach ($tags_right as $type) :
             var catBadge = (v.theme_vente_name || v.theme_vente_slug) ? '<span class="ed-vente-cat-badge" title="' + (v.theme_vente_name || v.theme_vente_slug || '').replace(/"/g,'&quot;') + '">' + (v.theme_vente_name || v.theme_vente_slug || '').substring(0, 20) + '</span>' : '';
             listHtml += '<div class="ed-vente-list-item" data-id="' + v.id + '" data-slug="' + v.slug + '"><label><input type="checkbox" class="ed-vente-select" ' + (v.slug === ($('#ed-tags-bar .ed-tag-wrapper[data-type="date_vente"] .ed-tag-btn').data('slug') || '') ? 'checked' : '') + '></label><input type="text" class="ed-vente-item-name" value="' + (v.name || '').replace(/"/g,'&quot;') + '"><input type="date" class="ed-vente-item-date" value="' + d + '">' + catBadge + '</div>';
         });
+        var monthHotels = hotelList.filter(function(h){ return h.date && h.date.indexOf(venteCalYear + '-' + String(venteCalMonth + 1).padStart(2,'0')) === 0; });
+        if (monthHotels.length) {
+            listHtml += '<div class="ed-vente-hotel-block" style="margin-top:10px;padding-top:10px;border-top:1px solid #e5e7eb;"><strong style="font-size:12px;color:#047857;">Ventes hôtel (calendrier officiel)</strong>';
+            monthHotels.forEach(function(h){
+                listHtml += '<div class="ed-vente-hotel-row" style="font-size:12px;color:#065f46;padding:6px 0;">' + (h.title || '').replace(/</g,'&lt;') + ' <span style="color:#6b7280;">(' + h.date + ')</span></div>';
+            });
+            listHtml += '</div>';
+        }
         $panel.find('.ed-vente-list').html(listHtml || '<div class="ed-vente-list-empty" style="padding:8px;color:#9ca3af;font-size:12px;">Aucune vente ce mois</div>');
     }
     $('#ed-tags-bar').on('click', '.ed-tag-wrapper[data-type="date_vente"] .ed-tag-btn', function(e){
@@ -1775,7 +1816,7 @@ foreach ($tags_right as $type) :
         var body = $corps.val();
         if (texts.length > 0) {
             var toAdd = (body && !/^\s*$/.test(body) ? '\n\n' : '') + texts.map(function(t){ return '- ' + t; }).join('\n');
-            $corps.val(body + toAdd);
+            $corps.val(body + toAdd).trigger('input');
         }
         var subj = $('#reponse-objet-'+estId).val();
         body = $corps.val();
@@ -1797,7 +1838,18 @@ foreach ($tags_right as $type) :
     $(document).on('click', '#ed-cp-settings-close-btn', function(e){ e.preventDefault(); e.stopPropagation(); $('#ed-cp-settings-modal').removeClass('ed-modal-open'); });
     $('.lmd-save-cp-settings').on('click', function(){
         $.post(ajaxurl, { action: 'lmd_save_cp_settings', nonce: nonce, email: $('#cp-settings-email').val(), signature: $('#cp-settings-signature').val(), copy_emails: $('#cp-settings-copy').val() })
-            .done(function(r){ if (r.success) { alert('Paramètres enregistrés'); $('#ed-cp-settings-modal').removeClass('ed-modal-open'); } else { alert(r.data && r.data.message || 'Erreur'); } })
+            .done(function(r){
+                if (r.success) {
+                    if (typeof lmdEdMailto !== 'undefined') {
+                        lmdEdMailto.signatureHtml = $('#cp-settings-signature').val() || '';
+                    }
+                    if (typeof updateEdReponsePreview === 'function') updateEdReponsePreview();
+                    alert('Paramètres enregistrés');
+                    $('#ed-cp-settings-modal').removeClass('ed-modal-open');
+                } else {
+                    alert(r.data && r.data.message || 'Erreur');
+                }
+            })
             .fail(function(){ alert('Erreur'); });
     });
 
@@ -1904,7 +1956,7 @@ foreach ($tags_right as $type) :
         var opt = $(this).find('option:selected'), content = opt.data('content');
         if (content) {
             var $corps = $(this).closest('.ed-action-panel').find('.ed-email-corps');
-            $corps.val($corps.val() + content);
+            $corps.val($corps.val() + content).trigger('input');
         }
         $(this).closest('.ed-fq-zone').removeClass('ed-fq-expanded');
     });
@@ -1925,8 +1977,59 @@ foreach ($tags_right as $type) :
     });
     loadFormules();
 
+    /** Signature HTML → texte pour mailto : conserve les URL des liens et des images. */
+    function lmdHtmlSignatureToPlainText(html) {
+        if (!html || typeof html !== 'string') return '';
+        var d = document.createElement('div');
+        d.innerHTML = html;
+        /* Images d'abord : sinon un <a><img></a> ne garderait que l'URL du lien. */
+        var imgs = d.querySelectorAll('img[src]');
+        for (var j = 0; j < imgs.length; j++) {
+            var img = imgs[j];
+            var src = (img.getAttribute('src') || '').trim();
+            var alt = (img.getAttribute('alt') || img.getAttribute('title') || '').trim();
+            var txt = src ? (alt ? alt + ' — ' + src : '[Image] ' + src) : alt;
+            img.replaceWith(document.createTextNode(txt));
+        }
+        var links = d.querySelectorAll('a[href]');
+        for (var i = 0; i < links.length; i++) {
+            var a = links[i];
+            var href = (a.getAttribute('href') || '').trim();
+            var label = (a.textContent || a.innerText || '').replace(/\s+/g, ' ').trim();
+            var txt = href ? (label ? label + ' — ' + href : href) : label;
+            a.replaceWith(document.createTextNode(txt));
+        }
+        return (d.textContent || d.innerText || '').replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+    }
+    function lmdBuildMailtoBodyFromReponse() {
+        var bodyPlain = $('#reponse-corps-'+estId).val() || '';
+        var sigHtml = (typeof lmdEdMailto !== 'undefined' && lmdEdMailto.signatureHtml) ? lmdEdMailto.signatureHtml : '';
+        var sigPlain = lmdHtmlSignatureToPlainText(sigHtml);
+        if (!sigPlain) return bodyPlain;
+        if (!bodyPlain) return sigPlain;
+        return bodyPlain.replace(/\s+$/, '') + '\n\n—\n' + sigPlain;
+    }
+    function updateEdReponsePreview() {
+        var $plain = $('#ed-reponse-preview-plain-'+estId);
+        if (!$plain.length) return;
+        $plain.text(lmdBuildMailtoBodyFromReponse());
+        var sigHtml = (typeof lmdEdMailto !== 'undefined' && lmdEdMailto.signatureHtml) ? lmdEdMailto.signatureHtml : '';
+        var $sig = $('#ed-reponse-preview-sig-'+estId);
+        var $lbl = $('#ed-reponse-preview-sig-label-'+estId);
+        if (sigHtml && $sig.length) {
+            $sig.html(sigHtml).show();
+            $lbl.show();
+        } else if ($sig.length) {
+            $sig.empty().hide();
+            $lbl.hide();
+        }
+    }
+    $('#reponse-corps-'+estId).on('input', updateEdReponsePreview);
+    updateEdReponsePreview();
+
     $('.lmd-send-reponse').on('click', function(){
         var id = $(this).data('id'), email = $(this).data('email'), sujet = $('#reponse-objet-'+id).val(), corps = $('#reponse-corps-'+id).val();
+        var corpsPourMailto = (typeof lmdBuildMailtoBodyFromReponse === 'function') ? lmdBuildMailtoBodyFromReponse() : corps;
         var questionsSelected = [];
         $('#action-panel-reponse .ed-question-ia-item.selected').each(function(){ questionsSelected.push(parseInt($(this).data('idx'), 10)); });
         $.post(ajaxurl, { action: 'lmd_save_reponse', nonce: nonce, id: id, subject: sujet, body: corps, mark_sent: 1, questions_selected: questionsSelected }).done(function(r){
@@ -1941,8 +2044,17 @@ foreach ($tags_right as $type) :
                 if ($btn.length) $btn.find('.ed-tag-label').text('Répondu');
             }
         });
-        if (email) window.location.href = 'mailto:'+encodeURIComponent(email)+'?subject='+encodeURIComponent(sujet)+'&body='+encodeURIComponent(corps);
-        else alert('Email client non disponible');
+        if (email) {
+            var q = ['subject=' + encodeURIComponent(sujet), 'body=' + encodeURIComponent(corpsPourMailto)];
+            if (typeof lmdEdMailto !== 'undefined' && lmdEdMailto.copyEmails && lmdEdMailto.copyEmails.length) {
+                var ex = lmdEdMailto.bccExcludeSlugs || [];
+                var skipBcc = false;
+                if (lmdEdMailto.interetSlug && ex.indexOf(lmdEdMailto.interetSlug) !== -1) skipBcc = true;
+                if (lmdEdMailto.estimationSlug && ex.indexOf(lmdEdMailto.estimationSlug) !== -1) skipBcc = true;
+                if (!skipBcc) q.push('bcc=' + encodeURIComponent(lmdEdMailto.copyEmails.join(',')));
+            }
+            window.location.href = 'mailto:' + encodeURIComponent(email) + '?' + q.join('&');
+        } else alert('Email client non disponible');
     });
 
     $('.lmd-send-delegation').on('click', function(){

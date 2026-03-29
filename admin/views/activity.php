@@ -24,10 +24,15 @@ $agg = $analytics->get_month_aggregates($month_sel);
 $all_sites = is_multisite() && get_current_blog_id() === 1;
 $feature_usage = $analytics->get_feature_usage($month_sel, $all_sites);
 $signature_status = $analytics->get_signature_status($all_sites);
+$lmd_activity_embed = !empty($lmd_activity_embed);
 ?>
+<?php if (!$lmd_activity_embed) : ?>
 <div class="wrap lmd-page">
-    <h1>Activité</h1>
-    <p class="lmd-ui-prose">Analytics d’usage (direction) — même présentation que Consommation / Marge.</p>
+    <h1><?php esc_html_e('Activité', 'lmd-apps-ia'); ?></h1>
+    <p class="lmd-ui-prose"><?php esc_html_e('Analytics d’usage (direction) — même présentation que Consommation / Marge.', 'lmd-apps-ia'); ?></p>
+<?php else : ?>
+<div class="lmd-activity lmd-activity--embed lmd-page">
+<?php endif; ?>
 
     <div class="lmd-ui-toolbar">
         <label>Mois <input type="month" id="lmd-activity-month" value="<?php echo esc_attr($month_sel); ?>" /></label>
@@ -62,7 +67,7 @@ $signature_status = $analytics->get_signature_status($all_sites);
                 $total_min = $detail_min + $grid_min;
             ?>
             <tr>
-                <td><a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? add_query_arg('month', $m, lmd_app_estimation_admin_url('activity')) : admin_url('admin.php?page=lmd-activity&month=' . rawurlencode($m))); ?>"><?php echo esc_html($m); ?></a></td>
+                <td><a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? add_query_arg(['month' => $m], lmd_app_estimation_admin_url('dashboard', ['dash_sub' => 'activity'])) : admin_url('admin.php?page=lmd-activity&month=' . rawurlencode($m))); ?>"><?php echo esc_html($m); ?></a></td>
                 <td><?php echo (int) ($d['estimations'] ?? 0); ?></td>
                 <td><?php echo $detail_min > 0 ? number_format($detail_min, 1) : '-'; ?></td>
                 <td><?php echo $grid_min > 0 ? number_format($grid_min, 1) : '-'; ?></td>
@@ -195,6 +200,6 @@ $signature_status = $analytics->get_signature_status($all_sites);
 <script>
 document.getElementById('lmd-activity-month').addEventListener('change', function() {
     var m = this.value;
-    if (m) window.location.href = '<?php echo esc_js(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('activity') : admin_url('admin.php?page=lmd-activity')); ?>' + '&month=' + encodeURIComponent(m);
+    if (m) window.location.href = '<?php echo esc_js(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('dashboard', ['dash_sub' => 'activity']) : admin_url('admin.php?page=lmd-activity')); ?>' + '&month=' + encodeURIComponent(m);
 });
 </script>

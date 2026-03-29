@@ -22,7 +22,7 @@ class LMD_Full_Export_Import {
     private static $OPTIONS = [
         'lmd_free_estimations_granted', 'lmd_analysis_pricing_tiers', 'lmd_service_start_date',
         'lmd_consumption_monthly_email', 'lmd_consumption_monthly_enabled', 'lmd_consumption_summary',
-        'lmd_custom_categories', 'lmd_gemini_model',
+        'lmd_custom_categories', 'lmd_gemini_model', 'lmd_gemini_image_model',
     ];
     private static $OPTIONS_SENSITIVE = ['lmd_gemini_key', 'lmd_serpapi_key', 'lmd_firecrawl_key', 'lmd_imgbb_key'];
 

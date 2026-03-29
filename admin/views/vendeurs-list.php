@@ -98,11 +98,8 @@ usort($vendeurs, function ($a, $b) {
 });
 ?>
 <div class="wrap lmd-page">
-    <h1>Vendeurs</h1>
+    <h1><?php esc_html_e('Liste vendeurs', 'lmd-apps-ia'); ?></h1>
     <p class="lmd-ui-prose">Vue consolidée des vendeurs (tags + délégations) — accès rapide vers la grille filtrée.</p>
-    <div class="lmd-ui-toolbar">
-        <a href="<?php echo esc_url(admin_url('admin.php?page=lmd-estimations-list')); ?>" class="button">&larr; Retour aux estimations</a>
-    </div>
     <?php if (empty($vendeurs)) : ?>
     <div class="lmd-ui-panel"><p style="margin:0;">Aucun vendeur.</p></div>
     <?php else : ?>

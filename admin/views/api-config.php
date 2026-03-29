@@ -10,6 +10,7 @@ $lmd_api_saved = false;
 if (isset($_POST['lmd_save_api']) && check_admin_referer('lmd_api_config')) {
     update_option('lmd_gemini_key', sanitize_text_field($_POST['lmd_gemini_key'] ?? ''));
     update_option('lmd_gemini_model', sanitize_text_field($_POST['lmd_gemini_model'] ?? 'gemini-2.5-pro'));
+    update_option('lmd_gemini_image_model', sanitize_text_field($_POST['lmd_gemini_image_model'] ?? ''));
     update_option('lmd_serpapi_key', sanitize_text_field($_POST['lmd_serpapi_key'] ?? ''));
     update_option('lmd_firecrawl_key', sanitize_text_field($_POST['lmd_firecrawl_key'] ?? ''));
     update_option('lmd_imgbb_key', sanitize_text_field($_POST['lmd_imgbb_key'] ?? ''));
@@ -18,6 +19,7 @@ if (isset($_POST['lmd_save_api']) && check_admin_referer('lmd_api_config')) {
 }
 $gemini = get_option('lmd_gemini_key', '');
 $gemini_model = get_option('lmd_gemini_model', 'gemini-2.5-pro');
+$gemini_image_model = get_option('lmd_gemini_image_model', '');
 $serp = get_option('lmd_serpapi_key', '');
 $firecrawl = get_option('lmd_firecrawl_key', '');
 $imgbb = get_option('lmd_imgbb_key', '');
@@ -38,7 +40,7 @@ $form_action = $lmd_suite_embed ? admin_url('admin.php?page=lmd-apps-ia&hub_tab=
     <?php else : ?>
     <h2 class="lmd-ui-section-title">Configuration des APIs</h2>
     <?php endif; ?>
-    <p class="lmd-ui-prose">Clés et modèles utilisés par les applications LMD Apps IA (aide à l’estimation, etc.).</p>
+    <p class="lmd-ui-prose">Clés et modèles utilisés par les applications LMD Apps IA (aide à l’estimation, montages Splitscreen, etc.).</p>
     <div class="lmd-ui-panel lmd-api-config-panel">
     <form method="post" action="<?php echo $lmd_suite_embed ? esc_url($form_action) : ''; ?>" class="lmd-api-config-form">
         <?php wp_nonce_field('lmd_api_config'); ?>
@@ -58,7 +60,18 @@ $form_action = $lmd_suite_embed ? admin_url('admin.php?page=lmd-apps-ia&hub_tab=
             <div class="lmd-api-config-field-row">
                 <input type="text" name="lmd_gemini_model" id="lmd_gemini_model" value="<?php echo esc_attr($gemini_model); ?>" class="regular-text lmd-api-config-input" placeholder="gemini-2.5-pro" aria-labelledby="lmd-label-gemini-model" />
                 <span class="lmd-api-config-field-links">
-                    <?php esc_html_e('Ex. gemini-2.5-pro, gemini-2.0-flash', 'lmd-apps-ia'); ?> —
+                    <?php esc_html_e('Ex. gemini-2.5-pro, gemini-3.1-pro-preview — analyse / texte', 'lmd-apps-ia'); ?> —
+                    <a href="https://ai.google.dev/gemini-api/docs/models" target="_blank" rel="noopener"><?php esc_html_e('Liste des modèles', 'lmd-apps-ia'); ?></a>
+                </span>
+            </div>
+        </div>
+
+        <div class="lmd-api-config-field">
+            <span class="lmd-api-config-field-label" id="lmd-label-gemini-image-model"><?php esc_html_e('Modèle Gemini (images / Splitscreen)', 'lmd-apps-ia'); ?></span>
+            <div class="lmd-api-config-field-row">
+                <input type="text" name="lmd_gemini_image_model" id="lmd_gemini_image_model" value="<?php echo esc_attr($gemini_image_model); ?>" class="regular-text lmd-api-config-input" placeholder="gemini-2.5-flash-image" aria-labelledby="lmd-label-gemini-image-model" />
+                <span class="lmd-api-config-field-links">
+                    <?php esc_html_e('Génération de montages Splitscreen uniquement. Laisser vide = défaut interne (gemini-2.5-flash-image). Ne pas recopier ici le « Modèle Gemini » texte (gemini-2.5-pro, etc.). Ex. preview : gemini-3.1-flash-image-preview.', 'lmd-apps-ia'); ?> —
                     <a href="https://ai.google.dev/gemini-api/docs/models" target="_blank" rel="noopener"><?php esc_html_e('Liste des modèles', 'lmd-apps-ia'); ?></a>
                 </span>
             </div>

@@ -249,7 +249,7 @@ function lmd_list_photo_url($estimation) {
 #lmd-estimations-list-wrap .lmd-card:hover { border-color: #22c55e !important; box-shadow: 0 4px 12px rgba(34,197,94,0.15) !important; }
 #lmd-estimations-list-wrap .lmd-card-img-wrap { position: relative !important; aspect-ratio: 4/3 !important; background: #f3f4f6 !important; overflow: hidden !important; }
 #lmd-estimations-list-wrap .lmd-card-overlay-btns { position: absolute !important; top: 8px !important; right: 8px !important; display: flex !important; flex-direction: column !important; gap: 6px !important; z-index: 5 !important; }
-#lmd-estimations-list-wrap .lmd-card-drag-handle { flex-shrink: 0 !important; width: 28px !important; height: 28px !important; border: 2px solid transparent !important; border-radius: 6px !important; font-size: 14px !important; cursor: grab !important; display: flex !important; align-items: center !important; justify-content: center !important; background: rgba(255,255,255,0.9) !important; color: #6b7280 !important; line-height: 1 !important; }
+#lmd-estimations-list-wrap .lmd-card-drag-handle { flex-shrink: 0 !important; width: 28px !important; height: 28px !important; border: 2px solid transparent !important; border-radius: 6px !important; font-size: 14px !important; cursor: grab !important; display: flex !important; align-items: center !important; justify-content: center !important; background: rgba(255,255,255,0.9) !important; color: #6b7280 !important; line-height: 1 !important; touch-action: none !important; user-select: none !important; -webkit-user-select: none !important; }
 #lmd-estimations-list-wrap .lmd-card-drag-handle:hover { background: #fff !important; color: #374151 !important; }
 #lmd-estimations-list-wrap .lmd-card-drag-handle:active { cursor: grabbing !important; }
 #lmd-estimations-list-wrap .lmd-card-wrapper { display: block !important; }
@@ -637,9 +637,6 @@ function lmd_list_photo_url($estimation) {
     function initSortable() {
         var grid = document.getElementById('lmd-cards-grid');
         if (!grid || !grid.querySelector('.lmd-card-wrapper')) return;
-        document.querySelectorAll('.lmd-card-drag-handle').forEach(function(handle) {
-            handle.addEventListener('click', function(e) { e.preventDefault(); e.stopPropagation(); });
-        });
         if (typeof Sortable === 'undefined') return;
         var storageKey = 'lmd_estimations_grid_order';
         var savedOrder = null;
@@ -932,7 +929,7 @@ $has_filters = !empty($filter_message) || !empty($filter_interet) || !empty($fil
         $client_label = trim(wp_unslash($e->client_name ?? '')) ?: trim(wp_unslash($e->client_email ?? '')) ?: 'Estimation #' . $e->id;
         $desc_words = $grid_cols === 3 ? 30 : ($grid_cols === 4 ? 22 : 15);
         $desc = wp_trim_words(wp_unslash($e->description ?? ''), $desc_words);
-        $msg_order = ['nouveau' => 0, 'non_lu' => 1, 'lu_non_repondu' => 2, 'en_retard' => 2, 'repondu' => 3, 'vendu' => 4];
+        $msg_order = ['nouveau' => 0, 'non_lu' => 1, 'lu_non_repondu' => 2, 'en_retard' => 2, 'repondu' => 3, 'depose' => 4, 'vendu' => 5];
         $sort_message = isset($msg_tag->slug) ? ($msg_order[$msg_tag->slug] ?? 5) : 5;
         $sort_estimate = $avis2_estimate_low !== null ? $avis2_estimate_low : ($estimate_low !== null ? $estimate_low : ($ai_estimate_low !== null && $has_ia ? $ai_estimate_low : 999999999));
         $sort_theme = $theme_tag ? $theme_tag->name : ($ai_theme ? (function_exists('lmd_get_theme_vente_name') ? lmd_get_theme_vente_name($ai_theme) : $ai_theme) : '');
@@ -949,7 +946,7 @@ $has_filters = !empty($filter_message) || !empty($filter_interet) || !empty($fil
             <div class="lmd-card-img-placeholder">🖼</div>
             <?php endif; ?>
             <div class="lmd-card-overlay-btns">
-                <button type="button" class="lmd-card-drag-handle" title="Glisser pour réorganiser" aria-label="Déplacer">⋮⋮</button>
+                <span class="lmd-card-drag-handle" role="button" tabindex="0" title="Glisser pour réorganiser" aria-label="<?php esc_attr_e('Déplacer', 'lmd-apps-ia'); ?>">⋮⋮</span>
                 <button type="button" class="lmd-card-ia-btn<?php echo ($e->status ?? '') === 'ai_analyzed' ? ' lmd-card-ia-btn-disabled' : ''; ?>" data-id="<?php echo (int) $e->id; ?>" data-analyzed="<?php echo ($e->status ?? '') === 'ai_analyzed' ? '1' : '0'; ?>" title="<?php echo ($e->status ?? '') === 'ai_analyzed' ? 'Déjà analysé' : 'Sélectionner pour analyse IA'; ?>" aria-label="<?php echo ($e->status ?? '') === 'ai_analyzed' ? 'Déjà analysé' : 'Sélectionner pour analyse'; ?>">IA</button>
                 <button type="button" class="lmd-card-trash" data-id="<?php echo (int) $e->id; ?>" title="Sélectionner pour suppression" aria-label="Sélectionner">🗑</button>
             </div>

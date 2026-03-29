@@ -20,6 +20,12 @@ $lmd_suite_banner_subtitle = 'Le Marteau Digital — LMD Apps IA';
 
 $hub_url = admin_url('admin.php?page=lmd-apps-ia');
 $splitscreen_active = post_type_exists('splitscreen');
+
+$hub_feature_usage = null;
+if ($is_parent && class_exists('LMD_Activity_Analytics')) {
+    $hub_act = new LMD_Activity_Analytics();
+    $hub_feature_usage = $hub_act->get_feature_usage(date('Y-m'), is_multisite() && get_current_blog_id() === 1);
+}
 ?>
 <div class="wrap lmd-suite-hub lmd-page lmd-suite-hub-page">
     <?php
@@ -93,6 +99,36 @@ $splitscreen_active = post_type_exists('splitscreen');
         </div>
     </section>
 
+    <?php if ($is_parent && !empty($hub_feature_usage)) : ?>
+    <section class="lmd-suite-hub-section" aria-labelledby="lmd-hub-usage-features">
+        <h2 id="lmd-hub-usage-features" class="lmd-suite-hub-h2"><?php esc_html_e('Usage des fonctionnalités (mois en cours, réseau)', 'lmd-apps-ia'); ?></h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:960px;">
+            <div style="padding:16px;border-radius:10px;background:#fef2f2;border:1px solid #fecaca;">
+                <h3 style="margin:0 0 8px;font-size:14px;color:#991b1b;"><?php esc_html_e('Peu ou pas utilisées', 'lmd-apps-ia'); ?></h3>
+                <p style="margin:0;font-size:13px;line-height:1.45;color:#7f1d1d;"><?php
+                $labels = $hub_feature_usage['labels'] ?? [];
+                $least = array_map(function ($k) use ($labels, $hub_feature_usage) {
+                    $n = $hub_feature_usage['by_feature'][$k] ?? 0;
+                    return ($labels[$k] ?? $k) . ' (' . $n . ')';
+                }, $hub_feature_usage['least_used'] ?? []);
+                echo esc_html(implode(' · ', $least ?: ['—']));
+                ?></p>
+            </div>
+            <div style="padding:16px;border-radius:10px;background:#ecfdf5;border:1px solid #6ee7b7;">
+                <h3 style="margin:0 0 8px;font-size:14px;color:#065f46;"><?php esc_html_e('Très utilisées par les clients', 'lmd-apps-ia'); ?></h3>
+                <p style="margin:0;font-size:13px;line-height:1.45;color:#064e3b;"><?php
+                $most = array_map(function ($k) use ($labels, $hub_feature_usage) {
+                    $n = $hub_feature_usage['by_feature'][$k] ?? 0;
+                    return ($labels[$k] ?? $k) . ' (' . $n . ')';
+                }, $hub_feature_usage['most_used'] ?? []);
+                echo esc_html(implode(' · ', $most ?: ['—']));
+                ?></p>
+            </div>
+        </div>
+        <p style="margin:12px 0 0;font-size:13px;"><a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('dashboard', ['dash_sub' => 'stats']) . '#lmd-stats-usage' : admin_url('admin.php?page=lmd-app-estimation&tab=dashboard&dash_sub=stats#lmd-stats-usage')); ?>"><?php esc_html_e('Détail dans l’app Aide à l’estimation → Statistiques', 'lmd-apps-ia'); ?></a></p>
+    </section>
+    <?php endif; ?>
+
     <?php if ($is_parent && !is_multisite()) : ?>
     <section class="lmd-suite-hub-section" aria-label="<?php esc_attr_e('Outils direction', 'lmd-apps-ia'); ?>">
         <h2 class="lmd-suite-hub-h2"><?php esc_html_e('Direction (monosite)', 'lmd-apps-ia'); ?></h2>
@@ -100,7 +136,7 @@ $splitscreen_active = post_type_exists('splitscreen');
             <a class="button" href="<?php echo esc_url(admin_url('admin.php?page=lmd-sandbox-tools')); ?>"><?php esc_html_e('Outils bac à sable', 'lmd-apps-ia'); ?></a>
             <a class="button" href="<?php echo esc_url(admin_url('admin.php?page=lmd-promotions')); ?>"><?php esc_html_e('Promotions', 'lmd-apps-ia'); ?></a>
             <a class="button" href="<?php echo esc_url(admin_url('admin.php?page=lmd-copy-export-import')); ?>"><?php esc_html_e('Copie client', 'lmd-apps-ia'); ?></a>
-            <a class="button" href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('activity') : admin_url('admin.php?page=lmd-activity')); ?>"><?php esc_html_e('Activité', 'lmd-apps-ia'); ?></a>
+            <a class="button" href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('dashboard', ['dash_sub' => 'stats']) . '#lmd-stats-usage' : admin_url('admin.php?page=lmd-app-estimation&tab=dashboard&dash_sub=stats#lmd-stats-usage')); ?>"><?php esc_html_e('Statistiques d’usage (réseau)', 'lmd-apps-ia'); ?></a>
         </div>
     </section>
     <?php endif; ?>

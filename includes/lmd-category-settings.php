@@ -42,6 +42,7 @@ function lmd_get_default_theme_vente_options() {
         ['slug' => 'vehicules_collection', 'name' => 'Véhicules de collection', 'parent_slug' => ''],
         ['slug' => 'arts_premiers_civilisations', 'name' => 'Arts premiers & Civilisations', 'parent_slug' => ''],
         ['slug' => 'electromenager_objets_commerce', 'name' => 'Électroménager & Objets du commerce', 'parent_slug' => ''],
+        ['slug' => 'autres', 'name' => 'Autres', 'parent_slug' => ''],
     ];
 }
 

@@ -144,6 +144,18 @@ class LMD_Database {
         ) $this->charset_collate;";
         dbDelta($sql_ai_errors);
 
+        $sql_hotel = "CREATE TABLE {$this->prefix}hotel_ventes_calendar (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            site_id bigint(20) NOT NULL DEFAULT 0,
+            sale_date date NOT NULL,
+            title varchar(255) NOT NULL DEFAULT '',
+            notes text,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY site_sale_date (site_id, sale_date)
+        ) $this->charset_collate;";
+        dbDelta($sql_hotel);
+
         $this->ensure_tags_seeded();
         $this->ensure_pricing_ready();
     }
@@ -622,7 +634,9 @@ class LMD_Database {
             "SELECT t.id, t.slug FROM $et et INNER JOIN $t t ON et.tag_id = t.id WHERE et.estimation_id = %d AND t.site_id = %d AND t.type = 'message'",
             $id, $site_id
         ));
-        if ($msg_tag && ($msg_tag->slug ?? '') === 'vendu') return;
+        if ($msg_tag && in_array(($msg_tag->slug ?? ''), ['vendu', 'depose'], true)) {
+            return;
+        }
         $repondu = ($msg_tag && ($msg_tag->slug ?? '') === 'repondu') || !empty($estimation->reponse_sent_at);
         if ($repondu) {
             if (!$msg_tag || ($msg_tag->slug ?? '') !== 'repondu') {
@@ -666,5 +680,76 @@ class LMD_Database {
             "SELECT t.type, t.slug, t.name FROM {$this->prefix}estimation_tags et INNER JOIN {$this->prefix}tags t ON et.tag_id = t.id WHERE et.estimation_id = %d AND t.site_id = %d",
             $estimation_id, $site_id
         ));
+    }
+
+    /**
+     * Crée la table calendrier hôtel des ventes si elle manque (sites déjà installés).
+     */
+    public function ensure_hotel_ventes_calendar_table() {
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        $table = $this->prefix . 'hotel_ventes_calendar';
+        if ($this->wpdb->get_var("SHOW TABLES LIKE '$table'") === $table) {
+            return;
+        }
+        $sql_hotel = "CREATE TABLE {$this->prefix}hotel_ventes_calendar (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            site_id bigint(20) NOT NULL DEFAULT 0,
+            sale_date date NOT NULL,
+            title varchar(255) NOT NULL DEFAULT '',
+            notes text,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY site_sale_date (site_id, sale_date)
+        ) $this->charset_collate;";
+        dbDelta($sql_hotel);
+    }
+
+    /**
+     * @return object[] rows { id, site_id, sale_date, title, notes, created_at }
+     */
+    public function get_hotel_ventes_calendar_rows() {
+        $this->ensure_hotel_ventes_calendar_table();
+        $site_id = get_current_blog_id();
+        return $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT id, site_id, sale_date, title, notes, created_at FROM {$this->prefix}hotel_ventes_calendar WHERE site_id = %d ORDER BY sale_date DESC, id DESC",
+            $site_id
+        ));
+    }
+
+    public function insert_hotel_vente_row($sale_date, $title, $notes = '') {
+        $this->ensure_hotel_ventes_calendar_table();
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $sale_date)) {
+            return 0;
+        }
+        $title = sanitize_text_field($title);
+        if ($title === '') {
+            return 0;
+        }
+        $site_id = get_current_blog_id();
+        $ok = $this->wpdb->insert(
+            $this->prefix . 'hotel_ventes_calendar',
+            [
+                'site_id' => $site_id,
+                'sale_date' => $sale_date,
+                'title' => $title,
+                'notes' => $notes !== '' ? wp_kses_post($notes) : '',
+            ],
+            ['%d', '%s', '%s', '%s']
+        );
+        return $ok ? (int) $this->wpdb->insert_id : 0;
+    }
+
+    public function delete_hotel_vente_row($id) {
+        $this->ensure_hotel_ventes_calendar_table();
+        $id = absint($id);
+        if (!$id) {
+            return false;
+        }
+        $site_id = get_current_blog_id();
+        return (bool) $this->wpdb->delete(
+            $this->prefix . 'hotel_ventes_calendar',
+            ['id' => $id, 'site_id' => $site_id],
+            ['%d', '%d']
+        );
     }
 }

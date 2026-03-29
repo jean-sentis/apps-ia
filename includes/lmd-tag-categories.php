@@ -30,6 +30,7 @@ function lmd_get_tag_filter_colors($type, $slug = '', $source = '') {
     $colors = [
         'message' => [
             'default' => ['bg' => '#f3f4f6', 'text' => '#374151', 'border' => '#e5e7eb'],
+            'depose' => ['bg' => '#ecfdf5', 'text' => '#047857', 'border' => '#6ee7b7'],
             'vendu' => ['bg' => '#fef2f2', 'text' => '#b91c1c', 'border' => '#fecaca'],
         ],
         'interet' => [
@@ -47,6 +48,9 @@ function lmd_get_tag_filter_colors($type, $slug = '', $source = '') {
     ];
     if ($type === 'interet' && $slug && isset($colors['interet'][$slug])) {
         return $colors['interet'][$slug];
+    }
+    if ($type === 'message' && $slug === 'depose' && isset($colors['message']['depose'])) {
+        return $colors['message']['depose'];
     }
     if ($type === 'message' && $slug === 'vendu' && isset($colors['message']['vendu'])) {
         return $colors['message']['vendu'];
@@ -110,6 +114,7 @@ function lmd_get_tag_categories() {
         ['slug' => 'vins_spiritueux', 'name' => 'Vins & Spiritueux'],
         ['slug' => 'vehicules_collection', 'name' => 'Véhicules de collection'],
         ['slug' => 'arts_premiers_civilisations', 'name' => 'Arts premiers & Civilisations'],
+        ['slug' => 'autres', 'name' => 'Autres'],
     ];
     return [
         'vente' => [
@@ -127,6 +132,7 @@ function lmd_get_tag_categories() {
                 ['slug' => 'lu_non_repondu', 'name' => 'Non répondu'],
                 ['slug' => 'en_retard', 'name' => 'En retard'],
                 ['slug' => 'repondu', 'name' => 'Répondu'],
+                ['slug' => 'depose', 'name' => 'Déposé'],
                 ['slug' => 'vendu', 'name' => 'Vendu'],
             ],
         ],

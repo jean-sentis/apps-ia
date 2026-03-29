@@ -18,6 +18,8 @@ class LMD_Admin {
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('admin_head', [$this, 'menu_icon_scale']);
         add_filter('admin_body_class', [$this, 'admin_body_class_lmd']);
+        add_filter('parent_file', [$this, 'parent_file_highlight_app_estimation'], 999);
+        add_filter('submenu_file', [$this, 'submenu_file_highlight_app_estimation'], 999, 2);
         add_action('admin_post_lmd_submit_estimation_admin', [$this, 'handle_new_estimation']);
         add_action('admin_post_lmd_delete_estimation', [$this, 'handle_delete_estimation']);
         add_action('admin_post_lmd_bulk_delete_estimations', [$this, 'handle_bulk_delete_estimations']);
@@ -46,9 +48,16 @@ class LMD_Admin {
             'lmd-vendeurs-list' => 'vendeurs',
             'lmd-preferences' => 'preferences',
             'lmd-help' => 'help',
-            'lmd-activity' => 'activity',
         ];
         $p = sanitize_key(wp_unslash($_GET['page']));
+        if ($p === 'lmd-activity') {
+            $q = array_map('wp_unslash', $_GET);
+            $q['page'] = 'lmd-app-estimation';
+            $q['tab'] = 'dashboard';
+            $q['dash_sub'] = 'stats';
+            wp_safe_redirect(add_query_arg($q, admin_url('admin.php')));
+            exit;
+        }
         if (!isset($legacy[$p])) {
             return;
         }
@@ -372,14 +381,21 @@ class LMD_Admin {
         );
         add_submenu_page('lmd-apps-ia', 'Vue d\'ensemble', 'Vue d\'ensemble', 'manage_options', 'lmd-apps-ia', [$this, 'render_hub']);
 
+        add_submenu_page('lmd-apps-ia', 'Aide à l\'estimation', 'Aide à l\'estimation', 'manage_options', 'lmd-app-estimation', [$this, 'render_app_estimation']);
+        add_submenu_page('lmd-apps-ia', 'Enrichissement SEO', 'Enrichissement SEO', 'manage_options', 'lmd-app-seo', [$this, 'render_app_seo_placeholder']);
+        add_submenu_page('lmd-apps-ia', 'Fidéliser client', 'Fidéliser client', 'manage_options', 'lmd-app-fideliser-client', [$this, 'render_app_fideliser_client_placeholder']);
+        add_submenu_page('lmd-apps-ia', 'Fidéliser super acheteur', 'Fidéliser super acheteur', 'manage_options', 'lmd-app-fideliser-super-acheteur', [$this, 'render_app_fideliser_super_acheteur_placeholder']);
+
+        if (post_type_exists('splitscreen')) {
+            add_submenu_page('lmd-apps-ia', 'Splitscreen', 'Splitscreen', 'manage_options', 'lmd-splitscreen-montages', [$this, 'redirect_to_splitscreen_list']);
+        }
+
         if ($is_parent) {
             // menu_title = null : page accessible via URL / onglets hub, pas de doublon dans le menu latéral.
             add_submenu_page('lmd-apps-ia', 'Configuration APIs', null, 'manage_options', 'lmd-api-config', [$this, 'render_api_config']);
             add_submenu_page('lmd-apps-ia', 'Consommation IA', null, 'manage_options', 'lmd-consumption', [$this, 'render_consumption']);
             add_submenu_page('lmd-apps-ia', 'Marge par produit', null, 'manage_options', 'lmd-product-margin', [$this, 'render_product_margin']);
         }
-
-        add_submenu_page('lmd-apps-ia', 'Aide à l\'estimation', 'Aide à l\'estimation', 'manage_options', 'lmd-app-estimation', [$this, 'render_app_estimation']);
 
         if ($is_parent) {
             add_submenu_page('lmd-apps-ia', 'Promotions clients', null, 'manage_options', 'lmd-promotions', [$this, 'render_promotions']);
@@ -394,8 +410,8 @@ class LMD_Admin {
         add_submenu_page('lmd-apps-ia', 'Mes estimations', null, 'manage_options', 'lmd-estimations-list', [$this, 'render_estimations_list']);
         add_submenu_page('lmd-apps-ia', 'Détail estimation', null, 'manage_options', 'lmd-estimation-detail', [$this, 'render_estimation_detail']);
         add_submenu_page('lmd-apps-ia', 'Planning ventes', null, 'manage_options', 'lmd-ventes-list', [$this, 'render_ventes_list']);
-        add_submenu_page('lmd-apps-ia', 'Vendeurs', null, 'manage_options', 'lmd-vendeurs-list', [$this, 'render_vendeurs_list']);
-        add_submenu_page('lmd-apps-ia', 'Préférences', null, 'manage_options', 'lmd-preferences', [$this, 'render_preferences']);
+        add_submenu_page('lmd-apps-ia', 'Liste vendeurs', null, 'manage_options', 'lmd-vendeurs-list', [$this, 'render_vendeurs_list']);
+        add_submenu_page('lmd-apps-ia', 'Réglage affichages et réponses vendeurs', null, 'manage_options', 'lmd-preferences', [$this, 'render_preferences']);
         add_submenu_page('lmd-apps-ia', 'Aide', null, 'manage_options', 'lmd-help', [$this, 'render_help']);
         add_submenu_page('lmd-apps-ia', 'Activité', null, 'manage_options', 'lmd-activity', [$this, 'render_activity']);
     }
@@ -421,6 +437,33 @@ class LMD_Admin {
     /**
      * Classe body pour harmoniser le style (boutons, badges, typo) sur toutes les pages LMD.
      */
+    /**
+     * Sur le détail d'une estimation, garder le sous-menu « Aide à l'estimation » actif (pas l'entrée cachée « Détail »).
+     */
+    public function parent_file_highlight_app_estimation($parent_file) {
+        $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+        if ($page === 'lmd-estimation-detail') {
+            return 'lmd-apps-ia';
+        }
+        return $parent_file;
+    }
+
+    /**
+     * @param string|false $submenu_file
+     * @param string       $parent_file
+     * @return string|false
+     */
+    public function submenu_file_highlight_app_estimation($submenu_file, $parent_file) {
+        if ($parent_file !== 'lmd-apps-ia') {
+            return $submenu_file;
+        }
+        $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+        if ($page === 'lmd-estimation-detail') {
+            return 'lmd-app-estimation';
+        }
+        return $submenu_file;
+    }
+
     public function admin_body_class_lmd($classes) {
         if (!is_admin()) {
             return $classes;
@@ -458,13 +501,69 @@ class LMD_Admin {
         }
     }
 
+    public function redirect_to_splitscreen_list() {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('Non autorisé.', 'lmd-apps-ia'));
+        }
+        wp_safe_redirect(admin_url('edit.php?post_type=splitscreen'));
+        exit;
+    }
+
+    public function render_app_seo_placeholder() {
+        $lmd_placeholder_title = __('Enrichissement SEO', 'lmd-apps-ia');
+        $lmd_placeholder_lead = __('Cette application sera branchée sur la même suite (conso et pilotage par application).', 'lmd-apps-ia');
+        include LMD_PLUGIN_DIR . 'admin/views/app-suite-placeholder.php';
+    }
+
+    public function render_app_fideliser_client_placeholder() {
+        $lmd_placeholder_title = __('Fidéliser client', 'lmd-apps-ia');
+        $lmd_placeholder_lead = __('Espace dédié en préparation dans la roadmap suite.', 'lmd-apps-ia');
+        include LMD_PLUGIN_DIR . 'admin/views/app-suite-placeholder.php';
+    }
+
+    public function render_app_fideliser_super_acheteur_placeholder() {
+        $lmd_placeholder_title = __('Fidéliser super acheteur', 'lmd-apps-ia');
+        $lmd_placeholder_lead = __('Espace dédié en préparation dans la roadmap suite.', 'lmd-apps-ia');
+        include LMD_PLUGIN_DIR . 'admin/views/app-suite-placeholder.php';
+    }
+
     public function render_app_estimation() {
         $tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'dashboard';
-        $is_parent = !is_multisite() || get_current_blog_id() === 1;
-        $allowed = ['dashboard', 'new', 'list', 'ventes', 'vendeurs', 'preferences', 'help'];
-        if ($is_parent) {
-            $allowed[] = 'activity';
+        /* Ancien sous-onglet « Aide » du tableau de bord → onglet principal dédié. */
+        if ($tab === 'dashboard' && isset($_GET['dash_sub']) && sanitize_key(wp_unslash($_GET['dash_sub'])) === 'help') {
+            $qs = [
+                'page' => 'lmd-app-estimation',
+                'tab' => 'help',
+            ];
+            if (!empty($_GET['help_sub'])) {
+                $qs['help_sub'] = sanitize_key(wp_unslash($_GET['help_sub']));
+            }
+            if (!empty($_GET['month'])) {
+                $qs['month'] = sanitize_text_field(wp_unslash($_GET['month']));
+            }
+            wp_safe_redirect(add_query_arg($qs, admin_url('admin.php')));
+            exit;
         }
+        $legacy_to_dash = [
+            'preferences' => 'prefs',
+            'activity' => 'stats',
+        ];
+        if (isset($legacy_to_dash[$tab])) {
+            $qs = [
+                'page' => 'lmd-app-estimation',
+                'tab' => 'dashboard',
+                'dash_sub' => $legacy_to_dash[$tab],
+            ];
+            if (!empty($_GET['month'])) {
+                $qs['month'] = sanitize_text_field(wp_unslash($_GET['month']));
+            }
+            if (!empty($_GET['help_sub'])) {
+                $qs['help_sub'] = sanitize_key(wp_unslash($_GET['help_sub']));
+            }
+            wp_safe_redirect(add_query_arg($qs, admin_url('admin.php')));
+            exit;
+        }
+        $allowed = ['dashboard', 'new', 'list', 'help', 'ventes', 'vendeurs'];
         if (!in_array($tab, $allowed, true)) {
             $tab = 'dashboard';
         }
@@ -533,12 +632,14 @@ class LMD_Admin {
     }
 
     public function render_activity() {
-        $view = LMD_PLUGIN_DIR . 'admin/views/activity.php';
-        if (file_exists($view)) {
-            include $view;
-        } else {
-            echo '<div class="wrap"><h1>Activité</h1></div>';
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('Non autorisé.', 'lmd-apps-ia'));
         }
+        $url = function_exists('lmd_app_estimation_admin_url')
+            ? lmd_app_estimation_admin_url('dashboard', ['dash_sub' => 'stats']) . '#lmd-stats-usage'
+            : admin_url('admin.php?page=lmd-app-estimation&tab=dashboard&dash_sub=stats#lmd-stats-usage');
+        wp_safe_redirect($url);
+        exit;
     }
 
     public function render_billing() {

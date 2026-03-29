@@ -19,6 +19,8 @@ add_action('wp_ajax_lmd_check_analysis_status_batch', 'lmd_ajax_check_analysis_s
 add_action('wp_ajax_lmd_create_vente', 'lmd_ajax_create_vente');
 add_action('wp_ajax_lmd_update_vente', 'lmd_ajax_update_vente');
 add_action('wp_ajax_lmd_list_ventes', 'lmd_ajax_list_ventes');
+add_action('wp_ajax_lmd_hotel_vente_add', 'lmd_ajax_hotel_vente_add');
+add_action('wp_ajax_lmd_hotel_vente_delete', 'lmd_ajax_hotel_vente_delete');
 add_action('wp_ajax_lmd_report_ai_error', 'lmd_ajax_report_ai_error');
 add_action('wp_ajax_lmd_save_analysis_pricing', 'lmd_ajax_save_analysis_pricing');
 add_action('wp_ajax_lmd_log_activity', 'lmd_ajax_log_activity');
@@ -381,7 +383,51 @@ function lmd_ajax_list_ventes() {
         }
         $list[] = $item;
     }
-    wp_send_json_success(['ventes' => $list]);
+    $db->ensure_hotel_ventes_calendar_table();
+    $hotel_rows = $db->get_hotel_ventes_calendar_rows();
+    $hotel_calendar = [];
+    foreach ($hotel_rows as $hr) {
+        $ymd = isset($hr->sale_date) ? substr((string) $hr->sale_date, 0, 10) : '';
+        if ($ymd !== '') {
+            $hotel_calendar[] = ['date' => $ymd, 'title' => (string) $hr->title];
+        }
+    }
+    wp_send_json_success(['ventes' => $list, 'hotel_calendar' => $hotel_calendar]);
+}
+
+function lmd_ajax_hotel_vente_add() {
+    check_ajax_referer('lmd_admin', 'nonce');
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'Non autorisé']);
+    }
+    $date = isset($_POST['sale_date']) ? sanitize_text_field(wp_unslash($_POST['sale_date'])) : '';
+    $title = isset($_POST['title']) ? sanitize_text_field(wp_unslash($_POST['title'])) : '';
+    $notes = isset($_POST['notes']) ? wp_unslash($_POST['notes']) : '';
+    if (!$date || !$title) {
+        wp_send_json_error(['message' => __('Date et intitulé requis.', 'lmd-apps-ia')]);
+    }
+    $db = new LMD_Database();
+    $id = $db->insert_hotel_vente_row($date, $title, is_string($notes) ? $notes : '');
+    if (!$id) {
+        wp_send_json_error(['message' => __('Enregistrement impossible.', 'lmd-apps-ia')]);
+    }
+    wp_send_json_success(['id' => $id]);
+}
+
+function lmd_ajax_hotel_vente_delete() {
+    check_ajax_referer('lmd_admin', 'nonce');
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'Non autorisé']);
+    }
+    $id = isset($_POST['id']) ? absint($_POST['id']) : 0;
+    if (!$id) {
+        wp_send_json_error(['message' => __('ID manquant.', 'lmd-apps-ia')]);
+    }
+    $db = new LMD_Database();
+    if (!$db->delete_hotel_vente_row($id)) {
+        wp_send_json_error(['message' => __('Suppression impossible.', 'lmd-apps-ia')]);
+    }
+    wp_send_json_success();
 }
 
 /**

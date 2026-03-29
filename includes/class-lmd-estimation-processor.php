@@ -298,6 +298,8 @@ class LMD_Estimation_Processor {
 11. arts_premiers_civilisations — Arts premiers & Civilisations : objets africains, océaniens, amérindiens. Antiquités grecques, romaines, égyptiennes, asiatiques. Expertise : authenticité, provenance, conformité légale.
 
 12. electromenager_objets_commerce — Électroménager & Objets du commerce : réfrigérateurs, lave-linge, TV, petit électroménager, high-tech. Expertise : date de lancement du modèle (âge max), facture, garantie ou prolongation de garantie.
+
+13. autres — Autres : tout objet ou catégorie ne rentrant pas clairement dans les rubriques ci-dessus. Expertise : contextualiser au mieux (usage, matériaux, époque probable).
 CATEGORIES;
 
         $lovable_full = <<<'LOVABLE'
@@ -382,8 +384,10 @@ LIENS ET ACCESSIBILITÉ :
 FORMATAGE : LIENS en markdown [texte](url). MONTANTS : séparateur de milliers avec espace "39 000 €". DATES : format français "mars 2024".
 
 IDENTITÉ / BIOGRAPHIE (identity) — RÈGLE STRUCTURANTE :
-- D'ABORD : Ce que c'est au plus près de la vérité, avec justifications de l'avis (analyse des photos, correspondances visuelles, éléments observés).
-- ENSUITE : BIOGRAPHIE DÉVELOPPÉE — Qui est l'artiste, le créateur ou le fabricant ? Toujours inclure des éléments sur l'auteur : mouvement, carrière, faits notables, contexte de création. Même pour les objets de série, identifier le fabricant, le designer ou la licence.
+- INTERDIT : se paraphraser ou répéter sous une autre forme ce qui est déjà dit dans summary, condition ou market_results. Chaque fait une seule fois dans tout le JSON.
+- D'ABORD : Ce que c'est au plus près de la vérité, avec justifications (photos, correspondances, éléments observés).
+- DEUXIÈME PARTIE du champ identity (après l’identification courte) : selon le cas, dans cet ordre de priorité — (1) Si pertinent : biographie de l’auteur, artiste, artisan, fabricant ou créateur identifié. (2) Sinon : le mouvement artistique, stylistique ou industriel auquel l’objet se rattache ; dans ce cas le cœur du paragraphe porte sur ce mouvement. (3) Sinon : contexte historique, géographique, politique ou économique utile à comprendre l’objet. Ne pas mélanger ces niveaux de façon redondante ; choisir la piste la plus éclairante.
+- Toujours inclure quand c’est possible des éléments sur l’auteur ou le producteur : mouvement, carrière, faits notables, contexte de création. Pour les objets de série : fabricant, designer ou licence.
 CAS 1 — Œuvre d'art : IDENTITÉ (nature précise, attribution au conditionnel, technique, époque) + justifications visuelles + AUTHENTICITÉ (signatures, poinçons) + BIOGRAPHIE DÉVELOPPÉE (auteur : qui est-il, mouvement, carrière, œuvres notables, contexte). 4-8 phrases au conditionnel.
 CAS 2 — Objet usuel : Marque, modèle, spécifications techniques. 2-4 phrases factuelles.
 CAS 3 — Objet du commerce (électroménager, high-tech, petit électroménager, etc.) : Marque, modèle, référence. Cherche dans les sources web DEPUIS QUAND ce modèle est fabriqué (date de lancement commercial) pour connaître l'âge maximum possible. Indique dans identity : "Modèle lancé en [année]" ou "Commercialisé à partir de [année]" si trouvé. Dans questions, OBLIGATOIREMENT inclure si pertinent : "Avez-vous la facture d'achat ?" ; "L'objet est-il encore sous garantie ou sous prolongation de garantie ?". Ces éléments influencent fortement la valeur de revente.
