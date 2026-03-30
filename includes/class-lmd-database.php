@@ -5,25 +5,27 @@
  * @package LMD_Module1
  */
 
-if (!defined('ABSPATH')) {
-    exit;
+if (!defined("ABSPATH")) {
+    exit();
 }
 
-class LMD_Database {
-
+class LMD_Database
+{
     private $wpdb;
     private $charset_collate;
     private $prefix;
 
-    public function __construct() {
+    public function __construct()
+    {
         global $wpdb;
         $this->wpdb = $wpdb;
         $this->charset_collate = $wpdb->get_charset_collate();
-        $this->prefix = $wpdb->prefix . 'lmd_';
+        $this->prefix = $wpdb->prefix . "lmd_";
     }
 
-    public function create_tables() {
-        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+    public function create_tables()
+    {
+        require_once ABSPATH . "wp-admin/includes/upgrade.php";
 
         $site_id = get_current_blog_id();
 
@@ -86,9 +88,11 @@ class LMD_Database {
             PRIMARY KEY (estimation_id, tag_id),
             KEY tag_id (tag_id)
         ) $this->charset_collate;";
-        $table_et = $this->prefix . 'estimation_tags';
+        $table_et = $this->prefix . "estimation_tags";
         // Évite l’erreur SQL « Multiple primary key » si la table existe déjà avec une clé primaire (dbDelta tente parfois un ALTER redondant).
-        if ($this->wpdb->get_var("SHOW TABLES LIKE '$table_et'") !== $table_et) {
+        if (
+            $this->wpdb->get_var("SHOW TABLES LIKE '$table_et'") !== $table_et
+        ) {
             dbDelta($sql_estimation_tags);
         }
 
@@ -160,8 +164,9 @@ class LMD_Database {
         $this->ensure_pricing_ready();
     }
 
-    public function ensure_tags_seeded() {
-        $table = $this->prefix . 'tags';
+    public function ensure_tags_seeded()
+    {
+        $table = $this->prefix . "tags";
         if ($this->wpdb->get_var("SHOW TABLES LIKE '$table'") !== $table) {
             $this->create_tables();
             return;
@@ -175,124 +180,167 @@ class LMD_Database {
         $this->ensure_interet_tags_complete();
     }
 
-    private function ensure_interet_tags_complete() {
+    private function ensure_interet_tags_complete()
+    {
         $site_id = get_current_blog_id();
-        $categories = function_exists('lmd_get_tag_categories') ? lmd_get_tag_categories() : [];
-        $opts = $categories['interet']['options'] ?? [];
+        $categories = function_exists("lmd_get_tag_categories")
+            ? lmd_get_tag_categories()
+            : [];
+        $opts = $categories["interet"]["options"] ?? [];
         foreach ($opts as $opt) {
-            $slug = $opt['slug'] ?? '';
-            $name = $opt['name'] ?? $slug;
-            if (!$slug) continue;
-            $exists = (int) $this->wpdb->get_var($this->wpdb->prepare(
-                "SELECT 1 FROM {$this->prefix}tags WHERE site_id = %d AND type = 'interet' AND slug = %s",
-                $site_id, $slug
-            ));
-            if (!$exists) {
-                $this->wpdb->insert($this->prefix . 'tags', [
-                    'site_id' => $site_id, 'name' => $name, 'type' => 'interet', 'slug' => $slug
-                ], ['%d', '%s', '%s', '%s']);
-            }
-        }
-    }
-
-    private function ensure_message_tags_complete() {
-        $site_id = get_current_blog_id();
-        $categories = function_exists('lmd_get_tag_categories') ? lmd_get_tag_categories() : [];
-        $opts = $categories['message']['options'] ?? [];
-        foreach ($opts as $opt) {
-            $slug = $opt['slug'] ?? '';
-            $name = $opt['name'] ?? $slug;
-            if (!$slug) continue;
-            $exists = (int) $this->wpdb->get_var($this->wpdb->prepare(
-                "SELECT 1 FROM {$this->prefix}tags WHERE site_id = %d AND type = 'message' AND slug = %s",
-                $site_id, $slug
-            ));
-            if (!$exists) {
-                $this->wpdb->insert($this->prefix . 'tags', [
-                    'site_id' => $site_id, 'name' => $name, 'type' => 'message', 'slug' => $slug
-                ], ['%d', '%s', '%s', '%s']);
-            }
-        }
-    }
-
-    private function insert_default_tags() {
-        $site_id = get_current_blog_id();
-        $categories = function_exists('lmd_get_tag_categories') ? lmd_get_tag_categories() : [];
-        foreach ($categories as $type => $cat) {
-            if (empty($cat['options'])) {
+            $slug = $opt["slug"] ?? "";
+            $name = $opt["name"] ?? $slug;
+            if (!$slug) {
                 continue;
             }
-            foreach ($cat['options'] as $opt) {
-                $slug = $opt['slug'] ?? '';
-                $name = $opt['name'] ?? $slug;
-                if (!$slug) {
-                    continue;
-                }
+            $exists = (int) $this->wpdb->get_var(
+                $this->wpdb->prepare(
+                    "SELECT 1 FROM {$this->prefix}tags WHERE site_id = %d AND type = 'interet' AND slug = %s",
+                    $site_id,
+                    $slug,
+                ),
+            );
+            if (!$exists) {
                 $this->wpdb->insert(
-                    $this->prefix . 'tags',
+                    $this->prefix . "tags",
                     [
-                        'site_id' => $site_id,
-                        'name' => $name,
-                        'type' => $type,
-                        'slug' => $slug,
+                        "site_id" => $site_id,
+                        "name" => $name,
+                        "type" => "interet",
+                        "slug" => $slug,
                     ],
-                    ['%d', '%s', '%s', '%s']
+                    ["%d", "%s", "%s", "%s"],
                 );
             }
         }
     }
 
-    public function ensure_pricing_ready() {
-        $table_tiers = $this->prefix . 'pricing_tiers';
-        $table_overrides = $this->prefix . 'client_pricing_overrides';
-        if ($this->wpdb->get_var("SHOW TABLES LIKE '$table_tiers'") !== $table_tiers) {
+    private function ensure_message_tags_complete()
+    {
+        $site_id = get_current_blog_id();
+        $categories = function_exists("lmd_get_tag_categories")
+            ? lmd_get_tag_categories()
+            : [];
+        $opts = $categories["message"]["options"] ?? [];
+        foreach ($opts as $opt) {
+            $slug = $opt["slug"] ?? "";
+            $name = $opt["name"] ?? $slug;
+            if (!$slug) {
+                continue;
+            }
+            $exists = (int) $this->wpdb->get_var(
+                $this->wpdb->prepare(
+                    "SELECT 1 FROM {$this->prefix}tags WHERE site_id = %d AND type = 'message' AND slug = %s",
+                    $site_id,
+                    $slug,
+                ),
+            );
+            if (!$exists) {
+                $this->wpdb->insert(
+                    $this->prefix . "tags",
+                    [
+                        "site_id" => $site_id,
+                        "name" => $name,
+                        "type" => "message",
+                        "slug" => $slug,
+                    ],
+                    ["%d", "%s", "%s", "%s"],
+                );
+            }
+        }
+    }
+
+    private function insert_default_tags()
+    {
+        $site_id = get_current_blog_id();
+        $categories = function_exists("lmd_get_tag_categories")
+            ? lmd_get_tag_categories()
+            : [];
+        foreach ($categories as $type => $cat) {
+            if (empty($cat["options"])) {
+                continue;
+            }
+            foreach ($cat["options"] as $opt) {
+                $slug = $opt["slug"] ?? "";
+                $name = $opt["name"] ?? $slug;
+                if (!$slug) {
+                    continue;
+                }
+                $this->wpdb->insert(
+                    $this->prefix . "tags",
+                    [
+                        "site_id" => $site_id,
+                        "name" => $name,
+                        "type" => $type,
+                        "slug" => $slug,
+                    ],
+                    ["%d", "%s", "%s", "%s"],
+                );
+            }
+        }
+    }
+
+    public function ensure_pricing_ready()
+    {
+        $table_tiers = $this->prefix . "pricing_tiers";
+        $table_overrides = $this->prefix . "client_pricing_overrides";
+        if (
+            $this->wpdb->get_var("SHOW TABLES LIKE '$table_tiers'") !==
+            $table_tiers
+        ) {
             $this->create_tables();
             return;
         }
-        $count = (int) $this->wpdb->get_var("SELECT COUNT(*) FROM $table_tiers");
+        $count = (int) $this->wpdb->get_var(
+            "SELECT COUNT(*) FROM $table_tiers",
+        );
         if ($count > 0) {
             return;
         }
         $this->insert_default_pricing_tiers();
     }
 
-    public function insert_default_pricing_tiers() {
+    public function insert_default_pricing_tiers()
+    {
         $site_id = get_current_blog_id();
         $tiers = [
-            ['min' => 0, 'max' => 100, 'price' => 5],
-            ['min' => 100, 'max' => 500, 'price' => 10],
-            ['min' => 500, 'max' => 1000, 'price' => 15],
-            ['min' => 1000, 'max' => 5000, 'price' => 25],
-            ['min' => 5000, 'max' => null, 'price' => 50],
+            ["min" => 0, "max" => 100, "price" => 5],
+            ["min" => 100, "max" => 500, "price" => 10],
+            ["min" => 500, "max" => 1000, "price" => 15],
+            ["min" => 1000, "max" => 5000, "price" => 25],
+            ["min" => 5000, "max" => null, "price" => 50],
         ];
         foreach ($tiers as $t) {
             $this->wpdb->insert(
-                $this->prefix . 'pricing_tiers',
+                $this->prefix . "pricing_tiers",
                 [
-                    'site_id' => $site_id,
-                    'min_amount' => $t['min'],
-                    'max_amount' => $t['max'],
-                    'price_per_estimation' => $t['price'],
+                    "site_id" => $site_id,
+                    "min_amount" => $t["min"],
+                    "max_amount" => $t["max"],
+                    "price_per_estimation" => $t["price"],
                 ],
-                ['%d', '%f', '%f', '%f']
+                ["%d", "%f", "%f", "%f"],
             );
         }
     }
 
-    public function create_parent_access_code() {
+    public function create_parent_access_code()
+    {
         // Placeholder - codes d'accès multisite
     }
 
-    public function create_child_access_code() {
+    public function create_child_access_code()
+    {
         // Placeholder - codes d'accès multisite
     }
 
-    public function get_estimation($id) {
+    public function get_estimation($id)
+    {
         return $this->wpdb->get_row(
             $this->wpdb->prepare(
                 "SELECT * FROM {$this->prefix}estimations WHERE id = %d",
-                $id
-            )
+                $id,
+            ),
         );
     }
 
@@ -300,86 +348,113 @@ class LMD_Database {
      * Rang de l'envoi pour le même expéditeur (1er, 2e, 3e...).
      * Même personne = même client_email (ou client_name si email vide).
      */
-    public function get_sender_rank($estimation) {
+    public function get_sender_rank($estimation)
+    {
         $site_id = get_current_blog_id();
-        $table = $this->prefix . 'estimations';
-        $email = trim((string) ($estimation->client_email ?? ''));
-        $name = trim((string) ($estimation->client_name ?? ''));
-        $created = $estimation->created_at ?? '';
+        $table = $this->prefix . "estimations";
+        $email = trim((string) ($estimation->client_email ?? ""));
+        $name = trim((string) ($estimation->client_name ?? ""));
+        $created = $estimation->created_at ?? "";
         $id = (int) ($estimation->id ?? 0);
         if ($email) {
-            $rank = (int) $this->wpdb->get_var($this->wpdb->prepare(
-                "SELECT COUNT(*) FROM $table WHERE site_id = %d AND client_email = %s AND (created_at < %s OR (created_at = %s AND id <= %d))",
-                $site_id, $email, $created, $created, $id
-            ));
+            $rank = (int) $this->wpdb->get_var(
+                $this->wpdb->prepare(
+                    "SELECT COUNT(*) FROM $table WHERE site_id = %d AND client_email = %s AND (created_at < %s OR (created_at = %s AND id <= %d))",
+                    $site_id,
+                    $email,
+                    $created,
+                    $created,
+                    $id,
+                ),
+            );
         } elseif ($name) {
-            $rank = (int) $this->wpdb->get_var($this->wpdb->prepare(
-                "SELECT COUNT(*) FROM $table WHERE site_id = %d AND (client_email = '' OR client_email IS NULL) AND client_name = %s AND (created_at < %s OR (created_at = %s AND id <= %d))",
-                $site_id, $name, $created, $created, $id
-            ));
+            $rank = (int) $this->wpdb->get_var(
+                $this->wpdb->prepare(
+                    "SELECT COUNT(*) FROM $table WHERE site_id = %d AND (client_email = '' OR client_email IS NULL) AND client_name = %s AND (created_at < %s OR (created_at = %s AND id <= %d))",
+                    $site_id,
+                    $name,
+                    $created,
+                    $created,
+                    $id,
+                ),
+            );
         } else {
             return 0;
         }
         return $rank;
     }
 
-    public function get_estimations($args = []) {
+    public function get_estimations($args = [])
+    {
         $defaults = [
-            'status' => '',
-            'search' => '',
-            'filter_message' => '',
-            'filter_interet' => '',
-            'filter_estimation' => '',
-            'filter_theme_vente' => '',
-            'filter_date_vente' => '',
-            'filter_vendeur' => '',
-            'filter_date_envoi_from' => '',
-            'filter_date_envoi_to' => '',
-            'limit' => 50,
-            'offset' => 0,
-            'orderby' => 'created_at',
-            'order' => 'DESC',
-            'pref_display_last_n' => 0,
-            'pref_display_include_unanswered' => false,
-            'pref_display_older_than_days' => 0,
-            'pref_excluded_theme_slugs' => [],
+            "status" => "",
+            "search" => "",
+            "filter_message" => "",
+            "filter_interet" => "",
+            "filter_estimation" => "",
+            "filter_theme_vente" => "",
+            "filter_date_vente" => "",
+            "filter_vendeur" => "",
+            "filter_date_envoi_from" => "",
+            "filter_date_envoi_to" => "",
+            "limit" => 50,
+            "offset" => 0,
+            "orderby" => "created_at",
+            "order" => "DESC",
+            "pref_display_last_n" => 0,
+            "pref_display_include_unanswered" => false,
+            "pref_display_older_than_days" => 0,
+            "pref_excluded_theme_slugs" => [],
         ];
         $args = wp_parse_args($args, $defaults);
         $site_id = get_current_blog_id();
-        $e = $this->prefix . 'estimations';
-        $et = $this->prefix . 'estimation_tags';
-        $t = $this->prefix . 'tags';
+        $e = $this->prefix . "estimations";
+        $et = $this->prefix . "estimation_tags";
+        $t = $this->prefix . "tags";
 
         $where = "e.site_id = %d";
         $params = [$site_id];
 
-        if (!empty($args['status'])) {
+        if (!empty($args["status"])) {
             $where .= " AND e.status = %s";
-            $params[] = $args['status'];
+            $params[] = $args["status"];
         }
         $tag_filters = [
-            'message' => $args['filter_message'],
-            'interet' => $args['filter_interet'],
-            'estimation' => $args['filter_estimation'],
-            'theme_vente' => $args['filter_theme_vente'],
-            'date_vente' => $args['filter_date_vente'],
-            'vendeur' => $args['filter_vendeur'],
+            "message" => $args["filter_message"],
+            "interet" => $args["filter_interet"],
+            "estimation" => $args["filter_estimation"],
+            "theme_vente" => $args["filter_theme_vente"],
+            "date_vente" => $args["filter_date_vente"],
+            "vendeur" => $args["filter_vendeur"],
         ];
-        $estimation_paliers = function_exists('lmd_get_estimation_paliers') ? lmd_get_estimation_paliers() : [
-            'moins_25' => ['max' => 25],
-            'moins_100' => ['max' => 100],
-            'moins_500' => ['max' => 500],
-            'moins_1000' => ['max' => 1000],
-            'moins_5000' => ['max' => 5000],
-            'plus_5000' => ['min' => 5000],
-        ];
+        $estimation_paliers = function_exists("lmd_get_estimation_paliers")
+            ? lmd_get_estimation_paliers()
+            : [
+                "moins_25" => ["max" => 25],
+                "moins_100" => ["max" => 100],
+                "moins_500" => ["max" => 500],
+                "moins_1000" => ["max" => 1000],
+                "moins_5000" => ["max" => 5000],
+                "plus_5000" => ["min" => 5000],
+            ];
         foreach ($tag_filters as $type => $val) {
-            $slugs = is_array($val) ? array_filter(array_map('sanitize_text_field', $val)) : (empty($val) ? [] : [sanitize_text_field($val)]);
+            $slugs = is_array($val)
+                ? array_filter(array_map("sanitize_text_field", $val))
+                : (empty($val)
+                    ? []
+                    : [sanitize_text_field($val)]);
             if (!empty($slugs)) {
-                if ($type === 'message' && in_array('en_retard', $slugs, true)) {
-                    $other_slugs = array_values(array_diff($slugs, ['en_retard']));
+                if (
+                    $type === "message" &&
+                    in_array("en_retard", $slugs, true)
+                ) {
+                    $other_slugs = array_values(
+                        array_diff($slugs, ["en_retard"]),
+                    );
                     $e_cols = $this->wpdb->get_col("DESCRIBE {$e}");
-                    $ref_date = in_array('first_viewed_at', $e_cols, true) ? 'COALESCE(e.first_viewed_at, e.created_at)' : 'e.created_at';
+                    $ref_date = in_array("first_viewed_at", $e_cols, true)
+                        ? "COALESCE(e.first_viewed_at, e.created_at)"
+                        : "e.created_at";
                     $where .= " AND (";
                     $where .= " EXISTS (SELECT 1 FROM $et et2 INNER JOIN $t t2 ON et2.tag_id = t2.id WHERE et2.estimation_id = e.id AND t2.site_id = %d AND t2.type = %s AND t2.slug = 'en_retard')";
                     $params[] = $site_id;
@@ -388,24 +463,33 @@ class LMD_Database {
                     $params[] = $site_id;
                     $params[] = $type;
                     if (!empty($other_slugs)) {
-                        $placeholders = implode(',', array_fill(0, count($other_slugs), '%s'));
+                        $placeholders = implode(
+                            ",",
+                            array_fill(0, count($other_slugs), "%s"),
+                        );
                         $where .= " OR EXISTS (SELECT 1 FROM $et et2 INNER JOIN $t t2 ON et2.tag_id = t2.id WHERE et2.estimation_id = e.id AND t2.site_id = %d AND t2.type = %s AND t2.slug IN ($placeholders))";
                         $params[] = $site_id;
                         $params[] = $type;
                         $params = array_merge($params, $other_slugs);
                     }
                     $where .= ")";
-                } elseif ($type === 'estimation') {
+                } elseif ($type === "estimation") {
                     $tag_slugs = [];
                     $numeric_conds = [];
                     foreach ($slugs as $slug) {
                         $pal = $estimation_paliers[$slug] ?? null;
                         if ($pal) {
                             $tag_slugs[] = $slug;
-                            if (isset($pal['max'])) {
-                                $numeric_conds[] = "(e.estimate_low IS NOT NULL AND e.estimate_low < " . floatval($pal['max']) . ")";
+                            if (isset($pal["max"])) {
+                                $numeric_conds[] =
+                                    "(e.estimate_low IS NOT NULL AND e.estimate_low < " .
+                                    floatval($pal["max"]) .
+                                    ")";
                             } else {
-                                $numeric_conds[] = "(e.estimate_low IS NOT NULL AND e.estimate_low >= " . floatval($pal['min']) . ")";
+                                $numeric_conds[] =
+                                    "(e.estimate_low IS NOT NULL AND e.estimate_low >= " .
+                                    floatval($pal["min"]) .
+                                    ")";
                             }
                         } else {
                             $tag_slugs[] = $slug;
@@ -414,18 +498,24 @@ class LMD_Database {
                     $where .= " AND (";
                     $parts = [];
                     if (!empty($tag_slugs)) {
-                        $placeholders = implode(',', array_fill(0, count($tag_slugs), '%s'));
+                        $placeholders = implode(
+                            ",",
+                            array_fill(0, count($tag_slugs), "%s"),
+                        );
                         $parts[] = "EXISTS (SELECT 1 FROM $et et2 INNER JOIN $t t2 ON et2.tag_id = t2.id WHERE et2.estimation_id = e.id AND t2.site_id = %d AND t2.type = %s AND t2.slug IN ($placeholders))";
                         $params[] = $site_id;
                         $params[] = $type;
                         $params = array_merge($params, $tag_slugs);
                     }
                     if (!empty($numeric_conds)) {
-                        $parts[] = '(' . implode(' OR ', $numeric_conds) . ')';
+                        $parts[] = "(" . implode(" OR ", $numeric_conds) . ")";
                     }
-                    $where .= implode(' OR ', $parts) . ")";
-                } elseif ($type === 'vendeur') {
-                    $placeholders = implode(',', array_fill(0, count($slugs), '%s'));
+                    $where .= implode(" OR ", $parts) . ")";
+                } elseif ($type === "vendeur") {
+                    $placeholders = implode(
+                        ",",
+                        array_fill(0, count($slugs), "%s"),
+                    );
                     $where .= " AND (";
                     $where .= " EXISTS (SELECT 1 FROM $et et2 INNER JOIN $t t2 ON et2.tag_id = t2.id WHERE et2.estimation_id = e.id AND t2.site_id = %d AND t2.type = %s AND t2.slug IN ($placeholders))";
                     $params[] = $site_id;
@@ -434,23 +524,33 @@ class LMD_Database {
                     $where .= " OR e.client_email IN ($placeholders)";
                     $params = array_merge($params, $slugs);
                     $where .= ")";
-                } elseif ($type === 'interet') {
-                    $placeholders = implode(',', array_fill(0, count($slugs), '%s'));
+                } elseif ($type === "interet") {
+                    $placeholders = implode(
+                        ",",
+                        array_fill(0, count($slugs), "%s"),
+                    );
                     $where .= " AND (";
                     $where .= " EXISTS (SELECT 1 FROM $et et2 INNER JOIN $t t2 ON et2.tag_id = t2.id WHERE et2.estimation_id = e.id AND t2.site_id = %d AND t2.type = %s AND t2.slug IN ($placeholders))";
                     $params[] = $site_id;
                     $params[] = $type;
                     $params = array_merge($params, $slugs);
                     $e_cols = $this->wpdb->get_col("DESCRIBE {$e}");
-                    if (in_array('ai_analysis', $e_cols, true)) {
+                    if (in_array("ai_analysis", $e_cols, true)) {
                         foreach ($slugs as $slug) {
-                            $where .= " OR (e.ai_analysis IS NOT NULL AND e.ai_analysis != '' AND e.ai_analysis LIKE %s)";
-                            $params[] = '%"interet":"' . $this->wpdb->esc_like($slug) . '"%';
+                            $where .=
+                                " OR (e.ai_analysis IS NOT NULL AND e.ai_analysis != '' AND e.ai_analysis LIKE %s)";
+                            $params[] =
+                                '%"interet":"' .
+                                $this->wpdb->esc_like($slug) .
+                                '"%';
                         }
                     }
                     $where .= ")";
                 } else {
-                    $placeholders = implode(',', array_fill(0, count($slugs), '%s'));
+                    $placeholders = implode(
+                        ",",
+                        array_fill(0, count($slugs), "%s"),
+                    );
                     $where .= " AND EXISTS (SELECT 1 FROM $et et2 INNER JOIN $t t2 ON et2.tag_id = t2.id WHERE et2.estimation_id = e.id AND t2.site_id = %d AND t2.type = %s AND t2.slug IN ($placeholders))";
                     $params[] = $site_id;
                     $params[] = $type;
@@ -458,42 +558,54 @@ class LMD_Database {
                 }
             }
         }
-        if (!empty($args['search'])) {
-            $like = '%' . $this->wpdb->esc_like($args['search']) . '%';
+        if (!empty($args["search"])) {
+            $like = "%" . $this->wpdb->esc_like($args["search"]) . "%";
             $search_parts = [
-                'e.client_name LIKE %s',
-                'e.client_email LIKE %s',
-                'e.description LIKE %s',
+                "e.client_name LIKE %s",
+                "e.client_email LIKE %s",
+                "e.description LIKE %s",
             ];
             $search_params = [$like, $like, $like];
             $e_cols = $this->wpdb->get_col("DESCRIBE {$e}");
-            if (in_array('client_first_name', $e_cols, true)) {
-                $search_parts[] = 'e.client_first_name LIKE %s';
+            if (in_array("client_first_name", $e_cols, true)) {
+                $search_parts[] = "e.client_first_name LIKE %s";
                 $search_params[] = $like;
             }
-            if (in_array('client_phone', $e_cols, true)) {
-                $search_parts[] = 'e.client_phone LIKE %s';
+            if (in_array("client_phone", $e_cols, true)) {
+                $search_parts[] = "e.client_phone LIKE %s";
                 $search_params[] = $like;
             }
-            if (in_array('client_commune', $e_cols, true)) {
-                $search_parts[] = 'e.client_commune LIKE %s';
+            if (in_array("client_commune", $e_cols, true)) {
+                $search_parts[] = "e.client_commune LIKE %s";
                 $search_params[] = $like;
             }
-            if (in_array('ai_analysis', $e_cols, true)) {
-                $search_parts[] = '(e.ai_analysis IS NOT NULL AND e.ai_analysis != \'\' AND e.ai_analysis LIKE %s)';
+            if (in_array("ai_analysis", $e_cols, true)) {
+                $search_parts[] =
+                    '(e.ai_analysis IS NOT NULL AND e.ai_analysis != \'\' AND e.ai_analysis LIKE %s)';
                 $search_params[] = $like;
             }
             $search_parts[] = "EXISTS (SELECT 1 FROM $et ets INNER JOIN $t ts ON ets.tag_id = ts.id WHERE ets.estimation_id = e.id AND ts.site_id = %d AND (ts.name LIKE %s OR ts.slug LIKE %s))";
             $search_params[] = $site_id;
             $search_params[] = $like;
             $search_params[] = $like;
-            $where .= ' AND (' . implode(' OR ', $search_parts) . ')';
+            $where .= " AND (" . implode(" OR ", $search_parts) . ")";
             $params = array_merge($params, $search_params);
         }
-        $date_from = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $args['filter_date_envoi_from']) ? $args['filter_date_envoi_from'] : '';
-        $date_to = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $args['filter_date_envoi_to']) ? $args['filter_date_envoi_to'] : '';
+        $date_from = preg_match(
+            '/^\d{4}-\d{2}-\d{2}$/',
+            (string) $args["filter_date_envoi_from"],
+        )
+            ? $args["filter_date_envoi_from"]
+            : "";
+        $date_to = preg_match(
+            '/^\d{4}-\d{2}-\d{2}$/',
+            (string) $args["filter_date_envoi_to"],
+        )
+            ? $args["filter_date_envoi_to"]
+            : "";
         if ($date_from && $date_to) {
-            $where .= " AND DATE(e.created_at) >= %s AND DATE(e.created_at) <= %s";
+            $where .=
+                " AND DATE(e.created_at) >= %s AND DATE(e.created_at) <= %s";
             $params[] = $date_from;
             $params[] = $date_to;
         } elseif ($date_from) {
@@ -504,25 +616,42 @@ class LMD_Database {
             $params[] = $date_to;
         }
 
-        $excluded_themes = is_array($args['pref_excluded_theme_slugs']) ? array_filter(array_map('sanitize_text_field', $args['pref_excluded_theme_slugs'])) : [];
+        $excluded_themes = is_array($args["pref_excluded_theme_slugs"])
+            ? array_filter(
+                array_map(
+                    "sanitize_text_field",
+                    $args["pref_excluded_theme_slugs"],
+                ),
+            )
+            : [];
         if (!empty($excluded_themes)) {
-            $placeholders = implode(',', array_fill(0, count($excluded_themes), '%s'));
+            $placeholders = implode(
+                ",",
+                array_fill(0, count($excluded_themes), "%s"),
+            );
             $where .= " AND NOT EXISTS (SELECT 1 FROM $et etx INNER JOIN $t tx ON etx.tag_id = tx.id WHERE etx.estimation_id = e.id AND tx.site_id = %d AND tx.type = 'theme_vente' AND tx.slug IN ($placeholders))";
             $params[] = $site_id;
             $params = array_merge($params, $excluded_themes);
             $e_cols = $this->wpdb->get_col("DESCRIBE {$e}");
-            if (in_array('ai_analysis', $e_cols, true)) {
+            if (in_array("ai_analysis", $e_cols, true)) {
                 foreach ($excluded_themes as $ex_slug) {
-                    $where .= " AND NOT (e.ai_analysis IS NOT NULL AND e.ai_analysis != '' AND e.ai_analysis LIKE %s)";
-                    $params[] = '%"theme_vente":"' . $this->wpdb->esc_like($ex_slug) . '"%';
+                    $where .=
+                        " AND NOT (e.ai_analysis IS NOT NULL AND e.ai_analysis != '' AND e.ai_analysis LIKE %s)";
+                    $params[] =
+                        '%"theme_vente":"' .
+                        $this->wpdb->esc_like($ex_slug) .
+                        '"%';
                 }
             }
         }
 
-        $pref_last_n = (int) $args['pref_display_last_n'];
-        $pref_unanswered = (bool) $args['pref_display_include_unanswered'];
-        $pref_older_days = (int) $args['pref_display_older_than_days'];
-        $use_pref_display = ($pref_last_n > 0 || $pref_unanswered || $pref_older_days > 0) && !$date_from && !$date_to;
+        $pref_last_n = (int) $args["pref_display_last_n"];
+        $pref_unanswered = (bool) $args["pref_display_include_unanswered"];
+        $pref_older_days = (int) $args["pref_display_older_than_days"];
+        $use_pref_display =
+            ($pref_last_n > 0 || $pref_unanswered || $pref_older_days > 0) &&
+            !$date_from &&
+            !$date_to;
         if ($use_pref_display) {
             $pref_parts = [];
             if ($pref_last_n > 0) {
@@ -535,7 +664,8 @@ class LMD_Database {
                 $params[] = $site_id;
             }
             if ($pref_older_days > 0) {
-                $pref_parts[] = "e.created_at < DATE_SUB(NOW(), INTERVAL %d DAY)";
+                $pref_parts[] =
+                    "e.created_at < DATE_SUB(NOW(), INTERVAL %d DAY)";
                 $params[] = $pref_older_days;
             }
             if (!empty($pref_parts)) {
@@ -543,12 +673,14 @@ class LMD_Database {
             }
         }
 
-        $orderby = sanitize_sql_orderby($args['orderby'] . ' ' . $args['order']);
+        $orderby = sanitize_sql_orderby(
+            $args["orderby"] . " " . $args["order"],
+        );
         if (!$orderby) {
-            $orderby = 'e.created_at DESC';
+            $orderby = "e.created_at DESC";
         }
-        $limit = absint($args['limit']);
-        $offset = absint($args['offset']);
+        $limit = absint($args["limit"]);
+        $offset = absint($args["offset"]);
         $sql = "SELECT e.* FROM {$e} e WHERE $where ORDER BY $orderby LIMIT $limit OFFSET $offset";
         $sql = $this->wpdb->prepare($sql, $params);
         return $this->wpdb->get_results($sql);
@@ -557,49 +689,88 @@ class LMD_Database {
     /**
      * Compteurs Échanges pour la grille de badges (présents, retard <7j, retard >=7j)
      */
-    public function get_estimation_counts_exchanges() {
+    public function get_estimation_counts_exchanges()
+    {
         $site_id = get_current_blog_id();
-        $e = $this->prefix . 'estimations';
-        $et = $this->prefix . 'estimation_tags';
-        $t = $this->prefix . 'tags';
+        $e = $this->prefix . "estimations";
+        $et = $this->prefix . "estimation_tags";
+        $t = $this->prefix . "tags";
         $cols = $this->wpdb->get_col("DESCRIBE $e");
-        $ref_col = in_array('first_viewed_at', $cols, true) ? 'COALESCE(e.first_viewed_at, e.created_at)' : 'e.created_at';
+        $ref_col = in_array("first_viewed_at", $cols, true)
+            ? "COALESCE(e.first_viewed_at, e.created_at)"
+            : "e.created_at";
         $not_repondu = "NOT EXISTS (SELECT 1 FROM $et et2 INNER JOIN $t t2 ON et2.tag_id = t2.id WHERE et2.estimation_id = e.id AND t2.site_id = %d AND t2.type = 'message' AND t2.slug IN ('repondu', 'vendu'))";
-        $tous = (int) $this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$e} WHERE site_id = %d", $site_id));
-        $retard_7j = (int) $this->wpdb->get_var($this->wpdb->prepare(
-            "SELECT COUNT(*) FROM {$e} e WHERE e.site_id = %d AND $not_repondu AND $ref_col < DATE_SUB(NOW(), INTERVAL 48 HOUR) AND $ref_col >= DATE_SUB(NOW(), INTERVAL 7 DAY)",
-            $site_id, $site_id
-        ));
-        $retard_plus = (int) $this->wpdb->get_var($this->wpdb->prepare(
-            "SELECT COUNT(*) FROM {$e} e WHERE e.site_id = %d AND $not_repondu AND $ref_col < DATE_SUB(NOW(), INTERVAL 7 DAY)",
-            $site_id, $site_id
-        ));
-        return ['tous' => $tous, 'retard_7j' => $retard_7j, 'retard_plus' => $retard_plus];
+        $tous = (int) $this->wpdb->get_var(
+            $this->wpdb->prepare(
+                "SELECT COUNT(*) FROM {$e} WHERE site_id = %d",
+                $site_id,
+            ),
+        );
+        $retard_7j = (int) $this->wpdb->get_var(
+            $this->wpdb->prepare(
+                "SELECT COUNT(*) FROM {$e} e WHERE e.site_id = %d AND $not_repondu AND $ref_col < DATE_SUB(NOW(), INTERVAL 48 HOUR) AND $ref_col >= DATE_SUB(NOW(), INTERVAL 7 DAY)",
+                $site_id,
+                $site_id,
+            ),
+        );
+        $retard_plus = (int) $this->wpdb->get_var(
+            $this->wpdb->prepare(
+                "SELECT COUNT(*) FROM {$e} e WHERE e.site_id = %d AND $not_repondu AND $ref_col < DATE_SUB(NOW(), INTERVAL 7 DAY)",
+                $site_id,
+                $site_id,
+            ),
+        );
+        return [
+            "tous" => $tous,
+            "retard_7j" => $retard_7j,
+            "retard_plus" => $retard_plus,
+        ];
     }
 
     /**
      * Compteurs pour les filtres (status + tags message + interet)
      */
-    public function get_estimation_filter_counts() {
+    public function get_estimation_filter_counts()
+    {
         $site_id = get_current_blog_id();
-        $e = $this->prefix . 'estimations';
-        $et = $this->prefix . 'estimation_tags';
-        $t = $this->prefix . 'tags';
+        $e = $this->prefix . "estimations";
+        $et = $this->prefix . "estimation_tags";
+        $t = $this->prefix . "tags";
 
         $counts = [
-            'total' => (int) $this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$e} WHERE site_id = %d", $site_id)),
-            'status_new' => (int) $this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$e} WHERE site_id = %d AND status = %s", $site_id, 'new')),
-            'status_ai_analyzed' => (int) $this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$e} WHERE site_id = %d AND status = %s", $site_id, 'ai_analyzed')),
+            "total" => (int) $this->wpdb->get_var(
+                $this->wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$e} WHERE site_id = %d",
+                    $site_id,
+                ),
+            ),
+            "status_new" => (int) $this->wpdb->get_var(
+                $this->wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$e} WHERE site_id = %d AND status = %s",
+                    $site_id,
+                    "new",
+                ),
+            ),
+            "status_ai_analyzed" => (int) $this->wpdb->get_var(
+                $this->wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$e} WHERE site_id = %d AND status = %s",
+                    $site_id,
+                    "ai_analyzed",
+                ),
+            ),
         ];
 
-        $tag_types = ['message', 'interet'];
+        $tag_types = ["message", "interet"];
         foreach ($tag_types as $type) {
-            $rows = $this->wpdb->get_results($this->wpdb->prepare(
-                "SELECT t.slug, COUNT(*) as cnt FROM {$e} e INNER JOIN {$et} et ON et.estimation_id = e.id INNER JOIN {$t} t ON t.id = et.tag_id WHERE e.site_id = %d AND t.type = %s GROUP BY t.slug",
-                $site_id, $type
-            ));
+            $rows = $this->wpdb->get_results(
+                $this->wpdb->prepare(
+                    "SELECT t.slug, COUNT(*) as cnt FROM {$e} e INNER JOIN {$et} et ON et.estimation_id = e.id INNER JOIN {$t} t ON t.id = et.tag_id WHERE e.site_id = %d AND t.type = %s GROUP BY t.slug",
+                    $site_id,
+                    $type,
+                ),
+            );
             foreach ($rows as $row) {
-                $counts['tag_' . $type . '_' . $row->slug] = (int) $row->cnt;
+                $counts["tag_" . $type . "_" . $row->slug] = (int) $row->cnt;
             }
         }
         return $counts;
@@ -608,86 +779,136 @@ class LMD_Database {
     /**
      * Options dynamiques pour un type de tag (ex: date_vente, vendeur)
      */
-    public function get_tag_options_for_type($type) {
+    public function get_tag_options_for_type($type)
+    {
         $site_id = get_current_blog_id();
-        $cols = ['id', 'name', 'slug'];
+        $cols = ["id", "name", "slug"];
         $tag_cols = $this->wpdb->get_col("DESCRIBE {$this->prefix}tags");
-        if (in_array('theme_vente_slug', $tag_cols, true)) {
-            $cols[] = 'theme_vente_slug';
+        if (in_array("theme_vente_slug", $tag_cols, true)) {
+            $cols[] = "theme_vente_slug";
         }
-        return $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT " . implode(', ', $cols) . " FROM {$this->prefix}tags WHERE site_id = %d AND type = %s ORDER BY name",
-            $site_id, $type
-        ));
+        return $this->wpdb->get_results(
+            $this->wpdb->prepare(
+                "SELECT " .
+                    implode(", ", $cols) .
+                    " FROM {$this->prefix}tags WHERE site_id = %d AND type = %s ORDER BY name",
+                $site_id,
+                $type,
+            ),
+        );
     }
 
     /**
      * Synchronise le tag message selon l'état : nouveau, non_lu, lu_non_repondu, repondu
      */
-    public function sync_message_tag($estimation) {
+    public function sync_message_tag($estimation)
+    {
         $id = (int) ($estimation->id ?? 0);
-        if (!$id) return;
-        $site_id = get_current_blog_id();
-        $et = $this->prefix . 'estimation_tags';
-        $t = $this->prefix . 'tags';
-        $msg_tag = $this->wpdb->get_row($this->wpdb->prepare(
-            "SELECT t.id, t.slug FROM $et et INNER JOIN $t t ON et.tag_id = t.id WHERE et.estimation_id = %d AND t.site_id = %d AND t.type = 'message'",
-            $id, $site_id
-        ));
-        if ($msg_tag && in_array(($msg_tag->slug ?? ''), ['vendu', 'depose'], true)) {
+        if (!$id) {
             return;
         }
-        $repondu = ($msg_tag && ($msg_tag->slug ?? '') === 'repondu') || !empty($estimation->reponse_sent_at);
+        $site_id = get_current_blog_id();
+        $et = $this->prefix . "estimation_tags";
+        $t = $this->prefix . "tags";
+        $msg_tag = $this->wpdb->get_row(
+            $this->wpdb->prepare(
+                "SELECT t.id, t.slug FROM $et et INNER JOIN $t t ON et.tag_id = t.id WHERE et.estimation_id = %d AND t.site_id = %d AND t.type = 'message'",
+                $id,
+                $site_id,
+            ),
+        );
+        if (
+            $msg_tag &&
+            in_array($msg_tag->slug ?? "", ["vendu", "depose"], true)
+        ) {
+            return;
+        }
+        $repondu =
+            ($msg_tag && ($msg_tag->slug ?? "") === "repondu") ||
+            !empty($estimation->reponse_sent_at);
         if ($repondu) {
-            if (!$msg_tag || ($msg_tag->slug ?? '') !== 'repondu') {
-                $tag_row = $this->wpdb->get_row($this->wpdb->prepare(
-                    "SELECT id FROM $t WHERE site_id = %d AND type = 'message' AND slug = %s",
-                    $site_id, 'repondu'
-                ));
+            if (!$msg_tag || ($msg_tag->slug ?? "") !== "repondu") {
+                $tag_row = $this->wpdb->get_row(
+                    $this->wpdb->prepare(
+                        "SELECT id FROM $t WHERE site_id = %d AND type = 'message' AND slug = %s",
+                        $site_id,
+                        "repondu",
+                    ),
+                );
                 if ($tag_row) {
-                    $this->wpdb->query($this->wpdb->prepare(
-                        "DELETE et FROM $et et INNER JOIN $t t ON et.tag_id = t.id WHERE et.estimation_id = %d AND t.type = 'message'",
-                        $id
-                    ));
-                    $this->wpdb->insert($et, ['estimation_id' => $id, 'tag_id' => $tag_row->id], ['%d', '%d']);
+                    $this->wpdb->query(
+                        $this->wpdb->prepare(
+                            "DELETE et FROM $et et INNER JOIN $t t ON et.tag_id = t.id WHERE et.estimation_id = %d AND t.type = 'message'",
+                            $id,
+                        ),
+                    );
+                    $this->wpdb->insert(
+                        $et,
+                        ["estimation_id" => $id, "tag_id" => $tag_row->id],
+                        ["%d", "%d"],
+                    );
                 }
             }
             return;
         }
         $opened = !empty($estimation->first_viewed_at);
-        $created_ts = !empty($estimation->created_at) ? strtotime($estimation->created_at) : 0;
+        $created_ts = !empty($estimation->created_at)
+            ? strtotime($estimation->created_at)
+            : 0;
         $hours_since = $created_ts ? (time() - $created_ts) / 3600 : 0;
-        $wanted = $opened ? 'lu_non_repondu' : ($hours_since < 48 ? 'nouveau' : 'non_lu');
-        if ($msg_tag && ($msg_tag->slug ?? '') === $wanted) return;
-        $tag_row = $this->wpdb->get_row($this->wpdb->prepare(
-            "SELECT id FROM $t WHERE site_id = %d AND type = 'message' AND slug = %s",
-            $site_id, $wanted
-        ));
-        if (!$tag_row) return;
-        $this->wpdb->query($this->wpdb->prepare(
-            "DELETE et FROM $et et INNER JOIN $t t ON et.tag_id = t.id WHERE et.estimation_id = %d AND t.type = 'message'",
-            $id
-        ));
-        $this->wpdb->insert($et, ['estimation_id' => $id, 'tag_id' => $tag_row->id], ['%d', '%d']);
+        $wanted = $opened
+            ? "lu_non_repondu"
+            : ($hours_since < 48
+                ? "nouveau"
+                : "non_lu");
+        if ($msg_tag && ($msg_tag->slug ?? "") === $wanted) {
+            return;
+        }
+        $tag_row = $this->wpdb->get_row(
+            $this->wpdb->prepare(
+                "SELECT id FROM $t WHERE site_id = %d AND type = 'message' AND slug = %s",
+                $site_id,
+                $wanted,
+            ),
+        );
+        if (!$tag_row) {
+            return;
+        }
+        $this->wpdb->query(
+            $this->wpdb->prepare(
+                "DELETE et FROM $et et INNER JOIN $t t ON et.tag_id = t.id WHERE et.estimation_id = %d AND t.type = 'message'",
+                $id,
+            ),
+        );
+        $this->wpdb->insert(
+            $et,
+            ["estimation_id" => $id, "tag_id" => $tag_row->id],
+            ["%d", "%d"],
+        );
     }
 
     /**
      * Tags liés à une estimation (par type)
      */
-    public function get_estimation_tags($estimation_id) {
+    public function get_estimation_tags($estimation_id)
+    {
         $site_id = get_current_blog_id();
-        return $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT t.type, t.slug, t.name FROM {$this->prefix}estimation_tags et INNER JOIN {$this->prefix}tags t ON et.tag_id = t.id WHERE et.estimation_id = %d AND t.site_id = %d",
-            $estimation_id, $site_id
-        ));
+        return $this->wpdb->get_results(
+            $this->wpdb->prepare(
+                "SELECT t.type, t.slug, t.name, et.modified_by_avis FROM {$this->prefix}estimation_tags et INNER JOIN {$this->prefix}tags t ON et.tag_id = t.id WHERE et.estimation_id = %d AND t.site_id = %d",
+                $estimation_id,
+                $site_id,
+            ),
+        );
     }
 
     /**
      * Crée la table calendrier hôtel des ventes si elle manque (sites déjà installés).
      */
-    public function ensure_hotel_ventes_calendar_table() {
-        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-        $table = $this->prefix . 'hotel_ventes_calendar';
+    public function ensure_hotel_ventes_calendar_table()
+    {
+        require_once ABSPATH . "wp-admin/includes/upgrade.php";
+        $table = $this->prefix . "hotel_ventes_calendar";
         if ($this->wpdb->get_var("SHOW TABLES LIKE '$table'") === $table) {
             return;
         }
@@ -707,39 +928,44 @@ class LMD_Database {
     /**
      * @return object[] rows { id, site_id, sale_date, title, notes, created_at }
      */
-    public function get_hotel_ventes_calendar_rows() {
+    public function get_hotel_ventes_calendar_rows()
+    {
         $this->ensure_hotel_ventes_calendar_table();
         $site_id = get_current_blog_id();
-        return $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT id, site_id, sale_date, title, notes, created_at FROM {$this->prefix}hotel_ventes_calendar WHERE site_id = %d ORDER BY sale_date DESC, id DESC",
-            $site_id
-        ));
+        return $this->wpdb->get_results(
+            $this->wpdb->prepare(
+                "SELECT id, site_id, sale_date, title, notes, created_at FROM {$this->prefix}hotel_ventes_calendar WHERE site_id = %d ORDER BY sale_date DESC, id DESC",
+                $site_id,
+            ),
+        );
     }
 
-    public function insert_hotel_vente_row($sale_date, $title, $notes = '') {
+    public function insert_hotel_vente_row($sale_date, $title, $notes = "")
+    {
         $this->ensure_hotel_ventes_calendar_table();
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $sale_date)) {
             return 0;
         }
         $title = sanitize_text_field($title);
-        if ($title === '') {
+        if ($title === "") {
             return 0;
         }
         $site_id = get_current_blog_id();
         $ok = $this->wpdb->insert(
-            $this->prefix . 'hotel_ventes_calendar',
+            $this->prefix . "hotel_ventes_calendar",
             [
-                'site_id' => $site_id,
-                'sale_date' => $sale_date,
-                'title' => $title,
-                'notes' => $notes !== '' ? wp_kses_post($notes) : '',
+                "site_id" => $site_id,
+                "sale_date" => $sale_date,
+                "title" => $title,
+                "notes" => $notes !== "" ? wp_kses_post($notes) : "",
             ],
-            ['%d', '%s', '%s', '%s']
+            ["%d", "%s", "%s", "%s"],
         );
         return $ok ? (int) $this->wpdb->insert_id : 0;
     }
 
-    public function delete_hotel_vente_row($id) {
+    public function delete_hotel_vente_row($id)
+    {
         $this->ensure_hotel_ventes_calendar_table();
         $id = absint($id);
         if (!$id) {
@@ -747,9 +973,9 @@ class LMD_Database {
         }
         $site_id = get_current_blog_id();
         return (bool) $this->wpdb->delete(
-            $this->prefix . 'hotel_ventes_calendar',
-            ['id' => $id, 'site_id' => $site_id],
-            ['%d', '%d']
+            $this->prefix . "hotel_ventes_calendar",
+            ["id" => $id, "site_id" => $site_id],
+            ["%d", "%d"],
         );
     }
 }

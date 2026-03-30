@@ -2,10 +2,10 @@
 /**
  * Vue Détail estimation - Version complète
  */
-if (!defined('ABSPATH')) {
-    exit;
+if (!defined("ABSPATH")) {
+    exit();
 }
-$id = isset($_GET['id']) ? absint($_GET['id']) : 0;
+$id = isset($_GET["id"]) ? absint($_GET["id"]) : 0;
 if (!$id) {
     echo '<div class="wrap lmd-page"><p>Estimation introuvable.</p></div>';
     return;
@@ -17,49 +17,78 @@ if (!$estimation) {
     echo '<div class="wrap lmd-page"><p>Estimation introuvable.</p></div>';
     return;
 }
-if (current_user_can('manage_options')) {
+if (current_user_can("manage_options")) {
     global $wpdb;
-    $table = $wpdb->prefix . 'lmd_estimations';
+    $table = $wpdb->prefix . "lmd_estimations";
     $cols = $wpdb->get_col("DESCRIBE $table");
-    if (in_array('first_viewed_at', $cols, true) && empty($estimation->first_viewed_at)) {
-        $wpdb->update($table, ['first_viewed_at' => current_time('mysql')], ['id' => $id], ['%s'], ['%d']);
-        $estimation->first_viewed_at = current_time('mysql');
+    if (
+        in_array("first_viewed_at", $cols, true) &&
+        empty($estimation->first_viewed_at)
+    ) {
+        $wpdb->update(
+            $table,
+            ["first_viewed_at" => current_time("mysql")],
+            ["id" => $id],
+            ["%s"],
+            ["%d"],
+        );
+        $estimation->first_viewed_at = current_time("mysql");
     }
 }
 $db->sync_message_tag($estimation);
-$opinion = isset($_GET['opinion']) ? absint($_GET['opinion']) : 1;
+$opinion = isset($_GET["opinion"]) ? absint($_GET["opinion"]) : 1;
 if ($opinion !== 2) {
     $opinion = 1;
 }
-$col3_action = isset($_GET['col3']) ? sanitize_key($_GET['col3']) : 'reponse';
-if ($col3_action !== 'deleguer') {
-    $col3_action = 'reponse';
+$col3_action = isset($_GET["col3"]) ? sanitize_key($_GET["col3"]) : "reponse";
+if ($col3_action !== "deleguer") {
+    $col3_action = "reponse";
 }
-$opinion1 = (string) ($estimation->auctioneer_notes ?? '');
-$opinion2 = (string) ($estimation->second_opinion ?? '');
-$est_low = $opinion === 1 ? ($estimation->avis1_estimate_low ?? $estimation->estimate_low) : ($estimation->avis2_estimate_low ?? null);
-$est_high = $opinion === 1 ? ($estimation->avis1_estimate_high ?? $estimation->estimate_high) : ($estimation->avis2_estimate_high ?? null);
-$est_reserve = $opinion === 1 ? ($estimation->avis1_prix_reserve ?? $estimation->prix_reserve) : ($estimation->avis2_prix_reserve ?? null);
+$opinion1 = (string) ($estimation->auctioneer_notes ?? "");
+$opinion2 = (string) ($estimation->second_opinion ?? "");
+$est_low =
+    $opinion === 1
+        ? $estimation->avis1_estimate_low ?? $estimation->estimate_low
+        : $estimation->avis2_estimate_low ?? null;
+$est_high =
+    $opinion === 1
+        ? $estimation->avis1_estimate_high ?? $estimation->estimate_high
+        : $estimation->avis2_estimate_high ?? null;
+$est_reserve =
+    $opinion === 1
+        ? $estimation->avis1_prix_reserve ?? $estimation->prix_reserve
+        : $estimation->avis2_prix_reserve ?? null;
 $ai = [];
 if (!empty($estimation->ai_analysis)) {
     $ai = json_decode($estimation->ai_analysis, true) ?: [];
 }
-$has_ai = !empty($ai) && (($estimation->status ?? '') === 'ai_analyzed' || ($estimation->status ?? '') === 'analyzing');
-$is_analyzing = ($estimation->status ?? '') === 'analyzing';
-$categories = function_exists('lmd_get_tag_categories') ? lmd_get_tag_categories() : [];
-$INTEREST_LEVELS = $categories['interet']['options'] ?? [];
+$has_ai =
+    !empty($ai) &&
+    (($estimation->status ?? "") === "ai_analyzed" ||
+        ($estimation->status ?? "") === "analyzing");
+$is_analyzing = ($estimation->status ?? "") === "analyzing";
+$categories = function_exists("lmd_get_tag_categories")
+    ? lmd_get_tag_categories()
+    : [];
+$INTEREST_LEVELS = $categories["interet"]["options"] ?? [];
 global $wpdb;
 $site_id = get_current_blog_id();
-$linked_tags = $wpdb->get_results($wpdb->prepare(
-    "SELECT t.id, t.name, t.type, t.slug, et.modified_by_avis FROM {$wpdb->prefix}lmd_estimation_tags et INNER JOIN {$wpdb->prefix}lmd_tags t ON et.tag_id = t.id WHERE et.estimation_id = %d AND t.site_id = %d",
-    $id,
-    $site_id
-));
-$tags_by_type = [];
-foreach ($linked_tags as $t) {
-    $tags_by_type[$t->type] = $t;
-}
-$all_tags = $wpdb->get_results($wpdb->prepare("SELECT * FROM {$wpdb->prefix}lmd_tags WHERE site_id = %d ORDER BY type, name", $site_id));
+$linked_tags = $wpdb->get_results(
+    $wpdb->prepare(
+        "SELECT t.id, t.name, t.type, t.slug, et.modified_by_avis FROM {$wpdb->prefix}lmd_estimation_tags et INNER JOIN {$wpdb->prefix}lmd_tags t ON et.tag_id = t.id WHERE et.estimation_id = %d AND t.site_id = %d",
+        $id,
+        $site_id,
+    ),
+);
+$tags_by_type = function_exists("lmd_build_tags_by_type")
+    ? lmd_build_tags_by_type($linked_tags, $opinion, true)
+    : [];
+$all_tags = $wpdb->get_results(
+    $wpdb->prepare(
+        "SELECT * FROM {$wpdb->prefix}lmd_tags WHERE site_id = %d ORDER BY type, name",
+        $site_id,
+    ),
+);
 $tags_by_cat = [];
 foreach ($all_tags as $t) {
     $tags_by_cat[$t->type][] = $t;
@@ -67,21 +96,30 @@ foreach ($all_tags as $t) {
 $photos = [];
 if (!empty($estimation->photos)) {
     $decoded = json_decode($estimation->photos, true);
-    $photos = is_array($decoded) ? $decoded : (is_string($estimation->photos) ? [$estimation->photos] : []);
+    $photos = is_array($decoded)
+        ? $decoded
+        : (is_string($estimation->photos)
+            ? [$estimation->photos]
+            : []);
 }
 
-function lmd_ed_photo_url($path) {
+function lmd_ed_photo_url($path)
+{
     if (is_array($path)) {
         $path = reset($path);
     }
-    if (!$path || !is_string($path)) return '';
+    if (!$path || !is_string($path)) {
+        return "";
+    }
     $upload = wp_upload_dir();
-    $basedir = $upload['basedir'];
-    $baseurl = $upload['baseurl'];
-    if (strpos($path, 'http') === 0 || strpos($path, '//') === 0) return $path;
+    $basedir = $upload["basedir"];
+    $baseurl = $upload["baseurl"];
+    if (strpos($path, "http") === 0 || strpos($path, "//") === 0) {
+        return $path;
+    }
     $fullpath = $path;
     if (!file_exists($path) && strpos($path, $basedir) !== 0) {
-        $fullpath = $basedir . '/' . ltrim(str_replace('\\', '/', $path), '/');
+        $fullpath = $basedir . "/" . ltrim(str_replace("\\", "/", $path), "/");
     }
     if (file_exists($fullpath)) {
         return str_replace($basedir, $baseurl, $fullpath);
@@ -89,31 +127,76 @@ function lmd_ed_photo_url($path) {
     if (strpos($path, $basedir) === 0) {
         return str_replace($basedir, $baseurl, $path);
     }
-    return $baseurl . '/' . ltrim(str_replace('\\', '/', $path), '/');
+    return $baseurl . "/" . ltrim(str_replace("\\", "/", $path), "/");
 }
-$object_description = wp_unslash($estimation->description ?? '');
-$created_date = !empty($estimation->created_at) ? date_i18n(get_option('date_format'), strtotime($estimation->created_at)) : '';
-$sender_name = trim(wp_unslash($estimation->client_name ?? '')) ?: trim(wp_unslash($estimation->client_email ?? '')) ?: '-';
+$object_description = wp_unslash($estimation->description ?? "");
+$created_date = !empty($estimation->created_at)
+    ? date_i18n(get_option("date_format"), strtotime($estimation->created_at))
+    : "";
+$sender_name =
+    trim(wp_unslash($estimation->client_name ?? "")) ?:
+    trim(wp_unslash($estimation->client_email ?? "")) ?:
+    "-";
 $sender_rank = $db ? $db->get_sender_rank($estimation) : 0;
-$sender_label = $sender_rank > 1 ? $sender_name . ' (' . $sender_rank . ')' : $sender_name;
-$delete_url = wp_nonce_url(admin_url('admin-post.php?action=lmd_delete_estimation&id=' . $id), 'lmd_delete_estimation_' . $id);
-$interet_slug = isset($tags_by_type['interet']) ? $tags_by_type['interet']->slug : (trim($ai['interet'] ?? '') ?: '');
-$estimation_slug = isset($tags_by_type['estimation']) ? $tags_by_type['estimation']->slug : (trim($ai['estimation'] ?? '') ?: '');
-$cp_for_mailto = function_exists('lmd_get_cp_settings_for_user') ? lmd_get_cp_settings_for_user() : ['copy_emails' => []];
-$prefs_for_mailto = function_exists('lmd_get_prefs') ? lmd_get_prefs() : [];
-$bcc_exclude_slugs_mail = isset($prefs_for_mailto['bcc_exclude_response_slugs']) && is_array($prefs_for_mailto['bcc_exclude_response_slugs']) ? $prefs_for_mailto['bcc_exclude_response_slugs'] : [];
-$theme_slug = isset($tags_by_type['theme_vente']) ? $tags_by_type['theme_vente']->slug : (trim($ai['theme_vente'] ?? '') ?: '');
-$theme_suggested_parent = trim($ai['theme_vente_suggested_parent'] ?? '') ?: '';
-$theme_opts_slugs = array_map(function ($o) { return is_object($o) ? $o->slug : ($o['slug'] ?? ''); }, $categories['theme_vente']['options'] ?? []);
-$theme_is_new_from_ai = $theme_slug && $has_ai && !empty($ai['theme_vente']) && !in_array($theme_slug, $theme_opts_slugs);
-$cp_has_theme = isset($tags_by_type['theme_vente']) && $tags_by_type['theme_vente'];
-$cp_has_interet = isset($tags_by_type['interet']) && $tags_by_type['interet'];
-$cp_has_estimation = (isset($tags_by_type['estimation']) && $tags_by_type['estimation']) || (isset($estimation->avis1_estimate_low) && $estimation->avis1_estimate_low !== null && $estimation->avis1_estimate_low !== '') || (isset($estimation->avis2_estimate_low) && $estimation->avis2_estimate_low !== null && $estimation->avis2_estimate_low !== '');
-$ai_summary = $has_ai ? trim($ai['summary'] ?? '') : '';
-$ai_summary_first = $ai_summary ? preg_replace('/^([^.!?]+[.!?]?).*$/s', '$1', $ai_summary) : '';
-$ai_summary_rest = $ai_summary && $ai_summary_first ? trim(substr($ai_summary, strlen($ai_summary_first))) : $ai_summary;
+$sender_label =
+    $sender_rank > 1 ? $sender_name . " (" . $sender_rank . ")" : $sender_name;
+$delete_url = wp_nonce_url(
+    admin_url("admin-post.php?action=lmd_delete_estimation&id=" . $id),
+    "lmd_delete_estimation_" . $id,
+);
+$interet_slug = isset($tags_by_type["interet"])
+    ? $tags_by_type["interet"]->slug
+    : (trim($ai["interet"] ?? "") ?:
+    "");
+$estimation_slug = isset($tags_by_type["estimation"])
+    ? $tags_by_type["estimation"]->slug
+    : (trim($ai["estimation"] ?? "") ?:
+    "");
+$cp_for_mailto = function_exists("lmd_get_cp_settings_for_user")
+    ? lmd_get_cp_settings_for_user()
+    : ["copy_emails" => []];
+$prefs_for_mailto = function_exists("lmd_get_prefs") ? lmd_get_prefs() : [];
+$bcc_exclude_slugs_mail =
+    isset($prefs_for_mailto["bcc_exclude_response_slugs"]) &&
+    is_array($prefs_for_mailto["bcc_exclude_response_slugs"])
+        ? $prefs_for_mailto["bcc_exclude_response_slugs"]
+        : [];
+$theme_slug = isset($tags_by_type["theme_vente"])
+    ? $tags_by_type["theme_vente"]->slug
+    : (trim($ai["theme_vente"] ?? "") ?:
+    "");
+$theme_suggested_parent = trim($ai["theme_vente_suggested_parent"] ?? "") ?: "";
+$theme_opts_slugs = array_map(function ($o) {
+    return is_object($o) ? $o->slug : $o["slug"] ?? "";
+}, $categories["theme_vente"]["options"] ?? []);
+$theme_is_new_from_ai =
+    $theme_slug &&
+    $has_ai &&
+    !empty($ai["theme_vente"]) &&
+    !in_array($theme_slug, $theme_opts_slugs);
+$cp_has_theme =
+    isset($tags_by_type["theme_vente"]) && $tags_by_type["theme_vente"];
+$cp_has_interet = isset($tags_by_type["interet"]) && $tags_by_type["interet"];
+$cp_has_estimation =
+    (isset($tags_by_type["estimation"]) && $tags_by_type["estimation"]) ||
+    (isset($estimation->avis1_estimate_low) &&
+        $estimation->avis1_estimate_low !== null &&
+        $estimation->avis1_estimate_low !== "") ||
+    (isset($estimation->avis2_estimate_low) &&
+        $estimation->avis2_estimate_low !== null &&
+        $estimation->avis2_estimate_low !== "");
+$ai_summary = $has_ai ? trim($ai["summary"] ?? "") : "";
+$ai_summary_first = $ai_summary
+    ? preg_replace('/^([^.!?]+[.!?]?).*$/s', '$1', $ai_summary)
+    : "";
+$ai_summary_rest =
+    $ai_summary && $ai_summary_first
+        ? trim(substr($ai_summary, strlen($ai_summary_first)))
+        : $ai_summary;
 ?>
-<div class="wrap ed-wrap lmd-estimation-detail lmd-page" id="ed-wrap-<?php echo (int) $id; ?>" data-id="<?php echo (int) $id; ?>" data-opinion="<?php echo (int) $opinion; ?>" data-status="<?php echo esc_attr($estimation->status ?? ''); ?>">
+<div class="wrap ed-wrap lmd-estimation-detail lmd-page" id="ed-wrap-<?php echo (int) $id; ?>" data-id="<?php echo (int) $id; ?>" data-opinion="<?php echo (int) $opinion; ?>" data-status="<?php echo esc_attr(
+    $estimation->status ?? "",
+); ?>">
 <style>
 /* Styles Lovable - palette #e5e7eb, #10b981, #22c55e, #1f2937 */
 .lmd-estimation-detail { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important; font-size: 13px !important; line-height: 1.5 !important; color: #374151 !important; max-width: 1600px !important; margin: 0 auto !important; padding: 24px !important; box-sizing: border-box !important; }
@@ -475,208 +558,516 @@ $ai_summary_rest = $ai_summary && $ai_summary_first ? trim(substr($ai_summary, s
 </style>
 
 <?php
-$first = trim(wp_unslash($estimation->client_first_name ?? ''));
-$last = trim($estimation->client_last_name ?? '');
-$display_name = trim(wp_unslash($estimation->client_name ?? ''));
+$first = trim(wp_unslash($estimation->client_first_name ?? ""));
+$last = trim($estimation->client_last_name ?? "");
+$display_name = trim(wp_unslash($estimation->client_name ?? ""));
 if ($first || $last) {
-    $civ = trim($estimation->client_civility ?? '');
-    $display_name = trim(($civ ? $civ . ' ' : '') . $first . ' ' . $last);
+    $civ = trim($estimation->client_civility ?? "");
+    $display_name = trim(($civ ? $civ . " " : "") . $first . " " . $last);
 }
 if (!$display_name) {
-    $display_name = trim($estimation->client_email ?? '') ?: '-';
+    $display_name = trim($estimation->client_email ?? "") ?: "-";
 }
-$ville = trim($estimation->client_commune ?? '');
-$nom_et_ville = esc_html($display_name ?: '-');
+$ville = trim($estimation->client_commune ?? "");
+$nom_et_ville = esc_html($display_name ?: "-");
 if ($ville) {
-    $nom_et_ville .= ' (' . esc_html($ville) . ')';
+    $nom_et_ville .= " (" . esc_html($ville) . ")";
 }
-$title_parts = [sprintf("Demande d'estimation N°%d de %s", max(1, $sender_rank), $nom_et_ville)];
+$title_parts = [
+    sprintf(
+        "Demande d'estimation N°%d de %s",
+        max(1, $sender_rank),
+        $nom_et_ville,
+    ),
+];
 if ($created_date) {
     $title_parts[] = esc_html($created_date);
 }
-if (!empty(trim($estimation->client_phone ?? ''))) {
-    $title_parts[] = '<a href="tel:' . esc_attr(preg_replace('/\s+/', '', $estimation->client_phone)) . '" class="ed-header-phone">' . esc_html($estimation->client_phone) . '</a>';
+if (!empty(trim($estimation->client_phone ?? ""))) {
+    $title_parts[] =
+        '<a href="tel:' .
+        esc_attr(preg_replace("/\s+/", "", $estimation->client_phone)) .
+        '" class="ed-header-phone">' .
+        esc_html($estimation->client_phone) .
+        "</a>";
 }
-if (!empty(trim($estimation->client_email ?? ''))) {
-    $title_parts[] = '<span class="ed-header-email">' . esc_html($estimation->client_email) . '</span>';
+if (!empty(trim($estimation->client_email ?? ""))) {
+    $title_parts[] =
+        '<span class="ed-header-email">' .
+        esc_html($estimation->client_email) .
+        "</span>";
 }
-$title_html = implode(' — ', $title_parts);
+$title_html = implode(" — ", $title_parts);
 ?>
-<?php
-?>
+<?php  ?>
 <div class="ed-header ed-header-with-back">
-    <a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('list') : admin_url('admin.php?page=lmd-estimations-list')); ?>" class="ed-back-a">&larr; Retour</a>
+    <a href="<?php echo esc_url(
+        function_exists("lmd_app_estimation_admin_url")
+            ? lmd_app_estimation_admin_url("list")
+            : admin_url("admin.php?page=lmd-estimations-list"),
+    ); ?>" class="ed-back-a">&larr; Retour</a>
     <h1 class="ed-header-title"><?php echo $title_html; ?></h1>
 </div>
 
-<?php if (!empty($categories)) : ?>
+<?php if (!empty($categories)): ?>
 <?php
-$tag_order = ['vente', 'message', 'interet', 'estimation', 'theme_vente', 'date_vente', 'vendeur'];
-$estimation_source = function_exists('lmd_get_estimation_source') ? lmd_get_estimation_source($estimation, $ai, $tags_by_type['estimation'] ?? null, $opinion) : ['source' => '', 'slug' => null, 'name' => ''];
-function lmd_ed_tag_display($type, $current, $label, $opts, $has_ai, $estimation_slug, $theme_slug, $interet_slug, $estimation_source, $opinion, $estimation = null) {
-    $current_slug = $current ? $current->slug : '';
+$tag_order = [
+    "vente",
+    "message",
+    "interet",
+    "estimation",
+    "theme_vente",
+    "date_vente",
+    "vendeur",
+];
+$estimation_source = function_exists("lmd_get_estimation_source")
+    ? lmd_get_estimation_source(
+        $estimation,
+        $ai,
+        $tags_by_type["estimation"] ?? null,
+        $opinion,
+    )
+    : ["source" => "", "slug" => null, "name" => ""];
+function lmd_ed_tag_display(
+    $type,
+    $current,
+    $label,
+    $opts,
+    $has_ai,
+    $estimation_slug,
+    $theme_slug,
+    $interet_slug,
+    $estimation_source,
+    $opinion,
+    $estimation = null,
+) {
+    $current_slug = $current ? $current->slug : "";
     $current_name = $current ? $current->name : $label;
-    $source = '';
-    if ($type === 'vendeur' && !$current && $estimation) {
-        $form_name = trim(wp_unslash($estimation->client_name ?? '')) ?: trim(wp_unslash($estimation->client_email ?? ''));
+    $source = "";
+    if ($type === "vendeur" && !$current && $estimation) {
+        $form_name =
+            trim(wp_unslash($estimation->client_name ?? "")) ?:
+            trim(wp_unslash($estimation->client_email ?? ""));
         if ($form_name) {
             $current_name = $form_name;
-            $source = 'form';
+            $source = "form";
         }
     }
     if (!$current && $has_ai) {
-        if ($type === 'interet' && $interet_slug) {
+        if ($type === "interet" && $interet_slug) {
             $current_slug = $interet_slug;
-            $current_name = function_exists('lmd_get_interet_name') ? lmd_get_interet_name($interet_slug) : $interet_slug;
-            $source = 'ia';
-        } elseif ($type === 'estimation' && $estimation_source['slug']) {
-            $current_slug = $estimation_source['slug'];
-            $current_name = $estimation_source['name'];
-            $source = $estimation_source['source'];
-        } elseif ($type === 'theme_vente' && $theme_slug) {
+            $current_name = function_exists("lmd_get_interet_name")
+                ? lmd_get_interet_name($interet_slug)
+                : $interet_slug;
+            $source = "ia";
+        } elseif ($type === "estimation" && $estimation_source["slug"]) {
+            $current_slug = $estimation_source["slug"];
+            $current_name = $estimation_source["name"];
+            $source = $estimation_source["source"];
+        } elseif ($type === "theme_vente" && $theme_slug) {
             $current_slug = $theme_slug;
-            $current_name = function_exists('lmd_get_theme_vente_name') ? lmd_get_theme_vente_name($theme_slug) : $theme_slug;
-            $source = 'ia';
+            $current_name = function_exists("lmd_get_theme_vente_name")
+                ? lmd_get_theme_vente_name($theme_slug)
+                : $theme_slug;
+            $source = "ia";
         }
     }
-    if ($type === 'estimation' && $estimation_source['slug']) {
-        $current_slug = $estimation_source['slug'];
-        $current_name = $estimation_source['name'];
-        $source = $estimation_source['source'];
+    if ($type === "estimation" && $estimation_source["slug"]) {
+        $current_slug = $estimation_source["slug"];
+        $current_name = $estimation_source["name"];
+        $source = $estimation_source["source"];
     }
     if ($current && !$source) {
-        $source = ($type === 'vendeur') ? 'form' : '';
-        if ($source === '' && $type !== 'vendeur') {
-            $mod_avis = isset($current->modified_by_avis) && $current->modified_by_avis !== null ? (int) $current->modified_by_avis : $opinion;
-            $source = ($mod_avis === 2) ? 'avis2' : 'cp';
+        $source = $type === "vendeur" ? "form" : "";
+        if ($source === "" && $type !== "vendeur") {
+            if (
+                function_exists("lmd_is_opinion_specific_tag_type") &&
+                lmd_is_opinion_specific_tag_type($type) &&
+                function_exists("lmd_get_tag_source_for_display")
+            ) {
+                $source = lmd_get_tag_source_for_display($current, $opinion);
+            } else {
+                $source = $opinion === 2 ? "avis2" : "cp";
+            }
         }
     }
-    if ($type === 'message' && $estimation) {
-        $m_repondu = ($current && ($current->slug ?? '') === 'repondu') || !empty($estimation->reponse_sent_at);
+    if ($type === "message" && $estimation) {
+        $m_repondu =
+            ($current && ($current->slug ?? "") === "repondu") ||
+            !empty($estimation->reponse_sent_at);
         $m_opened = !empty($estimation->first_viewed_at);
-        $m_ref = $m_opened ? strtotime($estimation->first_viewed_at) : (!empty($estimation->created_at) ? strtotime($estimation->created_at) : 0);
+        $m_ref = $m_opened
+            ? strtotime($estimation->first_viewed_at)
+            : (!empty($estimation->created_at)
+                ? strtotime($estimation->created_at)
+                : 0);
         $m_hours = $m_ref ? (time() - $m_ref) / 3600 : 0;
         if (!$m_repondu && $m_hours >= 48) {
             $m_days = max(1, (int) floor($m_hours / 24));
-            $current_name = ($m_opened ? 'Non répondu' : 'Non lu') . ' (' . $m_days . 'j)';
+            $current_name =
+                ($m_opened ? "Non répondu" : "Non lu") . " (" . $m_days . "j)";
         }
     }
-    $colors = function_exists('lmd_get_tag_filter_colors') ? lmd_get_tag_filter_colors($type, $current_slug, $source) : ['border' => '#e5e7eb'];
-    $border_color = ($current_slug || ($type === 'vendeur' && $source === 'form')) ? ($colors['border'] ?? '#e5e7eb') : '#e5e7eb';
-    $source_class = ($current_slug || ($type === 'vendeur' && $source === 'form')) && $source ? ' ed-tag-source-' . $source : '';
-    return compact('current_slug', 'current_name', 'border_color', 'source_class');
+    $colors = function_exists("lmd_get_tag_filter_colors")
+        ? lmd_get_tag_filter_colors($type, $current_slug, $source)
+        : ["border" => "#e5e7eb"];
+    $border_color =
+        $current_slug || ($type === "vendeur" && $source === "form")
+            ? $colors["border"] ?? "#e5e7eb"
+            : "#e5e7eb";
+    $source_class =
+        ($current_slug || ($type === "vendeur" && $source === "form")) &&
+        $source
+            ? " ed-tag-source-" . $source
+            : "";
+    return compact(
+        "current_slug",
+        "current_name",
+        "border_color",
+        "source_class",
+    );
 }
 ?>
 <div class="ed-tags-bar" id="ed-tags-bar" data-opinion="<?php echo (int) $opinion; ?>">
     <div class="ed-tags-bar-left">
 <?php
-$opts_order = ['interet' => true, 'estimation' => true, 'message' => true, 'vente' => true, 'theme_vente' => true];
-$tags_left = ['message'];
-foreach ($tags_left as $type) :
-    if (!isset($categories[$type])) continue;
+$opts_order = [
+    "interet" => true,
+    "estimation" => true,
+    "message" => true,
+    "vente" => true,
+    "theme_vente" => true,
+];
+$tags_left = ["message"];
+foreach ($tags_left as $type):
+
+    if (!isset($categories[$type])) {
+        continue;
+    }
     $cat = $categories[$type];
     $current = $tags_by_type[$type] ?? null;
-    $opts = (!empty($opts_order[$type]) && !empty($cat['options'])) ? $cat['options'] : ($tags_by_cat[$type] ?? []);
-    $label = $cat['label'] ?? $type;
-    $d = lmd_ed_tag_display($type, $current, $label, $opts, $has_ai, $estimation_slug, $theme_slug, $interet_slug, $estimation_source, $opinion, $estimation);
-?>
-    <div class="ed-tag-wrapper" data-type="<?php echo esc_attr($type); ?>" data-opinion="<?php echo (int) $opinion; ?>">
-        <button type="button" class="ed-tag-btn<?php echo esc_attr($d['source_class'] ?? ''); ?>" data-estimation-id="<?php echo (int) $id; ?>" data-type="<?php echo esc_attr($type); ?>" data-slug="<?php echo esc_attr($d['current_slug']); ?>" style="border-left-color:<?php echo esc_attr($d['border_color']); ?> !important;">
-            <span class="ed-tag-label"><?php echo function_exists('lmd_esc_tag_name') ? lmd_esc_tag_name(($d['current_slug'] || $d['current_name'] !== $label) ? $d['current_name'] : $label) : esc_html(($d['current_slug'] || $d['current_name'] !== $label) ? $d['current_name'] : $label); ?></span>
+    $opts =
+        !empty($opts_order[$type]) && !empty($cat["options"])
+            ? $cat["options"]
+            : $tags_by_cat[$type] ?? [];
+    $label = $cat["label"] ?? $type;
+    $d = lmd_ed_tag_display(
+        $type,
+        $current,
+        $label,
+        $opts,
+        $has_ai,
+        $estimation_slug,
+        $theme_slug,
+        $interet_slug,
+        $estimation_source,
+        $opinion,
+        $estimation,
+    );
+    ?>
+    <div class="ed-tag-wrapper" data-type="<?php echo esc_attr(
+        $type,
+    ); ?>" data-opinion="<?php echo (int) $opinion; ?>">
+        <button type="button" class="ed-tag-btn<?php echo esc_attr(
+            $d["source_class"] ?? "",
+        ); ?>" data-estimation-id="<?php echo (int) $id; ?>" data-type="<?php echo esc_attr(
+    $type,
+); ?>" data-slug="<?php echo esc_attr(
+    $d["current_slug"],
+); ?>" style="border-left-color:<?php echo esc_attr(
+    $d["border_color"],
+); ?> !important;">
+            <span class="ed-tag-label"><?php echo function_exists(
+                "lmd_esc_tag_name",
+            )
+                ? lmd_esc_tag_name(
+                    $d["current_slug"] || $d["current_name"] !== $label
+                        ? $d["current_name"]
+                        : $label,
+                )
+                : esc_html(
+                    $d["current_slug"] || $d["current_name"] !== $label
+                        ? $d["current_name"]
+                        : $label,
+                ); ?></span>
             <span class="ed-tag-arrow">▾</span>
         </button>
         <div class="ed-tag-dd" data-type="<?php echo esc_attr($type); ?>">
-            <div class="ed-tag-dd-item <?php echo !$d['current_slug'] ? 'selected' : ''; ?>" data-slug="" data-border="#e5e7eb"><?php echo esc_html($label); ?></div>
-            <?php foreach ($opts as $o) :
-                $oslug = is_object($o) ? $o->slug : ($o['slug'] ?? '');
-                $oname = is_object($o) ? $o->name : ($o['name'] ?? $oslug);
-                $sel = $d['current_slug'] === $oslug;
-                $item_border = $sel ? $d['border_color'] : '#e5e7eb';
-            ?>
-            <div class="ed-tag-dd-item <?php echo $sel ? 'selected' : ''; ?>" data-slug="<?php echo esc_attr($oslug); ?>" data-border="<?php echo esc_attr($item_border); ?>"><?php echo function_exists('lmd_esc_tag_name') ? lmd_esc_tag_name($oname) : esc_html($oname); ?></div>
-            <?php endforeach; ?>
+            <div class="ed-tag-dd-item <?php echo !$d["current_slug"]
+                ? "selected"
+                : ""; ?>" data-slug="" data-border="#e5e7eb"><?php echo esc_html(
+    $label,
+); ?></div>
+            <?php foreach ($opts as $o):
+
+                $oslug = is_object($o) ? $o->slug : $o["slug"] ?? "";
+                $oname = is_object($o) ? $o->name : $o["name"] ?? $oslug;
+                $sel = $d["current_slug"] === $oslug;
+                $item_border = $sel ? $d["border_color"] : "#e5e7eb";
+                ?>
+            <div class="ed-tag-dd-item <?php echo $sel
+                ? "selected"
+                : ""; ?>" data-slug="<?php echo esc_attr(
+    $oslug,
+); ?>" data-border="<?php echo esc_attr(
+    $item_border,
+); ?>"><?php echo function_exists("lmd_esc_tag_name")
+    ? lmd_esc_tag_name($oname)
+    : esc_html($oname); ?></div>
+            <?php
+            endforeach; ?>
         </div>
     </div>
-<?php endforeach; ?>
+<?php
+endforeach;
+?>
     </div>
     <div class="ed-tags-bar-center">
 <?php
-$tags_center = ['interet', 'estimation', 'theme_vente'];
-foreach ($tags_center as $type) :
-    if (!isset($categories[$type])) continue;
+$tags_center = ["interet", "estimation", "theme_vente"];
+foreach ($tags_center as $type):
+
+    if (!isset($categories[$type])) {
+        continue;
+    }
     $cat = $categories[$type];
     $current = $tags_by_type[$type] ?? null;
-    $opts = (!empty($opts_order[$type]) && !empty($cat['options'])) ? $cat['options'] : ($tags_by_cat[$type] ?? []);
-    $label = ($type === 'vente') ? 'VV / VJ' : ($cat['label'] ?? $type);
-    $d = lmd_ed_tag_display($type, $current, $label, $opts, $has_ai, $estimation_slug, $theme_slug, $interet_slug, $estimation_source, $opinion, $estimation);
-?>
-    <div class="ed-tag-wrapper" data-type="<?php echo esc_attr($type); ?>" data-opinion="<?php echo (int) $opinion; ?>">
-        <button type="button" class="ed-tag-btn<?php echo esc_attr($d['source_class'] ?? ''); ?>" data-estimation-id="<?php echo (int) $id; ?>" data-type="<?php echo esc_attr($type); ?>" data-slug="<?php echo esc_attr($d['current_slug']); ?>" style="border-left-color:<?php echo esc_attr($d['border_color']); ?> !important;">
-            <span class="ed-tag-label"><?php echo function_exists('lmd_esc_tag_name') ? lmd_esc_tag_name(($d['current_slug'] || $d['current_name'] !== $label) ? $d['current_name'] : $label) : esc_html(($d['current_slug'] || $d['current_name'] !== $label) ? $d['current_name'] : $label); ?></span>
+    $opts =
+        !empty($opts_order[$type]) && !empty($cat["options"])
+            ? $cat["options"]
+            : $tags_by_cat[$type] ?? [];
+    $label = $type === "vente" ? "VV / VJ" : $cat["label"] ?? $type;
+    $d = lmd_ed_tag_display(
+        $type,
+        $current,
+        $label,
+        $opts,
+        $has_ai,
+        $estimation_slug,
+        $theme_slug,
+        $interet_slug,
+        $estimation_source,
+        $opinion,
+        $estimation,
+    );
+    ?>
+    <div class="ed-tag-wrapper" data-type="<?php echo esc_attr(
+        $type,
+    ); ?>" data-opinion="<?php echo (int) $opinion; ?>">
+        <button type="button" class="ed-tag-btn<?php echo esc_attr(
+            $d["source_class"] ?? "",
+        ); ?>" data-estimation-id="<?php echo (int) $id; ?>" data-type="<?php echo esc_attr(
+    $type,
+); ?>" data-slug="<?php echo esc_attr(
+    $d["current_slug"],
+); ?>" style="border-left-color:<?php echo esc_attr(
+    $d["border_color"],
+); ?> !important;">
+            <span class="ed-tag-label"><?php echo function_exists(
+                "lmd_esc_tag_name",
+            )
+                ? lmd_esc_tag_name(
+                    $d["current_slug"] || $d["current_name"] !== $label
+                        ? $d["current_name"]
+                        : $label,
+                )
+                : esc_html(
+                    $d["current_slug"] || $d["current_name"] !== $label
+                        ? $d["current_name"]
+                        : $label,
+                ); ?></span>
             <span class="ed-tag-arrow">▾</span>
         </button>
         <div class="ed-tag-dd" data-type="<?php echo esc_attr($type); ?>">
-            <?php if (in_array($type, ['estimation', 'theme_vente'], true)) : ?>
+            <?php if (in_array($type, ["estimation", "theme_vente"], true)): ?>
             <div class="ed-tag-dd-header-row">
-                <div class="ed-tag-dd-item <?php echo !$d['current_slug'] ? 'selected' : ''; ?>" data-slug="" data-border="#e5e7eb"><?php echo esc_html($label); ?></div>
-                <button type="button" class="ed-tag-dd-gear" data-type="<?php echo esc_attr($type); ?>" title="Personnaliser les catégories">⚙</button>
+                <div class="ed-tag-dd-item <?php echo !$d["current_slug"]
+                    ? "selected"
+                    : ""; ?>" data-slug="" data-border="#e5e7eb"><?php echo esc_html(
+    $label,
+); ?></div>
+                <button type="button" class="ed-tag-dd-gear" data-type="<?php echo esc_attr(
+                    $type,
+                ); ?>" title="Personnaliser les catégories">⚙</button>
             </div>
-            <?php else : ?>
-            <div class="ed-tag-dd-item <?php echo !$d['current_slug'] ? 'selected' : ''; ?>" data-slug="" data-border="#e5e7eb"><?php echo esc_html($label); ?></div>
+            <?php else: ?>
+            <div class="ed-tag-dd-item <?php echo !$d["current_slug"]
+                ? "selected"
+                : ""; ?>" data-slug="" data-border="#e5e7eb"><?php echo esc_html(
+    $label,
+); ?></div>
             <?php endif; ?>
-            <?php foreach ($opts as $o) :
-                $oslug = is_object($o) ? $o->slug : ($o['slug'] ?? '');
-                $oname = is_object($o) ? $o->name : ($o['name'] ?? $oslug);
-                $sel = $d['current_slug'] === $oslug;
-                $item_border = $sel ? $d['border_color'] : '#e5e7eb';
-            ?>
-            <div class="ed-tag-dd-item <?php echo $sel ? 'selected' : ''; ?>" data-slug="<?php echo esc_attr($oslug); ?>" data-border="<?php echo esc_attr($item_border); ?>"><?php echo function_exists('lmd_esc_tag_name') ? lmd_esc_tag_name($oname) : esc_html($oname); ?></div>
-            <?php endforeach; ?>
-            <?php if ($type === 'theme_vente' && !empty($theme_is_new_from_ai) && $theme_slug) : ?>
-            <div class="ed-tag-dd-create-theme" data-slug="<?php echo esc_attr($theme_slug); ?>" data-parent="<?php echo esc_attr($theme_suggested_parent); ?>" data-name="<?php echo esc_attr(ucwords(str_replace('_', ' ', $theme_slug))); ?>">
-                <span class="ed-tag-dd-create-label">Créer « <?php echo esc_html(ucwords(str_replace('_', ' ', $theme_slug))); ?> »</span>
-                <?php if ($theme_suggested_parent && function_exists('lmd_get_theme_vente_name')) : ?>
-                <span class="ed-tag-dd-create-parent">(rattacher à <?php echo esc_html(lmd_get_theme_vente_name($theme_suggested_parent)); ?>)</span>
+            <?php foreach ($opts as $o):
+
+                $oslug = is_object($o) ? $o->slug : $o["slug"] ?? "";
+                $oname = is_object($o) ? $o->name : $o["name"] ?? $oslug;
+                $sel = $d["current_slug"] === $oslug;
+                $item_border = $sel ? $d["border_color"] : "#e5e7eb";
+                ?>
+            <div class="ed-tag-dd-item <?php echo $sel
+                ? "selected"
+                : ""; ?>" data-slug="<?php echo esc_attr(
+    $oslug,
+); ?>" data-border="<?php echo esc_attr(
+    $item_border,
+); ?>"><?php echo function_exists("lmd_esc_tag_name")
+    ? lmd_esc_tag_name($oname)
+    : esc_html($oname); ?></div>
+            <?php
+            endforeach; ?>
+            <?php if (
+                $type === "theme_vente" &&
+                !empty($theme_is_new_from_ai) &&
+                $theme_slug
+            ): ?>
+            <div class="ed-tag-dd-create-theme" data-slug="<?php echo esc_attr(
+                $theme_slug,
+            ); ?>" data-parent="<?php echo esc_attr(
+    $theme_suggested_parent,
+); ?>" data-name="<?php echo esc_attr(
+    ucwords(str_replace("_", " ", $theme_slug)),
+); ?>">
+                <span class="ed-tag-dd-create-label">Créer « <?php echo esc_html(
+                    ucwords(str_replace("_", " ", $theme_slug)),
+                ); ?> »</span>
+                <?php if (
+                    $theme_suggested_parent &&
+                    function_exists("lmd_get_theme_vente_name")
+                ): ?>
+                <span class="ed-tag-dd-create-parent">(rattacher à <?php echo esc_html(
+                    lmd_get_theme_vente_name($theme_suggested_parent),
+                ); ?>)</span>
         <?php endif; ?>
     </div>
             <?php endif; ?>
     </div>
 </div>
-<?php endforeach; ?>
+<?php
+endforeach;
+?>
     </div>
     <div class="ed-tags-bar-right">
 <?php
-$tags_right = ['date_vente', 'vente', 'vendeur'];
-foreach ($tags_right as $type) :
-    if (!isset($categories[$type])) continue;
+$tags_right = ["date_vente", "vente", "vendeur"];
+foreach ($tags_right as $type):
+
+    if (!isset($categories[$type])) {
+        continue;
+    }
     $cat = $categories[$type];
     $current = $tags_by_type[$type] ?? null;
-    $opts = (!empty($opts_order[$type]) && !empty($cat['options'])) ? $cat['options'] : ($tags_by_cat[$type] ?? []);
-    $label = ($type === 'vente') ? 'VV / VJ' : ($cat['label'] ?? $type);
-    $d = lmd_ed_tag_display($type, $current, $label, $opts, $has_ai, $estimation_slug, $theme_slug, $interet_slug, $estimation_source, $opinion, $estimation);
-?>
-    <div class="ed-tag-wrapper" data-type="<?php echo esc_attr($type); ?>" data-opinion="<?php echo (int) $opinion; ?>">
-        <?php if ($type === 'vente') :
-            $vente_slug = $d['current_slug'] ?? '';
-            $show_lot = in_array($vente_slug, ['volontaire', 'judiciaire'], true);
-            $lot_val = isset($estimation->lot_number) ? preg_replace('/\D/', '', (string) $estimation->lot_number) : '';
-            $lot_display = $lot_val !== '' ? str_pad($lot_val, 3, '0', STR_PAD_LEFT) : '';
-        ?>
-        <div class="ed-tag-vente-case<?php echo in_array($vente_slug, ['volontaire', 'judiciaire'], true) ? ' ed-tag-vente-has-lot' : ''; ?>" style="<?php echo in_array($vente_slug, ['volontaire', 'judiciaire'], true) ? 'border-left-color:' . esc_attr($d['border_color'] ?? '#e5e7eb') . ' !important;' : ''; ?>">
-            <button type="button" class="ed-tag-btn<?php echo esc_attr($d['source_class'] ?? ''); ?>" data-estimation-id="<?php echo (int) $id; ?>" data-type="<?php echo esc_attr($type); ?>" data-slug="<?php echo esc_attr($d['current_slug']); ?>" style="border-left-color:<?php echo esc_attr($d['border_color']); ?> !important;">
-                <span class="ed-tag-label"><?php echo function_exists('lmd_esc_tag_name') ? lmd_esc_tag_name(($d['current_slug'] || $d['current_name'] !== $label) ? $d['current_name'] : $label) : esc_html(($d['current_slug'] || $d['current_name'] !== $label) ? $d['current_name'] : $label); ?></span>
+    $opts =
+        !empty($opts_order[$type]) && !empty($cat["options"])
+            ? $cat["options"]
+            : $tags_by_cat[$type] ?? [];
+    $label = $type === "vente" ? "VV / VJ" : $cat["label"] ?? $type;
+    $d = lmd_ed_tag_display(
+        $type,
+        $current,
+        $label,
+        $opts,
+        $has_ai,
+        $estimation_slug,
+        $theme_slug,
+        $interet_slug,
+        $estimation_source,
+        $opinion,
+        $estimation,
+    );
+    ?>
+    <div class="ed-tag-wrapper" data-type="<?php echo esc_attr(
+        $type,
+    ); ?>" data-opinion="<?php echo (int) $opinion; ?>">
+        <?php if ($type === "vente"):
+
+            $vente_slug = $d["current_slug"] ?? "";
+            $show_lot = in_array(
+                $vente_slug,
+                ["volontaire", "judiciaire"],
+                true,
+            );
+            $lot_val = isset($estimation->lot_number)
+                ? preg_replace("/\D/", "", (string) $estimation->lot_number)
+                : "";
+            $lot_display =
+                $lot_val !== "" ? str_pad($lot_val, 3, "0", STR_PAD_LEFT) : "";
+            ?>
+        <div class="ed-tag-vente-case<?php echo in_array(
+            $vente_slug,
+            ["volontaire", "judiciaire"],
+            true,
+        )
+            ? " ed-tag-vente-has-lot"
+            : ""; ?>" style="<?php echo in_array(
+    $vente_slug,
+    ["volontaire", "judiciaire"],
+    true,
+)
+    ? "border-left-color:" .
+        esc_attr($d["border_color"] ?? "#e5e7eb") .
+        " !important;"
+    : ""; ?>">
+            <button type="button" class="ed-tag-btn<?php echo esc_attr(
+                $d["source_class"] ?? "",
+            ); ?>" data-estimation-id="<?php echo (int) $id; ?>" data-type="<?php echo esc_attr(
+    $type,
+); ?>" data-slug="<?php echo esc_attr(
+    $d["current_slug"],
+); ?>" style="border-left-color:<?php echo esc_attr(
+    $d["border_color"],
+); ?> !important;">
+                <span class="ed-tag-label"><?php echo function_exists(
+                    "lmd_esc_tag_name",
+                )
+                    ? lmd_esc_tag_name(
+                        $d["current_slug"] || $d["current_name"] !== $label
+                            ? $d["current_name"]
+                            : $label,
+                    )
+                    : esc_html(
+                        $d["current_slug"] || $d["current_name"] !== $label
+                            ? $d["current_name"]
+                            : $label,
+                    ); ?></span>
                 <span class="ed-tag-arrow">▾</span>
             </button>
-            <input type="text" class="ed-lot-number" id="ed-lot-number" data-estimation-id="<?php echo (int) $id; ?>" placeholder="Lot" maxlength="3" pattern="[0-9]{1,3}" title="001 à 999" value="<?php echo esc_attr($lot_display); ?>" style="<?php echo $show_lot ? '' : 'display:none;'; ?>" />
+            <input type="text" class="ed-lot-number" id="ed-lot-number" data-estimation-id="<?php echo (int) $id; ?>" placeholder="Lot" maxlength="3" pattern="[0-9]{1,3}" title="001 à 999" value="<?php echo esc_attr(
+    $lot_display,
+); ?>" style="<?php echo $show_lot ? "" : "display:none;"; ?>" />
         </div>
-        <?php else : ?>
-        <button type="button" class="ed-tag-btn<?php echo esc_attr($d['source_class'] ?? ''); ?>" data-estimation-id="<?php echo (int) $id; ?>" data-type="<?php echo esc_attr($type); ?>" data-slug="<?php echo esc_attr($d['current_slug']); ?>" style="border-left-color:<?php echo esc_attr($d['border_color']); ?> !important;">
-            <span class="ed-tag-label"><?php echo function_exists('lmd_esc_tag_name') ? lmd_esc_tag_name(($d['current_slug'] || $d['current_name'] !== $label) ? $d['current_name'] : $label) : esc_html(($d['current_slug'] || $d['current_name'] !== $label) ? $d['current_name'] : $label); ?></span>
+        <?php
+        else:
+             ?>
+        <button type="button" class="ed-tag-btn<?php echo esc_attr(
+            $d["source_class"] ?? "",
+        ); ?>" data-estimation-id="<?php echo (int) $id; ?>" data-type="<?php echo esc_attr(
+    $type,
+); ?>" data-slug="<?php echo esc_attr(
+    $d["current_slug"],
+); ?>" style="border-left-color:<?php echo esc_attr(
+    $d["border_color"],
+); ?> !important;">
+            <span class="ed-tag-label"><?php echo function_exists(
+                "lmd_esc_tag_name",
+            )
+                ? lmd_esc_tag_name(
+                    $d["current_slug"] || $d["current_name"] !== $label
+                        ? $d["current_name"]
+                        : $label,
+                )
+                : esc_html(
+                    $d["current_slug"] || $d["current_name"] !== $label
+                        ? $d["current_name"]
+                        : $label,
+                ); ?></span>
             <span class="ed-tag-arrow">▾</span>
         </button>
-        <?php endif; ?>
-        <div class="ed-tag-dd <?php echo $type === 'date_vente' ? 'ed-tag-dd-vente' : ''; ?>" data-type="<?php echo esc_attr($type); ?>">
-            <?php if ($type === 'date_vente') : ?>
+        <?php
+        endif; ?>
+        <div class="ed-tag-dd <?php echo $type === "date_vente"
+            ? "ed-tag-dd-vente"
+            : ""; ?>" data-type="<?php echo esc_attr($type); ?>">
+            <?php if ($type === "date_vente"): ?>
             <div class="ed-vente-calendar-panel">
                 <div class="ed-vente-month-nav">
                     <button type="button" class="ed-vente-prev">‹</button>
@@ -688,142 +1079,261 @@ foreach ($tags_right as $type) :
                 <div class="ed-vente-create">
                     <div class="ed-vente-create-row">
                         <input type="text" class="ed-vente-name" placeholder="Nom de la vente" />
-                        <input type="date" class="ed-vente-date" value="<?php echo esc_attr(date('Y-m-d')); ?>" />
+                        <input type="date" class="ed-vente-date" value="<?php echo esc_attr(
+                            date("Y-m-d"),
+                        ); ?>" />
                         <button type="button" class="ed-vente-add">Créer</button>
                     </div>
                     <label class="ed-vente-category-label" style="font-size:12px;color:#6b7280;font-weight:600;">Dans quelle catégorie ?</label>
                     <select class="ed-vente-category">
                         <option value="">— Choisir une catégorie —</option>
                         <?php
-                        $theme_opts = function_exists('lmd_get_theme_vente_options_merged') ? lmd_get_theme_vente_options_merged() : [];
-                        foreach ($theme_opts as $t) :
-                            $tslug = $t['slug'] ?? '';
-                            $tname = $t['name'] ?? $tslug;
-                            if ($tslug) :
-                        ?><option value="<?php echo esc_attr($tslug); ?>"><?php echo esc_html($tname); ?></option><?php
-                            endif;
+                        $theme_opts = function_exists(
+                            "lmd_get_theme_vente_options_merged",
+                        )
+                            ? lmd_get_theme_vente_options_merged()
+                            : [];
+                        foreach ($theme_opts as $t):
+                            $tslug = $t["slug"] ?? "";
+                            $tname = $t["name"] ?? $tslug;
+                            if ($tslug): ?><option value="<?php echo esc_attr(
+    $tslug,
+); ?>"><?php echo esc_html($tname); ?></option><?php endif;
                         endforeach;
                         ?>
                     </select>
                 </div>
             </div>
-            <?php else : ?>
-            <div class="ed-tag-dd-item <?php echo !$d['current_slug'] ? 'selected' : ''; ?>" data-slug="" data-border="#e5e7eb"><?php echo esc_html($label); ?></div>
-            <?php foreach ($opts as $o) :
-                $oslug = is_object($o) ? $o->slug : ($o['slug'] ?? '');
-                $oname = is_object($o) ? $o->name : ($o['name'] ?? $oslug);
-                $sel = $d['current_slug'] === $oslug;
-                $item_border = $sel ? $d['border_color'] : '#e5e7eb';
-            ?>
-            <div class="ed-tag-dd-item <?php echo $sel ? 'selected' : ''; ?>" data-slug="<?php echo esc_attr($oslug); ?>" data-border="<?php echo esc_attr($item_border); ?>"><?php echo function_exists('lmd_esc_tag_name') ? lmd_esc_tag_name($oname) : esc_html($oname); ?></div>
-            <?php endforeach; ?>
+            <?php else: ?>
+            <div class="ed-tag-dd-item <?php echo !$d["current_slug"]
+                ? "selected"
+                : ""; ?>" data-slug="" data-border="#e5e7eb"><?php echo esc_html(
+    $label,
+); ?></div>
+            <?php foreach ($opts as $o):
+
+                $oslug = is_object($o) ? $o->slug : $o["slug"] ?? "";
+                $oname = is_object($o) ? $o->name : $o["name"] ?? $oslug;
+                $sel = $d["current_slug"] === $oslug;
+                $item_border = $sel ? $d["border_color"] : "#e5e7eb";
+                ?>
+            <div class="ed-tag-dd-item <?php echo $sel
+                ? "selected"
+                : ""; ?>" data-slug="<?php echo esc_attr(
+    $oslug,
+); ?>" data-border="<?php echo esc_attr(
+    $item_border,
+); ?>"><?php echo function_exists("lmd_esc_tag_name")
+    ? lmd_esc_tag_name($oname)
+    : esc_html($oname); ?></div>
+            <?php
+            endforeach; ?>
             <?php endif; ?>
         </div>
     </div>
-    <?php endforeach; ?>
+    <?php
+endforeach;
+?>
     </div>
-    <a href="<?php echo esc_url($delete_url); ?>" class="ed-tag-supprimer" onclick="return confirm('Supprimer cette estimation ?');">Supprimer</a>
+    <a href="<?php echo esc_url(
+        $delete_url,
+    ); ?>" class="ed-tag-supprimer" onclick="return confirm('Supprimer cette estimation ?');">Supprimer</a>
 </div>
 <?php endif; ?>
 
 <div class="ed-grid">
     <div class="ed-col ed-col-photos">
         <?php
-        $has_smp = $has_ai && array_key_exists('signatures_marques_poincons', $ai);
-        $smp = $has_smp ? ($ai['signatures_marques_poincons'] ?? []) : [];
-        if (!empty($photos)) :
+        $has_smp =
+            $has_ai && array_key_exists("signatures_marques_poincons", $ai);
+        $smp = $has_smp ? $ai["signatures_marques_poincons"] ?? [] : [];
+        if (!empty($photos)):
+
             $first_url = null;
             foreach ($photos as $idx => $item) {
-                $raw = is_string($item) ? $item : ($item['url'] ?? $item['file'] ?? $item['path'] ?? '');
-                if (!$raw) continue;
+                $raw = is_string($item)
+                    ? $item
+                    : $item["url"] ?? ($item["file"] ?? ($item["path"] ?? ""));
+                if (!$raw) {
+                    continue;
+                }
                 $u = lmd_ed_photo_url($raw);
-                if ($u) { $first_url = $u; break; }
+                if ($u) {
+                    $first_url = $u;
+                    break;
+                }
             }
-        ?>
-        <?php if ($first_url) : ?>
-        <img src="<?php echo esc_url($first_url); ?>" alt="Photo principale" class="ed-photo-main" id="ed-photo-main" data-url="<?php echo esc_url($first_url); ?>">
+            ?>
+        <?php if ($first_url): ?>
+        <img src="<?php echo esc_url(
+            $first_url,
+        ); ?>" alt="Photo principale" class="ed-photo-main" id="ed-photo-main" data-url="<?php echo esc_url(
+    $first_url,
+); ?>">
         <?php endif; ?>
         <div class="ed-photos-grid" id="ed-photos-grid">
-            <?php
-            foreach ($photos as $idx => $item) :
-                $raw = is_string($item) ? $item : ($item['url'] ?? $item['file'] ?? $item['path'] ?? '');
-                if (!$raw) continue;
+            <?php foreach ($photos as $idx => $item):
+
+                $raw = is_string($item)
+                    ? $item
+                    : $item["url"] ?? ($item["file"] ?? ($item["path"] ?? ""));
+                if (!$raw) {
+                    continue;
+                }
                 $img_url = lmd_ed_photo_url($raw);
-                if (!$img_url) continue;
-            ?>
+                if (!$img_url) {
+                    continue;
+                }
+                ?>
             <div class="ed-photo-thumb-wrap">
-            <img src="<?php echo esc_url($img_url); ?>" alt="Photo <?php echo (int) ($idx + 1); ?>" class="ed-photo-thumb <?php echo $idx === 0 ? 'active' : ''; ?>" data-url="<?php echo esc_url($img_url); ?>" data-index="<?php echo (int) $idx; ?>">
+            <img src="<?php echo esc_url(
+                $img_url,
+            ); ?>" alt="Photo <?php echo (int) ($idx +
+    1); ?>" class="ed-photo-thumb <?php echo $idx === 0
+    ? "active"
+    : ""; ?>" data-url="<?php echo esc_url(
+    $img_url,
+); ?>" data-index="<?php echo (int) $idx; ?>">
             </div>
-            <?php endforeach; ?>
+            <?php
+            endforeach; ?>
         </div>
-        <?php else : ?>
+        <?php
+        else:
+             ?>
         <p style="color: #666;">Aucune photo</p>
-        <?php endif; ?>
+        <?php
+        endif;
+        ?>
         <div class="ed-description">
             <?php
-            $desc_full = $object_description ?: '-';
+            $desc_full = $object_description ?: "-";
             $desc_short_len = 200;
             $desc_is_long = strlen($desc_full) > $desc_short_len;
-            $desc_display = $desc_is_long ? substr($desc_full, 0, $desc_short_len) . '…' : $desc_full;
+            $desc_display = $desc_is_long
+                ? substr($desc_full, 0, $desc_short_len) . "…"
+                : $desc_full;
             ?>
-            <p class="ed-description-text" style="margin: 0;"><?php echo nl2br(esc_html($desc_display)); ?></p>
-            <?php if ($desc_is_long) : ?>
+            <p class="ed-description-text" style="margin: 0;"><?php echo nl2br(
+                esc_html($desc_display),
+            ); ?></p>
+            <?php if ($desc_is_long): ?>
             <button type="button" class="ed-description-voir-suite">(voir la suite)</button>
-            <div id="ed-description-full-raw" style="display:none;"><?php echo esc_html($desc_full); ?></div>
+            <div id="ed-description-full-raw" style="display:none;"><?php echo esc_html(
+                $desc_full,
+            ); ?></div>
             <?php endif; ?>
         </div>
     </div>
 
     <div class="ed-col ed-col-avis">
         <div class="ed-avis-tabs-row">
-            <div class="ed-avis-tab ed-tab-blue <?php echo $opinion === 1 ? 'open' : ''; ?>" data-opinion="1">1er Avis</div>
-            <div class="ed-avis-tab ed-tab-violet <?php echo $opinion === 2 ? 'open' : ''; ?>" data-opinion="2">2ème Avis</div>
+            <div class="ed-avis-tab ed-tab-blue <?php echo $opinion === 1
+                ? "open"
+                : ""; ?>" data-opinion="1">1er Avis</div>
+            <div class="ed-avis-tab ed-tab-violet <?php echo $opinion === 2
+                ? "open"
+                : ""; ?>" data-opinion="2">2ème Avis</div>
             </div>
-        <div class="ed-avis-cartouche ed-cartouche-blue <?php echo $opinion === 1 ? 'open' : ''; ?>">
-            <textarea class="ed-avis-titre-input" id="avis-titre-1" rows="2" placeholder="Titre" maxlength="200"><?php echo esc_textarea(wp_unslash($estimation->avis1_titre ?? '')); ?></textarea>
-            <textarea class="ed-notes" id="textarea-avis-1" rows="4" placeholder="Descriptif..."><?php echo esc_textarea(wp_unslash($opinion1)); ?></textarea>
-            <input type="text" class="ed-avis-dimension" id="avis-dimension-1" placeholder="Dimension" value="<?php echo esc_attr($estimation->avis1_dimension ?? ''); ?>" />
+        <div class="ed-avis-cartouche ed-cartouche-blue <?php echo $opinion ===
+        1
+            ? "open"
+            : ""; ?>">
+            <textarea class="ed-avis-titre-input" id="avis-titre-1" rows="2" placeholder="Titre" maxlength="200"><?php echo esc_textarea(
+                wp_unslash($estimation->avis1_titre ?? ""),
+            ); ?></textarea>
+            <textarea class="ed-notes" id="textarea-avis-1" rows="4" placeholder="Descriptif..."><?php echo esc_textarea(
+                wp_unslash($opinion1),
+            ); ?></textarea>
+            <input type="text" class="ed-avis-dimension" id="avis-dimension-1" placeholder="Dimension" value="<?php echo esc_attr(
+                $estimation->avis1_dimension ?? "",
+            ); ?>" />
                 <div class="ed-estimate-row">
                     <div class="ed-estimate-field">
                     <span class="ed-estimate-input-wrap">
-                        <input type="text" id="estimate-low-1" placeholder="Estime basse" value="<?php echo esc_attr(function_exists('lmd_format_euro_display') ? lmd_format_euro_display($estimation->avis1_estimate_low ?? null) : ($estimation->avis1_estimate_low ?? '')); ?>" />
+                        <input type="text" id="estimate-low-1" placeholder="Estime basse" value="<?php echo esc_attr(
+                            function_exists("lmd_format_euro_display")
+                                ? lmd_format_euro_display(
+                                    $estimation->avis1_estimate_low ?? null,
+                                )
+                                : $estimation->avis1_estimate_low ?? "",
+                        ); ?>" />
                         <span class="ed-euro-suffix">€</span>
                     </span>
                     </div>
                     <div class="ed-estimate-field">
                     <span class="ed-estimate-input-wrap">
-                        <input type="text" id="prix-reserve-1" placeholder="Prix réserve" value="<?php echo esc_attr(function_exists('lmd_format_euro_display') ? lmd_format_euro_display($estimation->avis1_prix_reserve ?? null) : ($estimation->avis1_prix_reserve ?? '')); ?>" />
+                        <input type="text" id="prix-reserve-1" placeholder="Prix réserve" value="<?php echo esc_attr(
+                            function_exists("lmd_format_euro_display")
+                                ? lmd_format_euro_display(
+                                    $estimation->avis1_prix_reserve ?? null,
+                                )
+                                : $estimation->avis1_prix_reserve ?? "",
+                        ); ?>" />
                         <span class="ed-euro-suffix">€</span>
                     </span>
                     </div>
                     <div class="ed-estimate-field">
                     <span class="ed-estimate-input-wrap">
-                        <input type="text" id="estimate-high-1" placeholder="Estime haute" value="<?php echo esc_attr(function_exists('lmd_format_euro_display') ? lmd_format_euro_display($estimation->avis1_estimate_high ?? null) : ($estimation->avis1_estimate_high ?? '')); ?>" />
+                        <input type="text" id="estimate-high-1" placeholder="Estime haute" value="<?php echo esc_attr(
+                            function_exists("lmd_format_euro_display")
+                                ? lmd_format_euro_display(
+                                    $estimation->avis1_estimate_high ?? null,
+                                )
+                                : $estimation->avis1_estimate_high ?? "",
+                        ); ?>" />
                         <span class="ed-euro-suffix">€</span>
                     </span>
                     </div>
                 </div>
             </div>
-        <div class="ed-avis-cartouche ed-cartouche-violet <?php echo $opinion === 2 ? 'open' : ''; ?>">
-            <textarea class="ed-avis-titre-input" id="avis-titre-2" rows="2" placeholder="Titre" maxlength="200"><?php echo esc_textarea(wp_unslash($estimation->avis2_titre ?? '')); ?></textarea>
-            <textarea class="ed-notes" id="textarea-avis-2" rows="4" placeholder="Descriptif..."><?php echo esc_textarea(wp_unslash($opinion2)); ?></textarea>
-            <input type="text" class="ed-avis-dimension" id="avis-dimension-2" placeholder="Dimension" value="<?php echo esc_attr($estimation->avis2_dimension ?? ''); ?>" />
+        <div class="ed-avis-cartouche ed-cartouche-violet <?php echo $opinion ===
+        2
+            ? "open"
+            : ""; ?>">
+            <textarea class="ed-avis-titre-input" id="avis-titre-2" rows="2" placeholder="Titre" maxlength="200"><?php echo esc_textarea(
+                wp_unslash($estimation->avis2_titre ?? ""),
+            ); ?></textarea>
+            <textarea class="ed-notes" id="textarea-avis-2" rows="4" placeholder="Descriptif..."><?php echo esc_textarea(
+                wp_unslash($opinion2),
+            ); ?></textarea>
+            <input type="text" class="ed-avis-dimension" id="avis-dimension-2" placeholder="Dimension" value="<?php echo esc_attr(
+                $estimation->avis2_dimension ?? "",
+            ); ?>" />
                 <div class="ed-estimate-row">
                     <div class="ed-estimate-field">
                     <span class="ed-estimate-input-wrap">
-                        <input type="text" id="estimate-low-2" placeholder="Estime basse" value="<?php echo esc_attr(function_exists('lmd_format_euro_display') ? lmd_format_euro_display($estimation->avis2_estimate_low ?? null) : ($estimation->avis2_estimate_low ?? '')); ?>" />
+                        <input type="text" id="estimate-low-2" placeholder="Estime basse" value="<?php echo esc_attr(
+                            function_exists("lmd_format_euro_display")
+                                ? lmd_format_euro_display(
+                                    $estimation->avis2_estimate_low ?? null,
+                                )
+                                : $estimation->avis2_estimate_low ?? "",
+                        ); ?>" />
                         <span class="ed-euro-suffix">€</span>
                     </span>
                     </div>
                     <div class="ed-estimate-field">
                     <span class="ed-estimate-input-wrap">
-                        <input type="text" id="prix-reserve-2" placeholder="Prix réserve" value="<?php echo esc_attr(function_exists('lmd_format_euro_display') ? lmd_format_euro_display($estimation->avis2_prix_reserve ?? null) : ($estimation->avis2_prix_reserve ?? '')); ?>" />
+                        <input type="text" id="prix-reserve-2" placeholder="Prix réserve" value="<?php echo esc_attr(
+                            function_exists("lmd_format_euro_display")
+                                ? lmd_format_euro_display(
+                                    $estimation->avis2_prix_reserve ?? null,
+                                )
+                                : $estimation->avis2_prix_reserve ?? "",
+                        ); ?>" />
                         <span class="ed-euro-suffix">€</span>
                     </span>
                     </div>
                     <div class="ed-estimate-field">
                     <span class="ed-estimate-input-wrap">
-                        <input type="text" id="estimate-high-2" placeholder="Estime haute" value="<?php echo esc_attr(function_exists('lmd_format_euro_display') ? lmd_format_euro_display($estimation->avis2_estimate_high ?? null) : ($estimation->avis2_estimate_high ?? '')); ?>" />
+                        <input type="text" id="estimate-high-2" placeholder="Estime haute" value="<?php echo esc_attr(
+                            function_exists("lmd_format_euro_display")
+                                ? lmd_format_euro_display(
+                                    $estimation->avis2_estimate_high ?? null,
+                                )
+                                : $estimation->avis2_estimate_high ?? "",
+                        ); ?>" />
                         <span class="ed-euro-suffix">€</span>
                     </span>
                     </div>
@@ -832,52 +1342,113 @@ foreach ($tags_right as $type) :
     </div>
 
     <?php
-    $default_reponse_subject = sprintf('Réponse à votre demande d\'estimation du %s', $created_date ?: date_i18n(get_option('date_format')));
-    $reponse_subject = !empty($estimation->reponse_subject) ? $estimation->reponse_subject : $default_reponse_subject;
-    $client_display = trim((wp_unslash($estimation->client_civility ?? '') . ' ' . wp_unslash($estimation->client_first_name ?? '') . ' ' . wp_unslash($estimation->client_name ?? '')));
-    if (!$client_display) $client_display = wp_unslash($estimation->client_name ?? '') ?: wp_unslash($estimation->client_email ?? '');
+    $default_reponse_subject = sprintf(
+        'Réponse à votre demande d\'estimation du %s',
+        $created_date ?: date_i18n(get_option("date_format")),
+    );
+    $reponse_subject = !empty($estimation->reponse_subject)
+        ? $estimation->reponse_subject
+        : $default_reponse_subject;
+    $client_display = trim(
+        wp_unslash($estimation->client_civility ?? "") .
+            " " .
+            wp_unslash($estimation->client_first_name ?? "") .
+            " " .
+            wp_unslash($estimation->client_name ?? ""),
+    );
+    if (!$client_display) {
+        $client_display =
+            wp_unslash($estimation->client_name ?? "") ?:
+            wp_unslash($estimation->client_email ?? "");
+    }
     $reponse_body_default = "Bonjour " . trim($client_display) . ",\n\n";
-    $reponse_sent_at = !empty($estimation->reponse_sent_at) ? $estimation->reponse_sent_at : null;
-    $reponse_questions_selected = !empty($estimation->reponse_questions_selected) ? json_decode($estimation->reponse_questions_selected, true) : [];
-    $reponse_questions_selected = is_array($reponse_questions_selected) ? $reponse_questions_selected : [];
-    $ai_questions_col3 = $ai['questions'] ?? [];
+    $reponse_sent_at = !empty($estimation->reponse_sent_at)
+        ? $estimation->reponse_sent_at
+        : null;
+    $reponse_questions_selected = !empty(
+        $estimation->reponse_questions_selected
+    )
+        ? json_decode($estimation->reponse_questions_selected, true)
+        : [];
+    $reponse_questions_selected = is_array($reponse_questions_selected)
+        ? $reponse_questions_selected
+        : [];
+    $ai_questions_col3 = $ai["questions"] ?? [];
     $ai_questions_col3 = is_array($ai_questions_col3) ? $ai_questions_col3 : [];
     ?>
     <div class="ed-col ed-col-actions ed-actions has-open" id="ed-col-actions">
         <div class="ed-actions-tabs-row">
-            <div class="ed-actions-tab ed-tab-blue <?php echo $col3_action === 'reponse' ? 'open' : ''; ?>" data-action="reponse">Réponse vendeur</div>
+            <div class="ed-actions-tab ed-tab-blue <?php echo $col3_action ===
+            "reponse"
+                ? "open"
+                : ""; ?>" data-action="reponse">Réponse vendeur</div>
             <div class="ed-actions-center">
-                <a href="mailto:<?php echo esc_attr($estimation->client_email ?? ''); ?>" class="ed-icon-btn" title="Envoyer un email">✉</a>
+                <a href="mailto:<?php echo esc_attr(
+                    $estimation->client_email ?? "",
+                ); ?>" class="ed-icon-btn" title="Envoyer un email">✉</a>
                 <button type="button" class="ed-icon-btn ed-cp-settings-btn" title="Paramètres">⚙</button>
             </div>
-            <div class="ed-actions-tab ed-tab-violet <?php echo $col3_action === 'deleguer' ? 'open' : ''; ?>" data-action="deleguer">Déléguer Estimation</div>
+            <div class="ed-actions-tab ed-tab-violet <?php echo $col3_action ===
+            "deleguer"
+                ? "open"
+                : ""; ?>" data-action="deleguer">Déléguer Estimation</div>
         </div>
-        <div class="ed-actions-cartouche ed-cartouche-<?php echo $col3_action === 'deleguer' ? 'violet' : 'blue'; ?> open" id="ed-actions-cartouche">
-            <div class="ed-action-cartouche-reponse <?php echo $col3_action === 'reponse' ? 'ed-active' : ''; ?>" id="action-cartouche-reponse" data-action="reponse">
+        <div class="ed-actions-cartouche ed-cartouche-<?php echo $col3_action ===
+        "deleguer"
+            ? "violet"
+            : "blue"; ?> open" id="ed-actions-cartouche">
+            <div class="ed-action-cartouche-reponse <?php echo $col3_action ===
+            "reponse"
+                ? "ed-active"
+                : ""; ?>" id="action-cartouche-reponse" data-action="reponse">
                 <div class="ed-action-panel" id="action-panel-reponse">
-                    <input type="text" class="ed-email-objet" id="reponse-objet-<?php echo (int) $id; ?>" placeholder="Objet" value="<?php echo esc_attr(wp_unslash($reponse_subject)); ?>" />
-                    <textarea class="ed-email-corps" id="reponse-corps-<?php echo (int) $id; ?>" placeholder="Corps du message"><?php echo esc_textarea(wp_unslash($estimation->reponse_body ?? $reponse_body_default)); ?></textarea>
-                    <?php if (!$reponse_sent_at) : ?>
+                    <input type="text" class="ed-email-objet" id="reponse-objet-<?php echo (int) $id; ?>" placeholder="Objet" value="<?php echo esc_attr(
+    wp_unslash($reponse_subject),
+); ?>" />
+                    <textarea class="ed-email-corps" id="reponse-corps-<?php echo (int) $id; ?>" placeholder="Corps du message"><?php echo esc_textarea(
+    wp_unslash($estimation->reponse_body ?? $reponse_body_default),
+); ?></textarea>
+                    <?php if (!$reponse_sent_at): ?>
                     <div class="ed-reponse-preview-wrap" id="ed-reponse-preview-wrap-<?php echo (int) $id; ?>">
-                        <div class="ed-reponse-preview-title"><?php echo esc_html__('Aperçu — message pour le vendeur', 'lmd-apps-ia'); ?></div>
-                        <p class="ed-reponse-preview-hint"><?php echo esc_html__('Le bouton Envoi ouvre votre messagerie avec un message en texte brut (compatible tous les clients). Les liens et les logos (images) ne restent pas en HTML dans ce message : chaque lien est recopié sous la forme libellé + adresse, chaque image sous la forme légende ou [Image] + adresse du fichier, pour que tout soit cliquable ou recopiable depuis le texte.', 'lmd-apps-ia'); ?></p>
-                        <div class="ed-reponse-preview-label"><?php echo esc_html__('Texte exact envoyé (corps + signature)', 'lmd-apps-ia'); ?></div>
+                        <div class="ed-reponse-preview-title"><?php echo esc_html__(
+                            "Aperçu — message pour le vendeur",
+                            "lmd-apps-ia",
+                        ); ?></div>
+                        <p class="ed-reponse-preview-hint"><?php echo esc_html__(
+                            "Le bouton Envoi ouvre votre messagerie avec un message en texte brut (compatible tous les clients). Les liens et les logos (images) ne restent pas en HTML dans ce message : chaque lien est recopié sous la forme libellé + adresse, chaque image sous la forme légende ou [Image] + adresse du fichier, pour que tout soit cliquable ou recopiable depuis le texte.",
+                            "lmd-apps-ia",
+                        ); ?></p>
+                        <div class="ed-reponse-preview-label"><?php echo esc_html__(
+                            "Texte exact envoyé (corps + signature)",
+                            "lmd-apps-ia",
+                        ); ?></div>
                         <pre class="ed-reponse-preview-plain" id="ed-reponse-preview-plain-<?php echo (int) $id; ?>" aria-live="polite"></pre>
-                        <div class="ed-reponse-preview-sig-label" id="ed-reponse-preview-sig-label-<?php echo (int) $id; ?>"><?php echo esc_html__('Rendu HTML de la signature (aperçu)', 'lmd-apps-ia'); ?></div>
+                        <div class="ed-reponse-preview-sig-label" id="ed-reponse-preview-sig-label-<?php echo (int) $id; ?>"><?php echo esc_html__(
+    "Rendu HTML de la signature (aperçu)",
+    "lmd-apps-ia",
+); ?></div>
                         <div class="ed-reponse-preview-sig" id="ed-reponse-preview-sig-<?php echo (int) $id; ?>"></div>
                     </div>
                     <?php endif; ?>
-                    <?php if ($reponse_sent_at) : ?>
+                    <?php if ($reponse_sent_at): ?>
                     <div class="ed-courrier-parti" style="margin-top: 8px; padding: 12px; background: #f0fdf4; border: 1px solid #22c55e; border-radius: 8px; font-weight: 700; text-transform: uppercase; font-size: 12px; color: #166534;">
-                        Ce courrier est parti le <?php echo esc_html(date_i18n('d/m/Y', strtotime($reponse_sent_at))); ?> à <?php echo esc_html(date_i18n('H:i', strtotime($reponse_sent_at))); ?>
+                        Ce courrier est parti le <?php echo esc_html(
+                            date_i18n("d/m/Y", strtotime($reponse_sent_at)),
+                        ); ?> à <?php echo esc_html(
+     date_i18n("H:i", strtotime($reponse_sent_at)),
+ ); ?>
                     </div>
-                    <?php else : ?>
+                    <?php else: ?>
                     <div class="ed-fq-zone">
                         <div class="ed-fq-tabs-row">
                             <div class="ed-fq-tabs-left">
                                 <div class="ed-fq-tab" data-fq="questions">Questions de l'IA</div>
-                                <?php if (!empty($ai_questions_col3)) : ?>
-                                <button type="button" class="button ed-questions-ok" title="Enregistrer la sélection" <?php echo empty($reponse_questions_selected) ? 'disabled' : ''; ?>>OK</button>
+                                <?php if (!empty($ai_questions_col3)): ?>
+                                <button type="button" class="button ed-questions-ok" title="Enregistrer la sélection" <?php echo empty(
+                                    $reponse_questions_selected
+                                )
+                                    ? "disabled"
+                                    : ""; ?>>OK</button>
                                 <?php endif; ?>
                             </div>
                             <div class="ed-fq-tab open" data-fq="formules">Formules enregistrées <span class="ed-fq-gear ed-formules-settings-btn" title="Enregistrer, modifier, supprimer des formules">⚙</span></div>
@@ -887,30 +1458,62 @@ foreach ($tags_right as $type) :
                                 <select id="reponse-formule-<?php echo (int) $id; ?>" class="ed-formule-select" style="width:100%;"><option value="">Choisir une formule</option></select>
                             </div>
                             <div class="ed-fq-panel" data-fq="questions" style="display:none;">
-                                <?php if (!empty($ai_questions_col3)) : ?>
+                                <?php if (!empty($ai_questions_col3)): ?>
                                 <div class="ed-questions-ia-list">
-                                    <?php foreach ($ai_questions_col3 as $qi => $q) : $q = trim((string) $q); if ($q === '') continue; $sel = in_array($qi, $reponse_questions_selected, true); ?>
-                                    <div class="ed-question-ia-item <?php echo $sel ? 'selected' : ''; ?>" data-idx="<?php echo (int) $qi; ?>"><?php echo esc_html($q); ?></div>
-                                    <?php endforeach; ?>
+                                    <?php foreach (
+                                        $ai_questions_col3
+                                        as $qi => $q
+                                    ):
+
+                                        $q = trim((string) $q);
+                                        if ($q === "") {
+                                            continue;
+                                        }
+                                        $sel = in_array(
+                                            $qi,
+                                            $reponse_questions_selected,
+                                            true,
+                                        );
+                                        ?>
+                                    <div class="ed-question-ia-item <?php echo $sel
+                                        ? "selected"
+                                        : ""; ?>" data-idx="<?php echo (int) $qi; ?>"><?php echo esc_html(
+    $q,
+); ?></div>
+                                    <?php
+                                    endforeach; ?>
                                 </div>
-                                <?php else : ?>
+                                <?php else: ?>
                                 <p style="margin:0;color:#6b7280;">Aucune question (lancez l'analyse IA)</p>
                                 <?php endif; ?>
                             </div>
                         </div>
                         <div class="ed-actions-send-row">
-                            <button type="button" class="ed-send-btn ed-send-btn-left lmd-send-reponse" data-id="<?php echo (int) $id; ?>" data-email="<?php echo esc_attr($estimation->client_email ?? ''); ?>">Envoi</button>
+                            <button type="button" class="ed-send-btn ed-send-btn-left lmd-send-reponse" data-id="<?php echo (int) $id; ?>" data-email="<?php echo esc_attr(
+    $estimation->client_email ?? "",
+); ?>">Envoi</button>
                         </div>
                     </div>
                     <?php endif; ?>
                 </div>
             </div>
-            <div class="ed-action-cartouche-deleguer <?php echo $col3_action === 'deleguer' ? 'ed-active' : ''; ?>" id="action-cartouche-deleguer" data-action="deleguer">
+            <div class="ed-action-cartouche-deleguer <?php echo $col3_action ===
+            "deleguer"
+                ? "ed-active"
+                : ""; ?>" id="action-cartouche-deleguer" data-action="deleguer">
                 <div class="ed-action-panel" id="action-panel-deleguer">
-                    <input type="email" class="ed-email-objet" id="delegation-email-<?php echo (int) $id; ?>" placeholder="Destinataire (enregistré automatiquement)" value="<?php echo esc_attr($estimation->delegation_email ?? ''); ?>" list="delegation-recipients-list-<?php echo (int) $id; ?>" />
+                    <input type="email" class="ed-email-objet" id="delegation-email-<?php echo (int) $id; ?>" placeholder="Destinataire (enregistré automatiquement)" value="<?php echo esc_attr(
+    $estimation->delegation_email ?? "",
+); ?>" list="delegation-recipients-list-<?php echo (int) $id; ?>" />
                     <datalist id="delegation-recipients-list-<?php echo (int) $id; ?>"></datalist>
-                    <input type="text" class="ed-email-objet" id="delegation-objet-<?php echo (int) $id; ?>" placeholder="Objet" value="<?php echo esc_attr(wp_unslash($estimation->delegation_subject ?? '')); ?>" />
-                    <textarea class="ed-email-corps" id="delegation-corps-<?php echo (int) $id; ?>" placeholder="Message ou instructions..."><?php echo esc_textarea(wp_unslash($estimation->delegation_body ?? $estimation->delegation_draft ?? '')); ?></textarea>
+                    <input type="text" class="ed-email-objet" id="delegation-objet-<?php echo (int) $id; ?>" placeholder="Objet" value="<?php echo esc_attr(
+    wp_unslash($estimation->delegation_subject ?? ""),
+); ?>" />
+                    <textarea class="ed-email-corps" id="delegation-corps-<?php echo (int) $id; ?>" placeholder="Message ou instructions..."><?php echo esc_textarea(
+    wp_unslash(
+        $estimation->delegation_body ?? ($estimation->delegation_draft ?? ""),
+    ),
+); ?></textarea>
                     <div class="ed-actions-send-row">
                         <button type="button" class="ed-send-btn ed-send-btn-left lmd-generate-delegation-link" data-id="<?php echo (int) $id; ?>">Générer lien d'accès</button>
                         <button type="button" class="ed-send-btn ed-send-btn-right lmd-send-delegation" data-id="<?php echo (int) $id; ?>">Envoi</button>
@@ -948,9 +1551,11 @@ foreach ($tags_right as $type) :
     </div>
 </div>
 
-<?php if ($has_ai && empty($estimation->ai_error_reported_at)) : ?>
+<?php if ($has_ai && empty($estimation->ai_error_reported_at)): ?>
 <div class="ed-ai-error-zone" id="ed-ai-error-zone">
-    <button type="button" class="ed-ai-error-octagon" id="ed-ai-error-btn" data-id="<?php echo (int) $id; ?>" data-nonce="<?php echo esc_attr(wp_create_nonce('lmd_report_ai_' . $id)); ?>">
+    <button type="button" class="ed-ai-error-octagon" id="ed-ai-error-btn" data-id="<?php echo (int) $id; ?>" data-nonce="<?php echo esc_attr(
+    wp_create_nonce("lmd_report_ai_" . $id),
+); ?>">
         <span class="ed-ai-error-octagon-text">L'IA se trompe ?</span>
     </button>
     </div>
@@ -959,219 +1564,449 @@ foreach ($tags_right as $type) :
 <!-- Section estimation IA - pleine largeur (une seule ligne, pas de doublon) -->
 <div class="ed-ai-section ed-ai-fullwidth" id="ed-ai-section">
     <?php
-    $ai_est = $has_ai && function_exists('lmd_get_ai_estimation') ? lmd_get_ai_estimation($ai) : ['low' => null, 'high' => null];
-    $ai_est_slug = $has_ai ? trim($ai['estimation'] ?? '') : '';
+    $ai_est =
+        $has_ai && function_exists("lmd_get_ai_estimation")
+            ? lmd_get_ai_estimation($ai)
+            : ["low" => null, "high" => null];
+    $ai_est_slug = $has_ai ? trim($ai["estimation"] ?? "") : "";
     ?>
     <div class="ed-ai-full" id="ed-ai-full" style="display: block;">
-        <div class="ed-ai-head-row ed-ai-main-line<?php echo !empty($estimation->ai_error_reported_at) ? ' ed-ai-has-thanks' : ''; ?>">
+        <div class="ed-ai-head-row ed-ai-main-line<?php echo !empty(
+            $estimation->ai_error_reported_at
+        )
+            ? " ed-ai-has-thanks"
+            : ""; ?>">
             <div class="ed-ai-badge-wrap">
-                <span class="ed-ai-btn-slot" style="display:inline-block;width:1px;min-width:fit-content;"><button type="button" class="ed-ai-btn ed-ai-btn-large" id="ed-ai-launch-btn-2" data-id="<?php echo (int) $id; ?>" <?php echo $is_analyzing ? ' disabled' : ''; ?>>
+                <span class="ed-ai-btn-slot" style="display:inline-block;width:1px;min-width:fit-content;"><button type="button" class="ed-ai-btn ed-ai-btn-large" id="ed-ai-launch-btn-2" data-id="<?php echo (int) $id; ?>" <?php echo $is_analyzing
+    ? " disabled"
+    : ""; ?>>
                     <span class="ed-ai-btn-text">AIDE À L'ESTIMATION</span>
-                    <span class="ed-ai-btn-progress" id="ed-ai-btn-progress" style="display: <?php echo $is_analyzing ? 'inline-flex' : 'none'; ?>; align-items: center; gap: 6px;">
+                    <span class="ed-ai-btn-progress" id="ed-ai-btn-progress" style="display: <?php echo $is_analyzing
+                        ? "inline-flex"
+                        : "none"; ?>; align-items: center; gap: 6px;">
                         <span class="ed-ai-spinner" style="display:inline-block;width:16px;height:16px;animation:lmd-spin 1s linear infinite;">⟳</span>
                         <span class="ed-ai-pct" id="ed-ai-pct">0%</span>
                     </span>
                 </button></span>
             </div>
-            <?php if (!empty($estimation->ai_error_reported_at)) : ?>
+            <?php if (!empty($estimation->ai_error_reported_at)): ?>
             <span class="ed-ai-error-thanks-inline">Merci pour votre contribution.</span>
-            <?php elseif ($has_ai) : ?>
+            <?php elseif ($has_ai): ?>
             <div class="ed-ai-result-badges">
-                <?php if ($ai_est['low'] !== null || $ai_est_slug) : ?>
-                <span class="ed-ai-badge">Estimation: <?php
-                    if ($ai_est['low'] !== null) {
-                        echo esc_html(number_format($ai_est['low'], 0, ',', ' ') . ($ai_est['high'] !== null ? ' – ' . number_format($ai_est['high'], 0, ',', ' ') : '') . ' €');
-                    } else {
-                        echo esc_html(function_exists('lmd_get_estimation_name') ? lmd_get_estimation_name($ai_est_slug) : $ai_est_slug);
-                    }
-                ?></span>
+                <?php if ($ai_est["low"] !== null || $ai_est_slug): ?>
+                <span class="ed-ai-badge">Estimation: <?php if (
+                    $ai_est["low"] !== null
+                ) {
+                    echo esc_html(
+                        number_format($ai_est["low"], 0, ",", " ") .
+                            ($ai_est["high"] !== null
+                                ? " – " .
+                                    number_format($ai_est["high"], 0, ",", " ")
+                                : "") .
+                            " €",
+                    );
+                } else {
+                    echo esc_html(
+                        function_exists("lmd_get_estimation_name")
+                            ? lmd_get_estimation_name($ai_est_slug)
+                            : $ai_est_slug,
+                    );
+                } ?></span>
                 <?php endif; ?>
-                <?php if (!empty($ai['interest_level'])) : ?>
-                <span class="ed-ai-badge">Intérêt: <?php echo esc_html($ai['interest_level']); ?></span>
+                <?php if (!empty($ai["interest_level"])): ?>
+                <span class="ed-ai-badge">Intérêt: <?php echo esc_html(
+                    $ai["interest_level"],
+                ); ?></span>
                 <?php endif; ?>
-                <?php if (!empty($ai['reliability'])) : ?>
+                <?php if (!empty($ai["reliability"])): ?>
                 <?php
-                $rel = $ai['reliability'];
-                $rel_5 = is_numeric($rel) && $rel >= 1 && $rel <= 5 ? (int) $rel : ((stripos($rel, 'faible') !== false) ? 1 : ((stripos($rel, 'moyenne') !== false) ? 3 : ((stripos($rel, 'élevée') !== false || stripos($rel, 'elevee') !== false) ? 5 : null)));
+                $rel = $ai["reliability"];
+                $rel_5 =
+                    is_numeric($rel) && $rel >= 1 && $rel <= 5
+                        ? (int) $rel
+                        : (stripos($rel, "faible") !== false
+                            ? 1
+                            : (stripos($rel, "moyenne") !== false
+                                ? 3
+                                : (stripos($rel, "élevée") !== false ||
+                                stripos($rel, "elevee") !== false
+                                    ? 5
+                                    : null)));
                 ?>
-                <span class="ed-ai-badge">Fiabilité: <?php echo esc_html($rel_5 !== null ? $rel_5 . '/5' : $rel); ?></span>
+                <span class="ed-ai-badge">Fiabilité: <?php echo esc_html(
+                    $rel_5 !== null ? $rel_5 . "/5" : $rel,
+                ); ?></span>
                 <?php endif; ?>
             </div>
             <?php endif; ?>
         </div>
         <?php
         $show_tabs_cartouche = $has_ai; /* Onglets + cartouche uniquement après résultats (évite la ligne grise avant lancement) */
-        $ai_identity = $ai['identity'] ?? $ai['biography'] ?? '';
-        $ai_condition = $ai['condition'] ?? $ai['etat'] ?? '';
-        $correspondances_raw = $ai['correspondances'] ?? [];
+        $ai_identity = $ai["identity"] ?? ($ai["biography"] ?? "");
+        $ai_condition = $ai["condition"] ?? ($ai["etat"] ?? "");
+        $correspondances_raw = $ai["correspondances"] ?? [];
         $correspondances = array_slice($correspondances_raw, 0, 8);
-        $market_results = $ai['market_results'] ?? [];
-        $ai_questions = $ai['questions'] ?? [];
-        $ai_market_legacy = $ai['market'] ?? '';
+        $market_results = $ai["market_results"] ?? [];
+        $ai_questions = $ai["questions"] ?? [];
+        $ai_market_legacy = $ai["market"] ?? "";
         $lmd_markdown_links = function ($s) {
-            if (!is_string($s) || trim($s) === '') return $s;
-            return preg_replace_callback('/\[([^\]]*)\]\((https?:\/\/[^\)\s]+)\)/', function ($m) {
-                $url = filter_var($m[2], FILTER_VALIDATE_URL) ? $m[2] : '';
-                if (!$url) return esc_html($m[0]);
-                return '<a href="' . esc_url($url) . '" target="_blank" rel="noopener" class="ed-ai-inline-link">' . esc_html($m[1]) . '</a>';
-            }, esc_html($s));
+            if (!is_string($s) || trim($s) === "") {
+                return $s;
+            }
+            return preg_replace_callback(
+                "/\[([^\]]*)\]\((https?:\/\/[^\)\s]+)\)/",
+                function ($m) {
+                    $url = filter_var($m[2], FILTER_VALIDATE_URL) ? $m[2] : "";
+                    if (!$url) {
+                        return esc_html($m[0]);
+                    }
+                    return '<a href="' .
+                        esc_url($url) .
+                        '" target="_blank" rel="noopener" class="ed-ai-inline-link">' .
+                        esc_html($m[1]) .
+                        "</a>";
+                },
+                esc_html($s),
+            );
         };
         $lmd_ai_format = function ($v) {
             if (is_array($v)) {
                 $out = [];
                 foreach ($v as $i => $item) {
                     if (is_array($item)) {
-                        $out[] = implode(' — ', array_filter(array_map(function ($x) { return is_scalar($x) ? (string) $x : ''; }, $item)));
+                        $out[] = implode(
+                            " — ",
+                            array_filter(
+                                array_map(function ($x) {
+                                    return is_scalar($x) ? (string) $x : "";
+                                }, $item),
+                            ),
+                        );
                     } else {
                         $out[] = (string) $item;
                     }
                 }
-                return implode("\n", array_filter($out)) ?: '-';
+                return implode("\n", array_filter($out)) ?: "-";
             }
             $s = trim((string) $v);
-            return $s !== '' ? $s : '-';
+            return $s !== "" ? $s : "-";
         };
-        $cnt_identity = ($ai_summary || $ai_identity) ? 1 : 0;
+        $cnt_identity = $ai_summary || $ai_identity ? 1 : 0;
         $cnt_matches = is_array($correspondances) ? count($correspondances) : 0;
-        $cnt_market = is_array($market_results) ? count($market_results) : (trim($ai_market_legacy) ? 1 : 0);
+        $cnt_market = is_array($market_results)
+            ? count($market_results)
+            : (trim($ai_market_legacy)
+                ? 1
+                : 0);
         $cnt_condition = trim($ai_condition) ? 1 : 0;
         $cnt_questions = is_array($ai_questions) ? count($ai_questions) : 0;
         ?>
-        <div class="ed-ai-tabs-wrapper" id="ed-ai-tabs-wrapper" style="display: <?php echo $show_tabs_cartouche ? 'flex' : 'none'; ?>;">
+        <div class="ed-ai-tabs-wrapper" id="ed-ai-tabs-wrapper" style="display: <?php echo $show_tabs_cartouche
+            ? "flex"
+            : "none"; ?>;">
         <!-- Ligne 5 onglets -->
         <div class="ed-ai-tabs-row">
             <div style="grid-column: span 1;"></div>
-            <div class="ed-ai-chrome-tab <?php echo $cnt_identity ? 'completed' : ''; ?>" data-field="identity" id="ed-tab-identity" style="grid-column: span 5;">
-                <span class="ed-ai-tab-check"><?php echo $cnt_identity ? '✓' : '○'; ?></span>
-                IDENTITÉ / BIOGRAPHIE <?php echo $cnt_identity > 1 ? '<span class="ed-tab-count">' . (int) $cnt_identity . '</span>' : ''; ?>
+            <div class="ed-ai-chrome-tab <?php echo $cnt_identity
+                ? "completed"
+                : ""; ?>" data-field="identity" id="ed-tab-identity" style="grid-column: span 5;">
+                <span class="ed-ai-tab-check"><?php echo $cnt_identity
+                    ? "✓"
+                    : "○"; ?></span>
+                IDENTITÉ / BIOGRAPHIE <?php echo $cnt_identity > 1
+                    ? '<span class="ed-tab-count">' .
+                        (int) $cnt_identity .
+                        "</span>"
+                    : ""; ?>
             </div>
             <div style="grid-column: span 1;"></div>
-            <div class="ed-ai-chrome-tab <?php echo $cnt_matches ? 'completed' : ''; ?>" data-field="matches" id="ed-tab-matches" style="grid-column: span 5;">
-                <span class="ed-ai-tab-check"><?php echo $cnt_matches ? '✓' : '○'; ?></span>
-                CORRESPONDANCES <?php echo $cnt_matches > 0 ? '<span class="ed-tab-count">' . (int) $cnt_matches . '</span>' : ''; ?>
+            <div class="ed-ai-chrome-tab <?php echo $cnt_matches
+                ? "completed"
+                : ""; ?>" data-field="matches" id="ed-tab-matches" style="grid-column: span 5;">
+                <span class="ed-ai-tab-check"><?php echo $cnt_matches
+                    ? "✓"
+                    : "○"; ?></span>
+                CORRESPONDANCES <?php echo $cnt_matches > 0
+                    ? '<span class="ed-tab-count">' .
+                        (int) $cnt_matches .
+                        "</span>"
+                    : ""; ?>
             </div>
             <div style="grid-column: span 1;"></div>
-            <div class="ed-ai-chrome-tab <?php echo $cnt_market ? 'completed' : ''; ?>" data-field="market" id="ed-tab-market" style="grid-column: span 5;">
-                <span class="ed-ai-tab-check"><?php echo $cnt_market ? '✓' : '○'; ?></span>
-                RÉSULTATS MARCHÉ <?php echo $cnt_market > 0 ? '<span class="ed-tab-count">' . (int) $cnt_market . '</span>' : ''; ?>
+            <div class="ed-ai-chrome-tab <?php echo $cnt_market
+                ? "completed"
+                : ""; ?>" data-field="market" id="ed-tab-market" style="grid-column: span 5;">
+                <span class="ed-ai-tab-check"><?php echo $cnt_market
+                    ? "✓"
+                    : "○"; ?></span>
+                RÉSULTATS MARCHÉ <?php echo $cnt_market > 0
+                    ? '<span class="ed-tab-count">' .
+                        (int) $cnt_market .
+                        "</span>"
+                    : ""; ?>
             </div>
             <div style="grid-column: span 1;"></div>
-            <div class="ed-ai-chrome-tab <?php echo $cnt_condition ? 'completed' : ''; ?>" data-field="condition" id="ed-tab-condition" style="grid-column: span 3;">
-                <span class="ed-ai-tab-check"><?php echo $cnt_condition ? '✓' : '○'; ?></span> ÉTAT
+            <div class="ed-ai-chrome-tab <?php echo $cnt_condition
+                ? "completed"
+                : ""; ?>" data-field="condition" id="ed-tab-condition" style="grid-column: span 3;">
+                <span class="ed-ai-tab-check"><?php echo $cnt_condition
+                    ? "✓"
+                    : "○"; ?></span> ÉTAT
             </div>
             <div style="grid-column: span 1;"></div>
-            <div class="ed-ai-chrome-tab <?php echo $cnt_questions ? 'completed' : ''; ?>" data-field="questions" id="ed-tab-questions" style="grid-column: span 4;">
-                <span class="ed-ai-tab-check"><?php echo $cnt_questions ? '✓' : '○'; ?></span>
-                QUESTIONS <?php echo $cnt_questions > 0 ? '<span class="ed-tab-count">' . (int) $cnt_questions . '</span>' : ''; ?>
+            <div class="ed-ai-chrome-tab <?php echo $cnt_questions
+                ? "completed"
+                : ""; ?>" data-field="questions" id="ed-tab-questions" style="grid-column: span 4;">
+                <span class="ed-ai-tab-check"><?php echo $cnt_questions
+                    ? "✓"
+                    : "○"; ?></span>
+                QUESTIONS <?php echo $cnt_questions > 0
+                    ? '<span class="ed-tab-count">' .
+                        (int) $cnt_questions .
+                        "</span>"
+                    : ""; ?>
             </div>
             <div style="grid-column: span 1;"></div>
         </div>
         <div class="ed-ai-cartouche" id="ed-ai-cartouche">
             <div class="ed-ai-panel" data-field="identity" id="ai-panel-identity"><?php
-                if ($ai_summary_first) {
-                    echo '<strong>' . esc_html($ai_summary_first) . '</strong>';
-                    if ($ai_summary_rest) echo ' ' . nl2br($lmd_markdown_links($ai_summary_rest));
-                    echo '<br><br>';
+            if ($ai_summary_first) {
+                echo "<strong>" . esc_html($ai_summary_first) . "</strong>";
+                if ($ai_summary_rest) {
+                    echo " " . nl2br($lmd_markdown_links($ai_summary_rest));
                 }
-                $identity_text = $lmd_ai_format($ai_identity);
-                if ($identity_text !== '-') echo nl2br($lmd_markdown_links($identity_text));
+                echo "<br><br>";
+            }
+            $identity_text = $lmd_ai_format($ai_identity);
+            if ($identity_text !== "-") {
+                echo nl2br($lmd_markdown_links($identity_text));
+            }
             ?></div>
-            <div class="ed-ai-panel" data-field="matches" id="ai-panel-matches"><?php
-                if (!empty($correspondances)) :
-                    echo '<h4 class="ed-ai-section-title">Objet à expertiser</h4>';
-                    echo '<div class="ed-correspondances-seller-photos">';
-                    foreach (array_slice($photos, 0, 4) as $idx => $item) :
-                        $raw = is_string($item) ? $item : ($item['url'] ?? $item['file'] ?? $item['path'] ?? '');
-                        if (!$raw) continue;
-                        $img_url = lmd_ed_photo_url($raw);
-                        if (!$img_url) continue;
-                    ?><a href="<?php echo esc_url($img_url); ?>" target="_blank" rel="noopener" class="ed-corresp-seller-thumb"><img src="<?php echo esc_url($img_url); ?>" alt="Photo vendeur <?php echo (int)($idx + 1); ?>"></a><?php
-                    endforeach;
-                    echo '</div>';
-                    echo '<h4 class="ed-ai-section-title">Correspondances trouvées (' . count($correspondances) . ')</h4>';
-                    echo '<div class="ed-correspondances-grid">';
-                    foreach ($correspondances as $i => $c) :
-                        $thumb = $c['thumbnail'] ?? $c['url'] ?? '';
-                        $url = $c['url'] ?? '';
-                        $title = $c['title'] ?? '';
-                        $verdict = $c['verdict'] ?? 'similaire';
-                        $details = trim($c['details'] ?? '');
-                        $notes = trim($c['notes'] ?? '');
-                        $verdict_label = $verdict === 'identique' ? 'Identique' : ($verdict === 'même_modèle' ? 'Même modèle' : ($verdict === 'différent' ? 'Différent' : 'Similaire'));
-                        $verdict_class = $verdict === 'identique' ? 'identique' : ($verdict === 'différent' ? 'different' : ($verdict === 'même_modèle' ? 'meme-modele' : 'similaire'));
+            <div class="ed-ai-panel" data-field="matches" id="ai-panel-matches"><?php if (
+                !empty($correspondances)
+            ):
+                echo '<h4 class="ed-ai-section-title">Objet à expertiser</h4>';
+                echo '<div class="ed-correspondances-seller-photos">';
+                foreach (array_slice($photos, 0, 4) as $idx => $item):
+
+                    $raw = is_string($item)
+                        ? $item
+                        : $item["url"] ??
+                            ($item["file"] ?? ($item["path"] ?? ""));
+                    if (!$raw) {
+                        continue;
+                    }
+                    $img_url = lmd_ed_photo_url($raw);
+                    if (!$img_url) {
+                        continue;
+                    }
+                    ?><a href="<?php echo esc_url(
+    $img_url,
+); ?>" target="_blank" rel="noopener" class="ed-corresp-seller-thumb"><img src="<?php echo esc_url(
+    $img_url,
+); ?>" alt="Photo vendeur <?php echo (int) ($idx + 1); ?>"></a><?php
+                endforeach;
+                echo "</div>";
+                echo '<h4 class="ed-ai-section-title">Correspondances trouvées (' .
+                    count($correspondances) .
+                    ")</h4>";
+                echo '<div class="ed-correspondances-grid">';
+                foreach ($correspondances as $i => $c):
+
+                    $thumb = $c["thumbnail"] ?? ($c["url"] ?? "");
+                    $url = $c["url"] ?? "";
+                    $title = $c["title"] ?? "";
+                    $verdict = $c["verdict"] ?? "similaire";
+                    $details = trim($c["details"] ?? "");
+                    $notes = trim($c["notes"] ?? "");
+                    $verdict_label =
+                        $verdict === "identique"
+                            ? "Identique"
+                            : ($verdict === "même_modèle"
+                                ? "Même modèle"
+                                : ($verdict === "différent"
+                                    ? "Différent"
+                                    : "Similaire"));
+                    $verdict_class =
+                        $verdict === "identique"
+                            ? "identique"
+                            : ($verdict === "différent"
+                                ? "different"
+                                : ($verdict === "même_modèle"
+                                    ? "meme-modele"
+                                    : "similaire"));
                     ?><div class="ed-corresp-item">
-                        <span class="ed-corresp-num"><?php echo (int)($i + 1); ?></span>
-                        <a href="<?php echo esc_url($url); ?>" target="_blank" rel="noopener" class="ed-corresp-link" title="<?php echo esc_attr($title); ?>">
-                            <?php if ($thumb) : ?><img src="<?php echo esc_url($thumb); ?>" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block';"><span class="ed-corresp-placeholder" style="display:none;"><?php echo esc_html(substr($title, 0, 20)); ?></span><?php else : ?><span class="ed-corresp-placeholder"><?php echo esc_html(substr($title, 0, 30)); ?></span><?php endif; ?>
+                        <span class="ed-corresp-num"><?php echo (int) ($i +
+                            1); ?></span>
+                        <a href="<?php echo esc_url(
+                            $url,
+                        ); ?>" target="_blank" rel="noopener" class="ed-corresp-link" title="<?php echo esc_attr(
+    $title,
+); ?>">
+                            <?php if ($thumb): ?><img src="<?php echo esc_url(
+    $thumb,
+); ?>" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block';"><span class="ed-corresp-placeholder" style="display:none;"><?php echo esc_html(
+    substr($title, 0, 20),
+); ?></span><?php else: ?><span class="ed-corresp-placeholder"><?php echo esc_html(
+    substr($title, 0, 30),
+); ?></span><?php endif; ?>
                         </a>
-                        <span class="ed-corresp-verdict ed-corresp-verdict-<?php echo esc_attr($verdict_class); ?>" <?php echo $details ? ' title="' . esc_attr($details) . '"' : ''; ?>><?php echo $verdict === 'identique' ? '✓' : ($verdict === 'différent' ? '✗' : '~'); ?> <?php echo esc_html($verdict_label); ?></span>
+                        <span class="ed-corresp-verdict ed-corresp-verdict-<?php echo esc_attr(
+                            $verdict_class,
+                        ); ?>" <?php echo $details
+    ? ' title="' . esc_attr($details) . '"'
+    : ""; ?>><?php echo $verdict === "identique"
+    ? "✓"
+    : ($verdict === "différent"
+        ? "✗"
+        : "~"); ?> <?php echo esc_html($verdict_label); ?></span>
                         <div class="ed-corresp-content">
-                            <?php if ($details) : ?><p class="ed-corresp-details"><?php echo nl2br(esc_html($details)); ?></p><?php endif; ?>
-                            <?php if ($url) : ?><a href="<?php echo esc_url($url); ?>" target="_blank" rel="noopener" class="ed-corresp-url"><?php echo esc_html(parse_url($url, PHP_URL_HOST) ?: $url); ?></a><?php endif; ?>
-                            <?php if ($notes) : ?><p class="ed-corresp-notes" title="Contenu scrapé (lien possiblement inaccessible)"><?php echo nl2br(esc_html($notes)); ?></p><?php endif; ?>
+                            <?php if (
+                                $details
+                            ): ?><p class="ed-corresp-details"><?php echo nl2br(
+    esc_html($details),
+); ?></p><?php endif; ?>
+                            <?php if ($url): ?><a href="<?php echo esc_url(
+    $url,
+); ?>" target="_blank" rel="noopener" class="ed-corresp-url"><?php echo esc_html(
+    parse_url($url, PHP_URL_HOST) ?: $url,
+); ?></a><?php endif; ?>
+                            <?php if (
+                                $notes
+                            ): ?><p class="ed-corresp-notes" title="Contenu scrapé (lien possiblement inaccessible)"><?php echo nl2br(
+    esc_html($notes),
+); ?></p><?php endif; ?>
         </div>
                     </div><?php
-                    endforeach;
-                    echo '</div>';
-                else :
-                    $legacy_matches = $ai['matches'] ?? '';
-                    echo nl2br(esc_html($lmd_ai_format($legacy_matches) !== '-' ? $lmd_ai_format($legacy_matches) : 'Aucune correspondance trouvée.'));
-                endif;
-            ?></div>
-            <div class="ed-ai-panel" data-field="market" id="ai-panel-market"><?php
-                if (!empty($market_results)) :
-                    echo '<div class="ed-market-results-list">';
-                    foreach ($market_results as $i => $mr) :
-                        $title = $mr['title'] ?? '';
-                        $url = $mr['url'] ?? $mr['link'] ?? '';
-                        $price = $mr['price'] ?? '';
-                        $source = $mr['source'] ?? '';
-                        $relevance = $mr['relevance'] ?? '';
-                        $notes = $mr['notes'] ?? '';
+                endforeach;
+                echo "</div>";
+            else:
+                $legacy_matches = $ai["matches"] ?? "";
+                echo nl2br(
+                    esc_html(
+                        $lmd_ai_format($legacy_matches) !== "-"
+                            ? $lmd_ai_format($legacy_matches)
+                            : "Aucune correspondance trouvée.",
+                    ),
+                );
+            endif; ?></div>
+            <div class="ed-ai-panel" data-field="market" id="ai-panel-market"><?php if (
+                !empty($market_results)
+            ):
+                echo '<div class="ed-market-results-list">';
+                foreach ($market_results as $i => $mr):
+
+                    $title = $mr["title"] ?? "";
+                    $url = $mr["url"] ?? ($mr["link"] ?? "");
+                    $price = $mr["price"] ?? "";
+                    $source = $mr["source"] ?? "";
+                    $relevance = $mr["relevance"] ?? "";
+                    $notes = $mr["notes"] ?? "";
                     ?><div class="ed-market-item">
-                        <?php if ($title || $url) : ?><?php if ($url) : ?><a href="<?php echo esc_url($url); ?>" target="_blank" rel="noopener"><?php echo esc_html($title ?: parse_url($url, PHP_URL_HOST)); ?></a><?php else : ?><span class="ed-market-title"><?php echo esc_html($title ?: 'Référence'); ?></span><?php endif; ?><?php endif; ?>
-                        <?php if ($price) : ?><span class="ed-market-price"><?php echo esc_html($price); ?></span><?php endif; ?>
-                        <?php if ($source) : ?><span class="ed-market-source"><?php echo esc_html($source); ?></span><?php endif; ?>
-                        <?php if ($relevance) : ?><span class="ed-market-relevance"><?php echo esc_html($relevance); ?></span><?php endif; ?>
-                        <?php if ($notes) : ?><p class="ed-market-notes"><?php echo nl2br($lmd_markdown_links($notes)); ?></p><?php endif; ?>
+                        <?php if ($title || $url):
+                            if ($url): ?><a href="<?php echo esc_url(
+    $url,
+); ?>" target="_blank" rel="noopener"><?php echo esc_html(
+    $title ?: parse_url($url, PHP_URL_HOST),
+); ?></a><?php else: ?><span class="ed-market-title"><?php echo esc_html(
+    $title ?: "Référence",
+); ?></span><?php endif;
+                        endif; ?>
+                        <?php if (
+                            $price
+                        ): ?><span class="ed-market-price"><?php echo esc_html(
+    $price,
+); ?></span><?php endif; ?>
+                        <?php if (
+                            $source
+                        ): ?><span class="ed-market-source"><?php echo esc_html(
+    $source,
+); ?></span><?php endif; ?>
+                        <?php if (
+                            $relevance
+                        ): ?><span class="ed-market-relevance"><?php echo esc_html(
+    $relevance,
+); ?></span><?php endif; ?>
+                        <?php if (
+                            $notes
+                        ): ?><p class="ed-market-notes"><?php echo nl2br(
+    $lmd_markdown_links($notes),
+); ?></p><?php endif; ?>
                     </div><?php
-                    endforeach;
-                    echo '</div>';
-                else :
-                    echo nl2br($lmd_markdown_links($lmd_ai_format($ai_market_legacy) !== '-' ? $lmd_ai_format($ai_market_legacy) : 'Aucun résultat marché.'));
-                endif;
-            ?></div>
+                endforeach;
+                echo "</div>";
+            else:
+                echo nl2br(
+                    $lmd_markdown_links(
+                        $lmd_ai_format($ai_market_legacy) !== "-"
+                            ? $lmd_ai_format($ai_market_legacy)
+                            : "Aucun résultat marché.",
+                    ),
+                );
+            endif; ?></div>
             <div class="ed-ai-panel" data-field="condition" id="ai-panel-condition"><?php
-                if ($has_smp && !empty($smp)) :
-                    echo '<h4 class="ed-ai-section-title">Signatures / Marques / Poinçons (analyse des photos)</h4>';
-                    echo '<ul class="ed-condition-smp-list">';
-                    foreach ($smp as $item) :
-                        $idx = (int) ($item['photo_index'] ?? 0);
-                        $types = $item['types'] ?? [];
-                        $desc = esc_html($item['description'] ?? '');
-                        $labels = array_map(function($t) {
-                            return $t === 'signature' ? 'Signature' : ($t === 'marque' ? 'Marque' : ($t === 'poincon' ? 'Poinçon' : $t));
-                        }, $types);
-                        $type_str = !empty($labels) ? ' [' . implode(', ', $labels) . ']' : '';
-                        echo '<li><strong>Photo ' . (int)($idx + 1) . '</strong>' . ($type_str ? ' ' . esc_html($type_str) : '') . ': ' . $desc . '</li>';
-                    endforeach;
-                    echo '</ul>';
-                    if (trim($ai_condition)) echo '<h4 class="ed-ai-section-title" style="margin-top:16px;">État général</h4>';
-                endif;
-                echo nl2br(esc_html($lmd_ai_format($ai_condition) !== '-' ? $lmd_ai_format($ai_condition) : ($has_smp && !empty($smp) ? '' : '-')));
+            if ($has_smp && !empty($smp)):
+                echo '<h4 class="ed-ai-section-title">Signatures / Marques / Poinçons (analyse des photos)</h4>';
+                echo '<ul class="ed-condition-smp-list">';
+                foreach ($smp as $item):
+                    $idx = (int) ($item["photo_index"] ?? 0);
+                    $types = $item["types"] ?? [];
+                    $desc = esc_html($item["description"] ?? "");
+                    $labels = array_map(function ($t) {
+                        return $t === "signature"
+                            ? "Signature"
+                            : ($t === "marque"
+                                ? "Marque"
+                                : ($t === "poincon"
+                                    ? "Poinçon"
+                                    : $t));
+                    }, $types);
+                    $type_str = !empty($labels)
+                        ? " [" . implode(", ", $labels) . "]"
+                        : "";
+                    echo "<li><strong>Photo " .
+                        (int) ($idx + 1) .
+                        "</strong>" .
+                        ($type_str ? " " . esc_html($type_str) : "") .
+                        ": " .
+                        $desc .
+                        "</li>";
+                endforeach;
+                echo "</ul>";
+                if (trim($ai_condition)) {
+                    echo '<h4 class="ed-ai-section-title" style="margin-top:16px;">État général</h4>';
+                }
+            endif;
+            echo nl2br(
+                esc_html(
+                    $lmd_ai_format($ai_condition) !== "-"
+                        ? $lmd_ai_format($ai_condition)
+                        : ($has_smp && !empty($smp)
+                            ? ""
+                            : "-"),
+                ),
+            );
             ?></div>
-            <div class="ed-ai-panel" data-field="questions" id="ai-panel-questions"><?php
-                if (!empty($ai_questions)) :
-                    echo '<ul class="ed-questions-list">';
-                    foreach ($ai_questions as $q) :
-                        $q = trim((string) $q);
-                        if ($q !== '') echo '<li>' . esc_html($q) . '</li>';
-                    endforeach;
-                    echo '</ul>';
-                else :
-                    echo nl2br(esc_html($lmd_ai_format($ai_questions) !== '-' ? $lmd_ai_format($ai_questions) : 'Aucune question.'));
-                endif;
-            ?></div>
+            <div class="ed-ai-panel" data-field="questions" id="ai-panel-questions"><?php if (
+                !empty($ai_questions)
+            ):
+                echo '<ul class="ed-questions-list">';
+                foreach ($ai_questions as $q):
+                    $q = trim((string) $q);
+                    if ($q !== "") {
+                        echo "<li>" . esc_html($q) . "</li>";
+                    }
+                endforeach;
+                echo "</ul>";
+            else:
+                echo nl2br(
+                    esc_html(
+                        $lmd_ai_format($ai_questions) !== "-"
+                            ? $lmd_ai_format($ai_questions)
+                            : "Aucune question.",
+                    ),
+                );
+            endif; ?></div>
     </div>
         </div>
     </div>
@@ -1214,19 +2049,31 @@ foreach ($tags_right as $type) :
 
 <script>
 var lmdEdMailto = <?php echo wp_json_encode([
-    'copyEmails' => array_values(array_filter($cp_for_mailto['copy_emails'] ?? [])),
-    'bccExcludeSlugs' => array_values($bcc_exclude_slugs_mail),
-    'interetSlug' => (string) $interet_slug,
-    'estimationSlug' => (string) $estimation_slug,
-    'signatureHtml' => (string) ($cp_for_mailto['signature'] ?? ''),
+    "copyEmails" => array_values(
+        array_filter($cp_for_mailto["copy_emails"] ?? []),
+    ),
+    "bccExcludeSlugs" => array_values($bcc_exclude_slugs_mail),
+    "interetSlug" => (string) $interet_slug,
+    "estimationSlug" => (string) $estimation_slug,
+    "signatureHtml" => (string) ($cp_for_mailto["signature"] ?? ""),
 ]); ?>;
 (function($){
-    var ajaxurl = typeof lmdAdmin !== 'undefined' ? lmdAdmin.ajaxurl : '<?php echo esc_js(admin_url("admin-ajax.php")); ?>';
-    var nonce = typeof lmdAdmin !== 'undefined' ? lmdAdmin.nonce : '<?php echo wp_create_nonce("lmd_admin"); ?>';
+    var ajaxurl = typeof lmdAdmin !== 'undefined' ? lmdAdmin.ajaxurl : '<?php echo esc_js(
+        admin_url("admin-ajax.php"),
+    ); ?>';
+    var nonce = typeof lmdAdmin !== 'undefined' ? lmdAdmin.nonce : '<?php echo wp_create_nonce(
+        "lmd_admin",
+    ); ?>';
     var estId = <?php echo (int) $id; ?>;
-    var hasAi = <?php echo $has_ai ? 'true' : 'false'; ?>;
+    var hasAi = <?php echo $has_ai ? "true" : "false"; ?>;
     var currentOpinion = <?php echo (int) $opinion; ?>;
-    var themeOptsForModal = <?php echo json_encode(function_exists('lmd_get_theme_vente_options_merged') ? array_map(function($o){ return ['slug'=>$o['slug'],'name'=>$o['name']]; }, lmd_get_theme_vente_options_merged()) : []); ?>;
+    var themeOptsForModal = <?php echo json_encode(
+        function_exists("lmd_get_theme_vente_options_merged")
+            ? array_map(function ($o) {
+                return ["slug" => $o["slug"], "name" => $o["name"]];
+            }, lmd_get_theme_vente_options_merged())
+            : [],
+    ); ?>;
 
     function lmdShowMessage(title, message, onClose) {
         var $overlay = $('<div class="ed-ai-feedback-overlay"><div class="ed-ai-feedback-card"><div class="ed-ai-feedback-title">' + (title || 'Information').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div><div class="ed-ai-feedback-sub">' + (message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div><div class="ed-ai-explain-actions" style="margin-top:20px;"><button type="button" class="ed-ai-btn ed-ai-msg-ok">OK</button></div></div></div>');
@@ -1663,7 +2510,7 @@ var lmdEdMailto = <?php echo wp_json_encode([
 
     $('#ed-ai-launch-btn, #ed-ai-launch-btn-2').on('click', function(e){ startAnalysis(e); });
 
-    <?php if ($is_analyzing) : ?>
+    <?php if ($is_analyzing): ?>
     (function startPollingOnLoad(){
         var id = estId;
         var $btn = $('#ed-ai-launch-btn-2');

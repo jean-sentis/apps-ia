@@ -3,185 +3,387 @@
  * Vue Liste des estimations - Grille de cartes avec filtres tags
  * Style inspiré des demandes d'estimation (Lovable)
  */
-if (!defined('ABSPATH')) {
-    exit;
+if (!defined("ABSPATH")) {
+    exit();
 }
 $db = new LMD_Database();
 $db->ensure_tags_seeded();
 
-$status = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
-$search = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
-$grid_cols = isset($_GET['cols']) ? absint($_GET['cols']) : 0;
+$status = isset($_GET["status"]) ? sanitize_text_field($_GET["status"]) : "";
+$search = isset($_GET["s"]) ? sanitize_text_field($_GET["s"]) : "";
+$grid_cols = isset($_GET["cols"]) ? absint($_GET["cols"]) : 0;
 if (!in_array($grid_cols, [3, 4, 5], true)) {
     $grid_cols = 5;
 }
-$filter_message = isset($_GET['filter_message']) ? (array) $_GET['filter_message'] : [];
-$filter_interet = isset($_GET['filter_interet']) ? (array) $_GET['filter_interet'] : [];
-$filter_estimation = isset($_GET['filter_estimation']) ? (array) $_GET['filter_estimation'] : [];
-$filter_theme_vente = isset($_GET['filter_theme_vente']) ? (array) $_GET['filter_theme_vente'] : [];
-$filter_date_vente = isset($_GET['filter_date_vente']) ? (array) $_GET['filter_date_vente'] : [];
-$filter_vendeur = isset($_GET['filter_vendeur']) ? (array) $_GET['filter_vendeur'] : [];
-$filter_date_envoi_from = isset($_GET['filter_date_envoi_from']) ? sanitize_text_field($_GET['filter_date_envoi_from']) : '';
-$filter_date_envoi_to = isset($_GET['filter_date_envoi_to']) ? sanitize_text_field($_GET['filter_date_envoi_to']) : '';
-$filter_message = array_filter(array_map('sanitize_text_field', $filter_message));
-$filter_interet = array_filter(array_map('sanitize_text_field', $filter_interet));
-$filter_estimation = array_filter(array_map('sanitize_text_field', $filter_estimation));
-$filter_theme_vente = array_filter(array_map('sanitize_text_field', $filter_theme_vente));
-$filter_date_vente = array_filter(array_map('sanitize_text_field', $filter_date_vente));
-$filter_vendeur = array_filter(array_map('sanitize_text_field', $filter_vendeur));
+$filter_message = isset($_GET["filter_message"])
+    ? (array) $_GET["filter_message"]
+    : [];
+$filter_interet = isset($_GET["filter_interet"])
+    ? (array) $_GET["filter_interet"]
+    : [];
+$filter_estimation = isset($_GET["filter_estimation"])
+    ? (array) $_GET["filter_estimation"]
+    : [];
+$filter_theme_vente = isset($_GET["filter_theme_vente"])
+    ? (array) $_GET["filter_theme_vente"]
+    : [];
+$filter_date_vente = isset($_GET["filter_date_vente"])
+    ? (array) $_GET["filter_date_vente"]
+    : [];
+$filter_vendeur = isset($_GET["filter_vendeur"])
+    ? (array) $_GET["filter_vendeur"]
+    : [];
+$filter_date_envoi_from = isset($_GET["filter_date_envoi_from"])
+    ? sanitize_text_field($_GET["filter_date_envoi_from"])
+    : "";
+$filter_date_envoi_to = isset($_GET["filter_date_envoi_to"])
+    ? sanitize_text_field($_GET["filter_date_envoi_to"])
+    : "";
+$filter_message = array_filter(
+    array_map("sanitize_text_field", $filter_message),
+);
+$filter_interet = array_filter(
+    array_map("sanitize_text_field", $filter_interet),
+);
+$filter_estimation = array_filter(
+    array_map("sanitize_text_field", $filter_estimation),
+);
+$filter_theme_vente = array_filter(
+    array_map("sanitize_text_field", $filter_theme_vente),
+);
+$filter_date_vente = array_filter(
+    array_map("sanitize_text_field", $filter_date_vente),
+);
+$filter_vendeur = array_filter(
+    array_map("sanitize_text_field", $filter_vendeur),
+);
 
-$prefs = function_exists('lmd_get_prefs') ? lmd_get_prefs() : [];
+$prefs = function_exists("lmd_get_prefs") ? lmd_get_prefs() : [];
 $get_args = [
-    'status' => $status,
-    'search' => $search,
-    'filter_message' => $filter_message,
-    'filter_interet' => $filter_interet,
-    'filter_estimation' => $filter_estimation,
-    'filter_theme_vente' => $filter_theme_vente,
-    'filter_date_vente' => $filter_date_vente,
-    'filter_vendeur' => $filter_vendeur,
-    'filter_date_envoi_from' => $filter_date_envoi_from,
-    'filter_date_envoi_to' => $filter_date_envoi_to,
-    'limit' => 100,
+    "status" => $status,
+    "search" => $search,
+    "filter_message" => $filter_message,
+    "filter_interet" => $filter_interet,
+    "filter_estimation" => $filter_estimation,
+    "filter_theme_vente" => $filter_theme_vente,
+    "filter_date_vente" => $filter_date_vente,
+    "filter_vendeur" => $filter_vendeur,
+    "filter_date_envoi_from" => $filter_date_envoi_from,
+    "filter_date_envoi_to" => $filter_date_envoi_to,
+    "limit" => 100,
 ];
-if (!empty($prefs['display_last_n']) || !empty($prefs['display_include_unanswered']) || !empty($prefs['display_older_than_days'])) {
-    $get_args['pref_display_last_n'] = (int) ($prefs['display_last_n'] ?? 50);
-    $get_args['pref_display_include_unanswered'] = !empty($prefs['display_include_unanswered']);
-    $get_args['pref_display_older_than_days'] = (int) ($prefs['display_older_than_days'] ?? 0);
+if (
+    !empty($prefs["display_last_n"]) ||
+    !empty($prefs["display_include_unanswered"]) ||
+    !empty($prefs["display_older_than_days"])
+) {
+    $get_args["pref_display_last_n"] = (int) ($prefs["display_last_n"] ?? 50);
+    $get_args["pref_display_include_unanswered"] = !empty(
+        $prefs["display_include_unanswered"]
+    );
+    $get_args["pref_display_older_than_days"] =
+        (int) ($prefs["display_older_than_days"] ?? 0);
 }
-if (!empty($prefs['excluded_theme_slugs'])) {
-    $get_args['pref_excluded_theme_slugs'] = $prefs['excluded_theme_slugs'];
+if (!empty($prefs["excluded_theme_slugs"])) {
+    $get_args["pref_excluded_theme_slugs"] = $prefs["excluded_theme_slugs"];
 }
 $counts_exchanges = $db->get_estimation_counts_exchanges();
 $estimations = $db->get_estimations($get_args);
 
-$categories = function_exists('lmd_get_tag_categories') ? lmd_get_tag_categories() : [];
-$opts_message = array_values(array_filter($categories['message']['options'] ?? [], function ($o) {
-    return ($o['slug'] ?? '') !== 'en_attente';
-}));
-$opts_interet = $categories['interet']['options'] ?? [];
-$opts_estimation = $categories['estimation']['options'] ?? [];
-$opts_theme_vente = $categories['theme_vente']['options'] ?? [];
-$opts_date_vente = $db->get_tag_options_for_type('date_vente');
-$opts_vendeur = $db->get_tag_options_for_type('vendeur');
+$categories = function_exists("lmd_get_tag_categories")
+    ? lmd_get_tag_categories()
+    : [];
+$opts_message = array_values(
+    array_filter($categories["message"]["options"] ?? [], function ($o) {
+        return ($o["slug"] ?? "") !== "en_attente";
+    }),
+);
+$opts_interet = $categories["interet"]["options"] ?? [];
+$opts_estimation = $categories["estimation"]["options"] ?? [];
+$opts_theme_vente = $categories["theme_vente"]["options"] ?? [];
+$opts_date_vente = $db->get_tag_options_for_type("date_vente");
+$opts_vendeur = $db->get_tag_options_for_type("vendeur");
 
-function lmd_filter_clear_url($exclude_name) {
-    $params = ['page' => 'lmd-estimations-list'];
-    $names = ['filter_message','filter_interet','filter_estimation','filter_theme_vente','filter_date_vente','filter_vendeur','filter_date_envoi_from','filter_date_envoi_to'];
-    $skip_date = ($exclude_name === 'filter_date_envoi' || $exclude_name === 'filter_date_envoi_from' || $exclude_name === 'filter_date_envoi_to');
+function lmd_filter_clear_url($exclude_name)
+{
+    $params = ["page" => "lmd-estimations-list"];
+    $names = [
+        "filter_message",
+        "filter_interet",
+        "filter_estimation",
+        "filter_theme_vente",
+        "filter_date_vente",
+        "filter_vendeur",
+        "filter_date_envoi_from",
+        "filter_date_envoi_to",
+    ];
+    $skip_date =
+        $exclude_name === "filter_date_envoi" ||
+        $exclude_name === "filter_date_envoi_from" ||
+        $exclude_name === "filter_date_envoi_to";
     foreach ($names as $n) {
-        if ($n === $exclude_name) continue;
-        if ($skip_date && ($n === 'filter_date_envoi_from' || $n === 'filter_date_envoi_to')) continue;
+        if ($n === $exclude_name) {
+            continue;
+        }
+        if (
+            $skip_date &&
+            ($n === "filter_date_envoi_from" || $n === "filter_date_envoi_to")
+        ) {
+            continue;
+        }
         $v = isset($_GET[$n]) ? $_GET[$n] : null;
-        if ($v !== null && $v !== '') $params[$n] = $v;
+        if ($v !== null && $v !== "") {
+            $params[$n] = $v;
+        }
     }
-    if (!empty($_GET['s'])) $params['s'] = sanitize_text_field($_GET['s']);
-    if (!empty($_GET['status'])) $params['status'] = sanitize_text_field($_GET['status']);
-    if (isset($_GET['cols']) && in_array((int) $_GET['cols'], [3, 4, 5], true)) $params['cols'] = (int) $_GET['cols'];
-    return admin_url('admin.php?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986));
+    if (!empty($_GET["s"])) {
+        $params["s"] = sanitize_text_field($_GET["s"]);
+    }
+    if (!empty($_GET["status"])) {
+        $params["status"] = sanitize_text_field($_GET["status"]);
+    }
+    if (
+        isset($_GET["cols"]) &&
+        in_array((int) $_GET["cols"], [3, 4, 5], true)
+    ) {
+        $params["cols"] = (int) $_GET["cols"];
+    }
+    return admin_url(
+        "admin.php?" . http_build_query($params, "", "&", PHP_QUERY_RFC3986),
+    );
 }
 
-function lmd_grid_cols_url($cols) {
-    $params = ['page' => 'lmd-estimations-list', 'cols' => $cols];
-    $names = ['filter_message','filter_interet','filter_estimation','filter_theme_vente','filter_date_vente','filter_vendeur','filter_date_envoi_from','filter_date_envoi_to'];
+function lmd_grid_cols_url($cols)
+{
+    $params = ["page" => "lmd-estimations-list", "cols" => $cols];
+    $names = [
+        "filter_message",
+        "filter_interet",
+        "filter_estimation",
+        "filter_theme_vente",
+        "filter_date_vente",
+        "filter_vendeur",
+        "filter_date_envoi_from",
+        "filter_date_envoi_to",
+    ];
     foreach ($names as $n) {
         $v = isset($_GET[$n]) ? $_GET[$n] : null;
-        if ($v !== null && $v !== '') $params[$n] = $v;
+        if ($v !== null && $v !== "") {
+            $params[$n] = $v;
+        }
     }
-    if (!empty($_GET['s'])) $params['s'] = sanitize_text_field($_GET['s']);
-    if (!empty($_GET['status'])) $params['status'] = sanitize_text_field($_GET['status']);
-    if (isset($_GET['cols']) && in_array((int) $_GET['cols'], [3, 4, 5], true)) $params['cols'] = (int) $_GET['cols'];
-    return admin_url('admin.php?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986));
+    if (!empty($_GET["s"])) {
+        $params["s"] = sanitize_text_field($_GET["s"]);
+    }
+    if (!empty($_GET["status"])) {
+        $params["status"] = sanitize_text_field($_GET["status"]);
+    }
+    if (
+        isset($_GET["cols"]) &&
+        in_array((int) $_GET["cols"], [3, 4, 5], true)
+    ) {
+        $params["cols"] = (int) $_GET["cols"];
+    }
+    return admin_url(
+        "admin.php?" . http_build_query($params, "", "&", PHP_QUERY_RFC3986),
+    );
 }
 
-function lmd_filter_remove_one_url($name, $slug) {
-    $params = ['page' => 'lmd-estimations-list'];
-    $names = ['filter_message','filter_interet','filter_estimation','filter_theme_vente','filter_date_vente','filter_vendeur'];
+function lmd_filter_remove_one_url($name, $slug)
+{
+    $params = ["page" => "lmd-estimations-list"];
+    $names = [
+        "filter_message",
+        "filter_interet",
+        "filter_estimation",
+        "filter_theme_vente",
+        "filter_date_vente",
+        "filter_vendeur",
+    ];
     foreach ($names as $n) {
         $v = isset($_GET[$n]) ? (array) $_GET[$n] : [];
         if ($n === $name) {
-            $v = array_values(array_filter($v, function($x) use ($slug) { return $x !== $slug; }));
-            if (!empty($v)) $params[$n] = $v;
+            $v = array_values(
+                array_filter($v, function ($x) use ($slug) {
+                    return $x !== $slug;
+                }),
+            );
+            if (!empty($v)) {
+                $params[$n] = $v;
+            }
         } elseif (!empty($v)) {
             $params[$n] = $v;
         }
     }
-    if ($name !== 'filter_date_envoi') {
-        foreach (['filter_date_envoi_from','filter_date_envoi_to'] as $dn) {
-            $dv = isset($_GET[$dn]) ? sanitize_text_field($_GET[$dn]) : '';
-            if ($dv !== '') $params[$dn] = $dv;
+    if ($name !== "filter_date_envoi") {
+        foreach (["filter_date_envoi_from", "filter_date_envoi_to"] as $dn) {
+            $dv = isset($_GET[$dn]) ? sanitize_text_field($_GET[$dn]) : "";
+            if ($dv !== "") {
+                $params[$dn] = $dv;
+            }
         }
     }
-    if (!empty($_GET['s'])) $params['s'] = sanitize_text_field($_GET['s']);
-    if (!empty($_GET['status'])) $params['status'] = sanitize_text_field($_GET['status']);
-    if (isset($_GET['cols']) && in_array((int) $_GET['cols'], [3, 4, 5], true)) $params['cols'] = (int) $_GET['cols'];
-    return admin_url('admin.php?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986));
+    if (!empty($_GET["s"])) {
+        $params["s"] = sanitize_text_field($_GET["s"]);
+    }
+    if (!empty($_GET["status"])) {
+        $params["status"] = sanitize_text_field($_GET["status"]);
+    }
+    if (
+        isset($_GET["cols"]) &&
+        in_array((int) $_GET["cols"], [3, 4, 5], true)
+    ) {
+        $params["cols"] = (int) $_GET["cols"];
+    }
+    return admin_url(
+        "admin.php?" . http_build_query($params, "", "&", PHP_QUERY_RFC3986),
+    );
 }
 
-function lmd_filter_dropdown($name, $label, $opts, $selected, $type, $is_obj = false, $opts_ui = []) {
+function lmd_filter_dropdown(
+    $name,
+    $label,
+    $opts,
+    $selected,
+    $type,
+    $is_obj = false,
+    $opts_ui = [],
+) {
     $has_selection = count($selected) > 0;
-    $colors = function_exists('lmd_get_tag_filter_colors') ? lmd_get_tag_filter_colors($type, $selected[0] ?? '') : ['border' => '#22c55e'];
-    $border = $has_selection ? ($colors['border'] ?? '#22c55e') : '#e5e7eb';
+    $colors = function_exists("lmd_get_tag_filter_colors")
+        ? lmd_get_tag_filter_colors($type, $selected[0] ?? "")
+        : ["border" => "#22c55e"];
+    $border = $has_selection ? $colors["border"] ?? "#22c55e" : "#e5e7eb";
     $clear_url = lmd_filter_clear_url($name);
-    $panel_min = isset($opts_ui['panel_min_width']) ? (int) $opts_ui['panel_min_width'] : 180;
-    $sort_criterion = $opts_ui['sort_criterion'] ?? null;
+    $panel_min = isset($opts_ui["panel_min_width"])
+        ? (int) $opts_ui["panel_min_width"]
+        : 180;
+    $sort_criterion = $opts_ui["sort_criterion"] ?? null;
     ob_start();
     ?>
-    <div class="lmd-filter-dropdown" data-name="<?php echo esc_attr($name); ?>" data-panel-min-width="<?php echo esc_attr($panel_min); ?>"<?php echo $sort_criterion ? ' data-sort-criterion="' . esc_attr($sort_criterion) . '"' : ''; ?>>
-        <button type="button" class="lmd-filter-dropdown-trigger lmd-filter-trigger-compact" style="border-left-color:<?php echo esc_attr($border); ?>">
-            <span class="lmd-filter-dd-name"><?php echo esc_html($label); ?></span>
+    <div class="lmd-filter-dropdown" data-name="<?php echo esc_attr(
+        $name,
+    ); ?>" data-panel-min-width="<?php echo esc_attr(
+    $panel_min,
+); ?>"<?php echo $sort_criterion
+    ? ' data-sort-criterion="' . esc_attr($sort_criterion) . '"'
+    : ""; ?>>
+        <button type="button" class="lmd-filter-dropdown-trigger lmd-filter-trigger-compact" style="border-left-color:<?php echo esc_attr(
+            $border,
+        ); ?>">
+            <span class="lmd-filter-dd-name"><?php echo esc_html(
+                $label,
+            ); ?></span>
             <span class="lmd-filter-dd-arrow">▾</span>
         </button>
         <div class="lmd-filter-dropdown-panel">
             <div class="lmd-filter-opt-tous-row">
-                <a href="<?php echo esc_url($clear_url); ?>" class="lmd-filter-opt lmd-filter-opt-tous">Tous</a>
-                <?php if ($sort_criterion) : ?>
+                <a href="<?php echo esc_url(
+                    $clear_url,
+                ); ?>" class="lmd-filter-opt lmd-filter-opt-tous">Tous</a>
+                <?php if ($sort_criterion): ?>
                 <span class="lmd-sort-arrows">
                     <button type="button" class="lmd-sort-btn" data-sort-asc="1" title="Tri croissant">↑</button>
                     <button type="button" class="lmd-sort-btn" data-sort-asc="0" title="Tri décroissant">↓</button>
                 </span>
                 <?php endif; ?>
             </div>
+            <?php if ($is_obj) {
+                foreach ($opts as $o):
+
+                    $s = $o->slug;
+                    $n = $o->name;
+                    $c = function_exists("lmd_get_tag_filter_colors")
+                        ? lmd_get_tag_filter_colors($type)
+                        : ["bg" => "#f9fafb", "text" => "#374151"];
+                    $checked = in_array($s, $selected);
+                    ?>
+            <label class="lmd-filter-opt <?php echo $checked
+                ? "selected"
+                : ""; ?>"><input type="checkbox" name="<?php echo esc_attr(
+    $name,
+); ?>[]" value="<?php echo esc_attr($s); ?>" <?php checked(
+    $checked,
+); ?>><span class="lmd-filter-opt-txt" style="--opt-bg:<?php echo esc_attr(
+    $c["bg"],
+); ?>;--opt-text:<?php echo esc_attr(
+    $c["text"],
+); ?>;--opt-border:<?php echo esc_attr(
+    $c["border"] ?? $c["bg"],
+); ?>"><?php echo esc_html($n); ?></span></label>
             <?php
-            if ($is_obj) {
-                foreach ($opts as $o) :
-                    $s = $o->slug; $n = $o->name;
-                    $c = function_exists('lmd_get_tag_filter_colors') ? lmd_get_tag_filter_colors($type) : ['bg'=>'#f9fafb','text'=>'#374151'];
-                    $checked = in_array($s, $selected);
-            ?>
-            <label class="lmd-filter-opt <?php echo $checked ? 'selected' : ''; ?>"><input type="checkbox" name="<?php echo esc_attr($name); ?>[]" value="<?php echo esc_attr($s); ?>" <?php checked($checked); ?>><span class="lmd-filter-opt-txt" style="--opt-bg:<?php echo esc_attr($c['bg']); ?>;--opt-text:<?php echo esc_attr($c['text']); ?>;--opt-border:<?php echo esc_attr($c['border'] ?? $c['bg']); ?>"><?php echo esc_html($n); ?></span></label>
-            <?php endforeach;
+                endforeach;
             } else {
-                foreach ($opts as $o) :
-                    $s = $o['slug'] ?? ''; $n = $o['name'] ?? $s;
-                    $c = function_exists('lmd_get_tag_filter_colors') ? lmd_get_tag_filter_colors($type, $s) : ['bg'=>'#f9fafb','text'=>'#374151','border'=>'#e5e7eb'];
+                foreach ($opts as $o):
+
+                    $s = $o["slug"] ?? "";
+                    $n = $o["name"] ?? $s;
+                    $c = function_exists("lmd_get_tag_filter_colors")
+                        ? lmd_get_tag_filter_colors($type, $s)
+                        : [
+                            "bg" => "#f9fafb",
+                            "text" => "#374151",
+                            "border" => "#e5e7eb",
+                        ];
                     $checked = in_array($s, $selected);
-            ?>
-            <label class="lmd-filter-opt <?php echo $checked ? 'selected' : ''; ?>"><input type="checkbox" name="<?php echo esc_attr($name); ?>[]" value="<?php echo esc_attr($s); ?>" <?php checked($checked); ?>><span class="lmd-filter-opt-txt" style="--opt-bg:<?php echo esc_attr($c['bg']); ?>;--opt-text:<?php echo esc_attr($c['text']); ?>;--opt-border:<?php echo esc_attr($c['border'] ?? $c['bg']); ?>"><?php echo esc_html($n); ?></span></label>
-            <?php endforeach; } ?>
+                    ?>
+            <label class="lmd-filter-opt <?php echo $checked
+                ? "selected"
+                : ""; ?>"><input type="checkbox" name="<?php echo esc_attr(
+    $name,
+); ?>[]" value="<?php echo esc_attr($s); ?>" <?php checked(
+    $checked,
+); ?>><span class="lmd-filter-opt-txt" style="--opt-bg:<?php echo esc_attr(
+    $c["bg"],
+); ?>;--opt-text:<?php echo esc_attr(
+    $c["text"],
+); ?>;--opt-border:<?php echo esc_attr(
+    $c["border"] ?? $c["bg"],
+); ?>"><?php echo esc_html($n); ?></span></label>
+            <?php
+                endforeach;
+            } ?>
         </div>
     </div>
-    <?php
-    return ob_get_clean();
+    <?php return ob_get_clean();
 }
 
-function lmd_list_photo_url($estimation) {
-    if (empty($estimation->photos)) return '';
+function lmd_list_photo_url($estimation)
+{
+    if (empty($estimation->photos)) {
+        return "";
+    }
     $decoded = json_decode($estimation->photos, true);
-    $photos = is_array($decoded) ? $decoded : (is_string($estimation->photos) ? [$estimation->photos] : []);
-    if (empty($photos)) return '';
+    $photos = is_array($decoded)
+        ? $decoded
+        : (is_string($estimation->photos)
+            ? [$estimation->photos]
+            : []);
+    if (empty($photos)) {
+        return "";
+    }
     $item = $photos[0];
-    $path = is_string($item) ? $item : ($item['url'] ?? $item['file'] ?? $item['path'] ?? '');
-    if (!$path || !is_string($path)) return '';
+    $path = is_string($item)
+        ? $item
+        : $item["url"] ?? ($item["file"] ?? ($item["path"] ?? ""));
+    if (!$path || !is_string($path)) {
+        return "";
+    }
     $upload = wp_upload_dir();
-    $basedir = $upload['basedir'];
-    $baseurl = $upload['baseurl'];
-    if (strpos($path, 'http') === 0 || strpos($path, '//') === 0) return $path;
-    $fullpath = strpos($path, $basedir) === 0 ? $path : $basedir . '/' . ltrim(str_replace('\\', '/', $path), '/');
-    if (file_exists($fullpath)) return str_replace($basedir, $baseurl, $fullpath);
-    return $baseurl . '/' . ltrim(str_replace('\\', '/', $path), '/');
+    $basedir = $upload["basedir"];
+    $baseurl = $upload["baseurl"];
+    if (strpos($path, "http") === 0 || strpos($path, "//") === 0) {
+        return $path;
+    }
+    $fullpath =
+        strpos($path, $basedir) === 0
+            ? $path
+            : $basedir . "/" . ltrim(str_replace("\\", "/", $path), "/");
+    if (file_exists($fullpath)) {
+        return str_replace($basedir, $baseurl, $fullpath);
+    }
+    return $baseurl . "/" . ltrim(str_replace("\\", "/", $path), "/");
 }
-
 ?>
 <div class="wrap lmd-estimations-list lmd-page" id="lmd-estimations-list-wrap">
 <style>
@@ -310,41 +512,119 @@ function lmd_list_photo_url($estimation) {
 
 <form method="get" action="" class="lmd-filter-form" id="lmd-filter-form">
     <input type="hidden" name="page" value="lmd-estimations-list" />
-    <?php if ($status) : ?><input type="hidden" name="status" value="<?php echo esc_attr($status); ?>" /><?php endif; ?>
+    <?php if (
+        $status
+    ): ?><input type="hidden" name="status" value="<?php echo esc_attr(
+    $status,
+); ?>" /><?php endif; ?>
     <input type="hidden" name="cols" value="<?php echo (int) $grid_cols; ?>" />
     <div class="lmd-header-row lmd-header-row-not-sticky">
         <h1 style="margin:0;font-size:24px;font-weight:700;color:#111827;">Demandes d'estimation</h1>
         <div class="lmd-search-wrap">
-            <input type="text" name="s" value="<?php echo esc_attr($search); ?>" placeholder="Nom, objet, catégorie, email…" />
+            <input type="text" name="s" value="<?php echo esc_attr(
+                $search,
+            ); ?>" placeholder="Nom, objet, catégorie, email…" />
             <button type="submit" class="button">Rechercher</button>
         </div>
     </div>
     <div class="lmd-filter-bar-sticky-wrap">
     <div class="lmd-filter-bar" id="lmd-filter-bar">
         <div class="lmd-filter-bar-group lmd-filter-bar-group-tous">
-            <?php $tous_params = ['page' => 'lmd-estimations-list', 'cols' => $grid_cols]; if ($status) $tous_params['status'] = $status; $tous_url = admin_url('admin.php?' . http_build_query($tous_params, '', '&', PHP_QUERY_RFC3986)); ?>
-            <a href="<?php echo esc_url($tous_url); ?>" class="lmd-filter-reset lmd-filter-reset-tous">Tous <?php echo (int) $counts_exchanges['tous']; ?></a>
-            <?php if ($counts_exchanges['retard_7j'] > 0) : ?><span class="lmd-card-tag tag-retard"><?php echo (int) $counts_exchanges['retard_7j']; ?> retard &lt; 7j</span><?php endif; ?>
-            <?php if ($counts_exchanges['retard_plus'] > 0) : ?><span class="lmd-card-tag tag-retard-7j"><?php echo (int) $counts_exchanges['retard_plus']; ?> retard &gt; 7j</span><?php endif; ?>
-            <?php echo lmd_filter_dropdown('filter_message', 'Échanges', $opts_message, $filter_message, 'message', false, !empty($estimations) ? ['sort_criterion' => 'message'] : []); ?>
+            <?php
+            $tous_params = [
+                "page" => "lmd-estimations-list",
+                "cols" => $grid_cols,
+            ];
+            if ($status) {
+                $tous_params["status"] = $status;
+            }
+            $tous_url = admin_url(
+                "admin.php?" .
+                    http_build_query($tous_params, "", "&", PHP_QUERY_RFC3986),
+            );
+            ?>
+            <a href="<?php echo esc_url(
+                $tous_url,
+            ); ?>" class="lmd-filter-reset lmd-filter-reset-tous">Tous <?php echo (int) $counts_exchanges[
+    "tous"
+]; ?></a>
+            <?php if (
+                $counts_exchanges["retard_7j"] > 0
+            ): ?><span class="lmd-card-tag tag-retard"><?php echo (int) $counts_exchanges[
+    "retard_7j"
+]; ?> retard &lt; 7j</span><?php endif; ?>
+            <?php if (
+                $counts_exchanges["retard_plus"] > 0
+            ): ?><span class="lmd-card-tag tag-retard-7j"><?php echo (int) $counts_exchanges[
+    "retard_plus"
+]; ?> retard &gt; 7j</span><?php endif; ?>
+            <?php echo lmd_filter_dropdown(
+                "filter_message",
+                "Échanges",
+                $opts_message,
+                $filter_message,
+                "message",
+                false,
+                !empty($estimations) ? ["sort_criterion" => "message"] : [],
+            ); ?>
         </div>
         <div class="lmd-filter-bar-group">
-            <?php echo lmd_filter_dropdown('filter_estimation', 'Estimation', $opts_estimation, $filter_estimation, 'estimation', false, !empty($estimations) ? ['panel_min_width' => 130, 'sort_criterion' => 'estimate'] : ['panel_min_width' => 130]); ?>
-            <?php echo lmd_filter_dropdown('filter_interet', 'Intérêt', $opts_interet, $filter_interet, 'interet', false, !empty($estimations) ? ['sort_criterion' => 'interet'] : []); ?>
-            <?php echo lmd_filter_dropdown('filter_theme_vente', 'Catégorie', $opts_theme_vente, $filter_theme_vente, 'theme_vente', false, !empty($estimations) ? ['panel_min_width' => 260, 'sort_criterion' => 'theme_vente'] : ['panel_min_width' => 260]); ?>
+            <?php echo lmd_filter_dropdown(
+                "filter_estimation",
+                "Estimation",
+                $opts_estimation,
+                $filter_estimation,
+                "estimation",
+                false,
+                !empty($estimations)
+                    ? ["panel_min_width" => 130, "sort_criterion" => "estimate"]
+                    : ["panel_min_width" => 130],
+            ); ?>
+            <?php echo lmd_filter_dropdown(
+                "filter_interet",
+                "Intérêt",
+                $opts_interet,
+                $filter_interet,
+                "interet",
+                false,
+                !empty($estimations) ? ["sort_criterion" => "interet"] : [],
+            ); ?>
+            <?php echo lmd_filter_dropdown(
+                "filter_theme_vente",
+                "Catégorie",
+                $opts_theme_vente,
+                $filter_theme_vente,
+                "theme_vente",
+                false,
+                !empty($estimations)
+                    ? [
+                        "panel_min_width" => 260,
+                        "sort_criterion" => "theme_vente",
+                    ]
+                    : ["panel_min_width" => 260],
+            ); ?>
             <?php
-            $has_date_envoi = $filter_date_envoi_from !== '' || $filter_date_envoi_to !== '';
-            $border_date = $has_date_envoi ? '#22c55e' : '#e5e7eb';
+            $has_date_envoi =
+                $filter_date_envoi_from !== "" || $filter_date_envoi_to !== "";
+            $border_date = $has_date_envoi ? "#22c55e" : "#e5e7eb";
             ?>
-            <div class="lmd-filter-dropdown lmd-filter-date-envoi" data-name="filter_date_envoi" data-panel-min-width="220"<?php echo !empty($estimations) ? ' data-sort-criterion="date"' : ''; ?>>
-                <button type="button" class="lmd-filter-dropdown-trigger lmd-filter-trigger-compact" style="border-left-color:<?php echo esc_attr($border_date); ?>">
+            <div class="lmd-filter-dropdown lmd-filter-date-envoi" data-name="filter_date_envoi" data-panel-min-width="220"<?php echo !empty(
+                $estimations
+            )
+                ? ' data-sort-criterion="date"'
+                : ""; ?>>
+                <button type="button" class="lmd-filter-dropdown-trigger lmd-filter-trigger-compact" style="border-left-color:<?php echo esc_attr(
+                    $border_date,
+                ); ?>">
                     <span class="lmd-filter-dd-name">Période envoi</span>
                     <span class="lmd-filter-dd-arrow">▾</span>
                 </button>
                 <div class="lmd-filter-dropdown-panel lmd-filter-date-panel">
                     <div class="lmd-filter-opt-tous-row">
-                        <a href="<?php echo esc_url(lmd_filter_clear_url('filter_date_envoi')); ?>" class="lmd-filter-opt lmd-filter-opt-tous">Tous</a>
-                        <?php if (!empty($estimations)) : ?>
+                        <a href="<?php echo esc_url(
+                            lmd_filter_clear_url("filter_date_envoi"),
+                        ); ?>" class="lmd-filter-opt lmd-filter-opt-tous">Tous</a>
+                        <?php if (!empty($estimations)): ?>
                         <span class="lmd-sort-arrows">
                             <button type="button" class="lmd-sort-btn" data-sort-asc="1" title="Tri croissant">↑</button>
                             <button type="button" class="lmd-sort-btn" data-sort-asc="0" title="Tri décroissant">↓</button>
@@ -352,21 +632,34 @@ function lmd_list_photo_url($estimation) {
                         <?php endif; ?>
                     </div>
                     <div class="lmd-filter-date-range">
-                        <label><span>Du</span> <input type="date" name="filter_date_envoi_from" value="<?php echo esc_attr($filter_date_envoi_from); ?>" /></label>
-                        <label><span>Au</span> <input type="date" name="filter_date_envoi_to" value="<?php echo esc_attr($filter_date_envoi_to); ?>" /></label>
+                        <label><span>Du</span> <input type="date" name="filter_date_envoi_from" value="<?php echo esc_attr(
+                            $filter_date_envoi_from,
+                        ); ?>" /></label>
+                        <label><span>Au</span> <input type="date" name="filter_date_envoi_to" value="<?php echo esc_attr(
+                            $filter_date_envoi_to,
+                        ); ?>" /></label>
                         <button type="submit" class="button">Appliquer</button>
                     </div>
                 </div>
             </div>
         </div>
         <div class="lmd-filter-bar-group">
-            <a href="<?php echo esc_url(admin_url('admin.php?page=lmd-ventes-list')); ?>" class="lmd-filter-reset">Vente</a>
-            <a href="<?php echo esc_url(admin_url('admin.php?page=lmd-vendeurs-list')); ?>" class="lmd-filter-reset">Vendeur</a>
+            <a href="<?php echo esc_url(
+                admin_url("admin.php?page=lmd-ventes-list"),
+            ); ?>" class="lmd-filter-reset">Vente</a>
+            <a href="<?php echo esc_url(
+                admin_url("admin.php?page=lmd-vendeurs-list"),
+            ); ?>" class="lmd-filter-reset">Vendeur</a>
         </div>
         <div class="lmd-grid-cols-selector" role="group" aria-label="Nombre de vignettes par ligne" style="margin-left:auto;">
             <span class="lmd-grid-cols-label">Vignettes — Choix</span>
-            <?php foreach ([5 => '5', 4 => '4', 3 => '3'] as $n => $label) : ?>
-            <button type="button" class="lmd-grid-cols-btn <?php echo $grid_cols === $n ? 'active' : ''; ?>" data-cols="<?php echo (int) $n; ?>"><?php echo esc_html($label); ?></button>
+            <?php foreach ([5 => "5", 4 => "4", 3 => "3"] as $n => $label): ?>
+            <button type="button" class="lmd-grid-cols-btn <?php echo $grid_cols ===
+            $n
+                ? "active"
+                : ""; ?>" data-cols="<?php echo (int) $n; ?>"><?php echo esc_html(
+    $label,
+); ?></button>
             <?php endforeach; ?>
         </div>
     </div>
@@ -374,45 +667,120 @@ function lmd_list_photo_url($estimation) {
     <?php
     $all_selected = [];
     $label_map = [
-        'filter_message' => ['Échanges', $opts_message, 'message', false],
-        'filter_interet' => ['Intérêt', $opts_interet, 'interet', false],
-        'filter_estimation' => ['Estimation', $opts_estimation, 'estimation', false],
-        'filter_theme_vente' => ['Catégorie', $opts_theme_vente, 'theme_vente', false],
-        'filter_date_vente' => ['Vente', $opts_date_vente, 'date_vente', true],
-        'filter_vendeur' => ['Vendeur', $opts_vendeur, 'vendeur', true],
+        "filter_message" => ["Échanges", $opts_message, "message", false],
+        "filter_interet" => ["Intérêt", $opts_interet, "interet", false],
+        "filter_estimation" => [
+            "Estimation",
+            $opts_estimation,
+            "estimation",
+            false,
+        ],
+        "filter_theme_vente" => [
+            "Catégorie",
+            $opts_theme_vente,
+            "theme_vente",
+            false,
+        ],
+        "filter_date_vente" => ["Vente", $opts_date_vente, "date_vente", true],
+        "filter_vendeur" => ["Vendeur", $opts_vendeur, "vendeur", true],
     ];
-    foreach (['filter_message','filter_interet','filter_estimation','filter_theme_vente','filter_date_vente','filter_vendeur'] as $fn) {
+    foreach (
+        [
+            "filter_message",
+            "filter_interet",
+            "filter_estimation",
+            "filter_theme_vente",
+            "filter_date_vente",
+            "filter_vendeur",
+        ]
+        as $fn
+    ) {
         $sel = isset($$fn) ? (array) $$fn : [];
-        if (empty($sel)) continue;
+        if (empty($sel)) {
+            continue;
+        }
         $info = $label_map[$fn] ?? null;
-        if (!$info) continue;
-        list($cat_label, $opts, $type, $is_obj) = $info;
+        if (!$info) {
+            continue;
+        }
+        [$cat_label, $opts, $type, $is_obj] = $info;
         foreach ($sel as $slug) {
             $name = $slug;
             if ($is_obj && !empty($opts)) {
-                foreach ($opts as $o) { if (($o->slug ?? '') === $slug) { $name = $o->name ?? $slug; break; } }
+                foreach ($opts as $o) {
+                    if (($o->slug ?? "") === $slug) {
+                        $name = $o->name ?? $slug;
+                        break;
+                    }
+                }
             } elseif (!empty($opts)) {
-                foreach ($opts as $o) { if (($o['slug'] ?? '') === $slug) { $name = $o['name'] ?? $slug; break; } }
+                foreach ($opts as $o) {
+                    if (($o["slug"] ?? "") === $slug) {
+                        $name = $o["name"] ?? $slug;
+                        break;
+                    }
+                }
             }
-            $c = function_exists('lmd_get_tag_filter_colors') ? lmd_get_tag_filter_colors($type, $slug) : ['bg'=>'#f9fafb','text'=>'#374151','border'=>'#e5e7eb'];
-            $all_selected[] = ['name'=>$fn,'slug'=>$slug,'label'=>$name,'colors'=>$c];
+            $c = function_exists("lmd_get_tag_filter_colors")
+                ? lmd_get_tag_filter_colors($type, $slug)
+                : [
+                    "bg" => "#f9fafb",
+                    "text" => "#374151",
+                    "border" => "#e5e7eb",
+                ];
+            $all_selected[] = [
+                "name" => $fn,
+                "slug" => $slug,
+                "label" => $name,
+                "colors" => $c,
+            ];
         }
     }
-    if ($filter_date_envoi_from !== '' || $filter_date_envoi_to !== '') {
-        $from_fmt = $filter_date_envoi_from ? date_i18n('d/m/Y', strtotime($filter_date_envoi_from)) : '';
-        $to_fmt = $filter_date_envoi_to ? date_i18n('d/m/Y', strtotime($filter_date_envoi_to)) : '';
-        $label_date = $from_fmt && $to_fmt ? $from_fmt . ' – ' . $to_fmt : ($from_fmt ? 'À partir du ' . $from_fmt : 'Jusqu\'au ' . $to_fmt);
-        $all_selected[] = ['name'=>'filter_date_envoi','slug'=>'','label'=>$label_date,'colors'=>['bg'=>'#f0fdf4','text'=>'#166534','border'=>'#22c55e']];
+    if ($filter_date_envoi_from !== "" || $filter_date_envoi_to !== "") {
+        $from_fmt = $filter_date_envoi_from
+            ? date_i18n("d/m/Y", strtotime($filter_date_envoi_from))
+            : "";
+        $to_fmt = $filter_date_envoi_to
+            ? date_i18n("d/m/Y", strtotime($filter_date_envoi_to))
+            : "";
+        $label_date =
+            $from_fmt && $to_fmt
+                ? $from_fmt . " – " . $to_fmt
+                : ($from_fmt
+                    ? "À partir du " . $from_fmt
+                    : 'Jusqu\'au ' . $to_fmt);
+        $all_selected[] = [
+            "name" => "filter_date_envoi",
+            "slug" => "",
+            "label" => $label_date,
+            "colors" => [
+                "bg" => "#f0fdf4",
+                "text" => "#166534",
+                "border" => "#22c55e",
+            ],
+        ];
     }
     ?>
-    <?php if (!empty($all_selected)) : ?>
+    <?php if (!empty($all_selected)): ?>
     <div class="lmd-selected-tags-row">
-        <?php foreach ($all_selected as $item) :
-            $url = lmd_filter_remove_one_url($item['name'], $item['slug']);
-            $c = $item['colors'];
-        ?>
-        <a href="<?php echo esc_url($url); ?>" class="lmd-selected-tag" style="--st-bg:<?php echo esc_attr($c['bg']); ?>;--st-text:<?php echo esc_attr($c['text']); ?>;--st-border:<?php echo esc_attr($c['border'] ?? $c['bg']); ?>"><?php echo esc_html($item['label']); ?> <span class="lmd-selected-tag-x">×</span></a>
-        <?php endforeach; ?>
+        <?php foreach ($all_selected as $item):
+
+            $url = lmd_filter_remove_one_url($item["name"], $item["slug"]);
+            $c = $item["colors"];
+            ?>
+        <a href="<?php echo esc_url(
+            $url,
+        ); ?>" class="lmd-selected-tag" style="--st-bg:<?php echo esc_attr(
+    $c["bg"],
+); ?>;--st-text:<?php echo esc_attr(
+    $c["text"],
+); ?>;--st-border:<?php echo esc_attr(
+    $c["border"] ?? $c["bg"],
+); ?>"><?php echo esc_html(
+    $item["label"],
+); ?> <span class="lmd-selected-tag-x">×</span></a>
+        <?php
+        endforeach; ?>
     </div>
     <?php endif; ?>
 </form>
@@ -717,7 +1085,9 @@ function lmd_list_photo_url($estimation) {
                 if (!confirm('Supprimer ' + ids.length + ' estimation(s) ?')) return;
                 var form = document.createElement('form');
                 form.method = 'POST';
-                form.action = '<?php echo esc_url(admin_url('admin-post.php')); ?>';
+                form.action = '<?php echo esc_url(
+                    admin_url("admin-post.php"),
+                ); ?>';
                 var input = document.createElement('input');
                 input.type = 'hidden';
                 input.name = 'action';
@@ -726,7 +1096,9 @@ function lmd_list_photo_url($estimation) {
                 var nonce = document.createElement('input');
                 nonce.type = 'hidden';
                 nonce.name = '_wpnonce';
-                nonce.value = '<?php echo esc_attr(wp_create_nonce('lmd_bulk_delete')); ?>';
+                nonce.value = '<?php echo esc_attr(
+                    wp_create_nonce("lmd_bulk_delete"),
+                ); ?>';
                 form.appendChild(nonce);
                 ids.forEach(function(id) {
                     var i = document.createElement('input');
@@ -761,7 +1133,9 @@ function lmd_list_photo_url($estimation) {
                 if (ids.length === 0) return;
                 if (!confirm('Lancer l\'analyse IA pour ' + ids.length + ' estimation(s) ?')) return;
                 var nonce = typeof lmdAdmin !== 'undefined' ? lmdAdmin.nonce : '';
-                var ajaxurl = typeof lmdAdmin !== 'undefined' ? lmdAdmin.ajaxurl : '<?php echo esc_url(admin_url("admin-ajax.php")); ?>';
+                var ajaxurl = typeof lmdAdmin !== 'undefined' ? lmdAdmin.ajaxurl : '<?php echo esc_url(
+                    admin_url("admin-ajax.php"),
+                ); ?>';
                 analyzeBtn.disabled = true;
                 analyzeBtn.textContent = 'Lancement...';
                 var done = 0;
@@ -851,161 +1225,376 @@ function lmd_list_photo_url($estimation) {
 })();
 </script>
 
-<?php
-$has_filters = !empty($filter_message) || !empty($filter_interet) || !empty($filter_estimation) || !empty($filter_theme_vente) || !empty($filter_date_vente) || !empty($filter_vendeur) || $filter_date_envoi_from !== '' || $filter_date_envoi_to !== '' || $search;
-?>
-<?php if (empty($estimations)) : ?>
-<p class="lmd-empty"><?php echo $has_filters ? 'Aucune estimation ne correspond aux filtres.' : 'Aucune estimation trouvée.'; ?></p>
-<?php else : ?>
+<?php $has_filters =
+    !empty($filter_message) ||
+    !empty($filter_interet) ||
+    !empty($filter_estimation) ||
+    !empty($filter_theme_vente) ||
+    !empty($filter_date_vente) ||
+    !empty($filter_vendeur) ||
+    $filter_date_envoi_from !== "" ||
+    $filter_date_envoi_to !== "" ||
+    $search; ?>
+<?php if (empty($estimations)): ?>
+<p class="lmd-empty"><?php echo $has_filters
+    ? "Aucune estimation ne correspond aux filtres."
+    : "Aucune estimation trouvée."; ?></p>
+<?php else: ?>
 <div class="lmd-cards-grid cols-<?php echo (int) $grid_cols; ?>" id="lmd-cards-grid">
-    <?php foreach ($estimations as $e) :
+    <?php foreach ($estimations as $e):
+
         $photo_url = lmd_list_photo_url($e);
         $db->sync_message_tag($e);
         $tags = $db->get_estimation_tags($e->id);
-        $tags_by_type = [];
-        foreach ($tags as $t) {
-            $tags_by_type[$t->type] = $t;
-        }
-        $msg_tag = $tags_by_type['message'] ?? null;
-        $interet_tag = $tags_by_type['interet'] ?? null;
-        $estimation_tag = $tags_by_type['estimation'] ?? null;
-        $theme_tag = $tags_by_type['theme_vente'] ?? null;
-        $date_vente_tag = $tags_by_type['date_vente'] ?? null;
+        $tags_by_type = function_exists("lmd_build_tags_by_type")
+            ? lmd_build_tags_by_type($tags)
+            : [];
+        $msg_tag = $tags_by_type["message"] ?? null;
+        $interet_tag = $tags_by_type["interet"] ?? null;
+        $estimation_tag = $tags_by_type["estimation"] ?? null;
+        $theme_tag = $tags_by_type["theme_vente"] ?? null;
+        $date_vente_tag = $tags_by_type["date_vente"] ?? null;
         $ai_data = [];
         if (!empty($e->ai_analysis)) {
             $ai_data = json_decode($e->ai_analysis, true) ?: [];
         }
-        $ai_theme = $ai_data['theme_vente'] ?? '';
-        $ai_sub_cats = $ai_data['sub_categories'] ?? [];
-        $ai_estimation_slug = trim($ai_data['estimation'] ?? '');
-        $ai_interet_slug = trim($ai_data['interet'] ?? $ai_data['interest_level'] ?? '');
-        $ai_est = function_exists('lmd_get_ai_estimation') ? lmd_get_ai_estimation($ai_data) : ['low' => null, 'high' => null];
-        $ai_estimate_low = $ai_est['low'];
-        $ai_estimate_high = $ai_est['high'];
-        $repondu = ($msg_tag && in_array($msg_tag->slug ?? '', ['repondu', 'vendu'], true)) || !empty($e->reponse_sent_at);
+        $ai_theme = $ai_data["theme_vente"] ?? "";
+        $ai_sub_cats = $ai_data["sub_categories"] ?? [];
+        $ai_estimation_slug = trim($ai_data["estimation"] ?? "");
+        $ai_interet_slug = trim(
+            $ai_data["interet"] ?? ($ai_data["interest_level"] ?? ""),
+        );
+        $ai_est = function_exists("lmd_get_ai_estimation")
+            ? lmd_get_ai_estimation($ai_data)
+            : ["low" => null, "high" => null];
+        $ai_estimate_low = $ai_est["low"];
+        $ai_estimate_high = $ai_est["high"];
+        $repondu =
+            ($msg_tag &&
+                in_array($msg_tag->slug ?? "", ["repondu", "vendu"], true)) ||
+            !empty($e->reponse_sent_at);
         $opened = !empty($e->first_viewed_at);
-        $ref_ts = $opened ? strtotime($e->first_viewed_at) : (!empty($e->created_at) ? strtotime($e->created_at) : 0);
+        $ref_ts = $opened
+            ? strtotime($e->first_viewed_at)
+            : (!empty($e->created_at)
+                ? strtotime($e->created_at)
+                : 0);
         $delay_hours = $ref_ts ? (time() - $ref_ts) / 3600 : 0;
         $show_retard = !$repondu && $delay_hours >= 48;
         $retard_7j = $show_retard && $delay_hours >= 168;
         $delay_days = $show_retard ? max(1, (int) floor($delay_hours / 24)) : 0;
-        $has_cp = !empty(trim($e->auctioneer_notes ?? ''))
-            || (isset($e->estimate_low) && $e->estimate_low !== null && $e->estimate_low !== '')
-            || (isset($e->estimate_high) && $e->estimate_high !== null && $e->estimate_high !== '')
-            || (isset($e->prix_reserve) && $e->prix_reserve !== null && $e->prix_reserve !== '');
-        $has_avis2 = (isset($e->avis2_estimate_low) && $e->avis2_estimate_low !== null && $e->avis2_estimate_low !== '')
-            || (isset($e->avis2_estimate_high) && $e->avis2_estimate_high !== null && $e->avis2_estimate_high !== '')
-            || (isset($e->avis2_prix_reserve) && $e->avis2_prix_reserve !== null && $e->avis2_prix_reserve !== '')
-            || !empty(trim($e->second_opinion ?? ''));
-        $has_ia = !empty(trim($e->ai_analysis ?? ''));
+        $has_cp =
+            !empty(trim($e->auctioneer_notes ?? "")) ||
+            (isset($e->estimate_low) &&
+                $e->estimate_low !== null &&
+                $e->estimate_low !== "") ||
+            (isset($e->estimate_high) &&
+                $e->estimate_high !== null &&
+                $e->estimate_high !== "") ||
+            (isset($e->prix_reserve) &&
+                $e->prix_reserve !== null &&
+                $e->prix_reserve !== "");
+        $has_avis2 =
+            (isset($e->avis2_estimate_low) &&
+                $e->avis2_estimate_low !== null &&
+                $e->avis2_estimate_low !== "") ||
+            (isset($e->avis2_estimate_high) &&
+                $e->avis2_estimate_high !== null &&
+                $e->avis2_estimate_high !== "") ||
+            (isset($e->avis2_prix_reserve) &&
+                $e->avis2_prix_reserve !== null &&
+                $e->avis2_prix_reserve !== "") ||
+            !empty(trim($e->second_opinion ?? ""));
+        $has_ia = !empty(trim($e->ai_analysis ?? ""));
         $has_human_tags = $interet_tag || $estimation_tag || $theme_tag;
-        $tag_source = $has_avis2 ? 'avis2' : ($has_cp ? 'cp' : (($has_ia && !$has_human_tags) ? 'ia' : 'default'));
+        $tag_source = $has_avis2
+            ? "avis2"
+            : ($has_cp
+                ? "cp"
+                : ($has_ia && !$has_human_tags
+                    ? "ia"
+                    : "default"));
         $tag_source_style = [
-            'ia' => 'background:#d1fae5;color:#065f46;border-color:#6ee7b7',
-            'cp' => 'background:#dbeafe;color:#1d4ed8;border-color:#93c5fd',
-            'avis2' => 'background:#ede9fe;color:#6d28d9;border-color:#c4b5fd',
-            'default' => 'background:#f3f4f6;color:#374151;border-color:#e5e7eb',
+            "ia" => "background:#d1fae5;color:#065f46;border-color:#6ee7b7",
+            "cp" => "background:#dbeafe;color:#1d4ed8;border-color:#93c5fd",
+            "avis2" => "background:#ede9fe;color:#6d28d9;border-color:#c4b5fd",
+            "default" =>
+                "background:#f3f4f6;color:#374151;border-color:#e5e7eb",
         ];
-        $tag_style = $tag_source_style[$tag_source] ?? $tag_source_style['default'];
-        $estimate_low = (isset($e->estimate_low) && $e->estimate_low !== null && $e->estimate_low !== '') ? floatval($e->estimate_low) : null;
-        $avis2_estimate_low = (isset($e->avis2_estimate_low) && $e->avis2_estimate_low !== null && $e->avis2_estimate_low !== '') ? floatval($e->avis2_estimate_low) : null;
-        $avis2_estimate_high = (isset($e->avis2_estimate_high) && $e->avis2_estimate_high !== null && $e->avis2_estimate_high !== '') ? floatval($e->avis2_estimate_high) : null;
-        $estimate_high = (isset($e->estimate_high) && $e->estimate_high !== null && $e->estimate_high !== '') ? floatval($e->estimate_high) : null;
+        $tag_style =
+            $tag_source_style[$tag_source] ?? $tag_source_style["default"];
+        $estimate_low =
+            isset($e->estimate_low) &&
+            $e->estimate_low !== null &&
+            $e->estimate_low !== ""
+                ? floatval($e->estimate_low)
+                : null;
+        $avis2_estimate_low =
+            isset($e->avis2_estimate_low) &&
+            $e->avis2_estimate_low !== null &&
+            $e->avis2_estimate_low !== ""
+                ? floatval($e->avis2_estimate_low)
+                : null;
+        $avis2_estimate_high =
+            isset($e->avis2_estimate_high) &&
+            $e->avis2_estimate_high !== null &&
+            $e->avis2_estimate_high !== ""
+                ? floatval($e->avis2_estimate_high)
+                : null;
+        $estimate_high =
+            isset($e->estimate_high) &&
+            $e->estimate_high !== null &&
+            $e->estimate_high !== ""
+                ? floatval($e->estimate_high)
+                : null;
         $created_ts = !empty($e->created_at) ? strtotime($e->created_at) : 0;
         $estimate_display = null;
         $estimate_source = null;
         if ($avis2_estimate_low !== null) {
-            $estimate_display = number_format($avis2_estimate_low, 0, ',', ' ') . ' €';
-            $estimate_source = 'avis2';
+            $estimate_display =
+                number_format($avis2_estimate_low, 0, ",", " ") . " €";
+            $estimate_source = "avis2";
         } elseif ($estimate_low !== null) {
-            $estimate_display = number_format($estimate_low, 0, ',', ' ') . ' €';
-            $estimate_source = 'cp';
+            $estimate_display =
+                number_format($estimate_low, 0, ",", " ") . " €";
+            $estimate_source = "cp";
         } elseif ($ai_estimate_low !== null && $has_ia) {
-            $estimate_display = number_format($ai_estimate_low, 0, ',', ' ') . ' €';
-            $estimate_source = 'ia';
+            $estimate_display =
+                number_format($ai_estimate_low, 0, ",", " ") . " €";
+            $estimate_source = "ia";
         }
-        $created = $created_ts ? date_i18n('j M Y', $created_ts) : '';
-        $detail_url = admin_url('admin.php?page=lmd-estimation-detail&id=' . $e->id);
-        $client_label = trim(wp_unslash($e->client_name ?? '')) ?: trim(wp_unslash($e->client_email ?? '')) ?: 'Estimation #' . $e->id;
+        $created = $created_ts ? date_i18n("j M Y", $created_ts) : "";
+        $detail_url = admin_url(
+            "admin.php?page=lmd-estimation-detail&id=" . $e->id,
+        );
+        $client_label =
+            trim(wp_unslash($e->client_name ?? "")) ?:
+            trim(wp_unslash($e->client_email ?? "")) ?:
+            "Estimation #" . $e->id;
         $desc_words = $grid_cols === 3 ? 30 : ($grid_cols === 4 ? 22 : 15);
-        $desc = wp_trim_words(wp_unslash($e->description ?? ''), $desc_words);
-        $msg_order = ['nouveau' => 0, 'non_lu' => 1, 'lu_non_repondu' => 2, 'en_retard' => 2, 'repondu' => 3, 'depose' => 4, 'vendu' => 5];
-        $sort_message = isset($msg_tag->slug) ? ($msg_order[$msg_tag->slug] ?? 5) : 5;
-        $sort_estimate = $avis2_estimate_low !== null ? $avis2_estimate_low : ($estimate_low !== null ? $estimate_low : ($ai_estimate_low !== null && $has_ia ? $ai_estimate_low : 999999999));
-        $sort_theme = $theme_tag ? $theme_tag->name : ($ai_theme ? (function_exists('lmd_get_theme_vente_name') ? lmd_get_theme_vente_name($ai_theme) : $ai_theme) : '');
-        $interet_order = ['pas_pour_nous' => 0, 'peu_interessant' => 1, 'a_examiner' => 2, 'interessant' => 3, 'tres_interessant' => 4, 'exceptionnel' => 5];
-        $sort_interet = $interet_tag ? ($interet_order[$interet_tag->slug] ?? 6) : 6;
+        $desc = wp_trim_words(wp_unslash($e->description ?? ""), $desc_words);
+        $msg_order = [
+            "nouveau" => 0,
+            "non_lu" => 1,
+            "lu_non_repondu" => 2,
+            "en_retard" => 2,
+            "repondu" => 3,
+            "depose" => 4,
+            "vendu" => 5,
+        ];
+        $sort_message = isset($msg_tag->slug)
+            ? $msg_order[$msg_tag->slug] ?? 5
+            : 5;
+        $sort_estimate =
+            $avis2_estimate_low !== null
+                ? $avis2_estimate_low
+                : ($estimate_low !== null
+                    ? $estimate_low
+                    : ($ai_estimate_low !== null && $has_ia
+                        ? $ai_estimate_low
+                        : 999999999));
+        $sort_theme = $theme_tag
+            ? $theme_tag->name
+            : ($ai_theme
+                ? (function_exists("lmd_get_theme_vente_name")
+                    ? lmd_get_theme_vente_name($ai_theme)
+                    : $ai_theme)
+                : "");
+        $interet_order = [
+            "pas_pour_nous" => 0,
+            "peu_interessant" => 1,
+            "a_examiner" => 2,
+            "interessant" => 3,
+            "tres_interessant" => 4,
+            "exceptionnel" => 5,
+        ];
+        $sort_interet = $interet_tag
+            ? $interet_order[$interet_tag->slug] ?? 6
+            : 6;
         $sort_date = $created_ts ? $created_ts : 0;
-    ?>
-    <div class="lmd-card-wrapper" data-id="<?php echo (int) $e->id; ?>" data-sort-message="<?php echo (int) $sort_message; ?>" data-sort-estimate="<?php echo esc_attr($sort_estimate); ?>" data-sort-theme="<?php echo esc_attr($sort_theme); ?>" data-sort-interet="<?php echo (int) $sort_interet; ?>" data-sort-date="<?php echo (int) $sort_date; ?>">
-    <a href="<?php echo esc_url($detail_url); ?>" class="lmd-card<?php echo ($msg_tag && ($msg_tag->slug ?? '') === 'vendu') ? ' lmd-card-vendu' : ($date_vente_tag ? ' lmd-card-programme' : ''); ?>" data-id="<?php echo (int) $e->id; ?>">
+        ?>
+    <div class="lmd-card-wrapper" data-id="<?php echo (int) $e->id; ?>" data-sort-message="<?php echo (int) $sort_message; ?>" data-sort-estimate="<?php echo esc_attr(
+    $sort_estimate,
+); ?>" data-sort-theme="<?php echo esc_attr(
+    $sort_theme,
+); ?>" data-sort-interet="<?php echo (int) $sort_interet; ?>" data-sort-date="<?php echo (int) $sort_date; ?>">
+    <a href="<?php echo esc_url(
+        $detail_url,
+    ); ?>" class="lmd-card<?php echo $msg_tag &&
+($msg_tag->slug ?? "") === "vendu"
+    ? " lmd-card-vendu"
+    : ($date_vente_tag
+        ? " lmd-card-programme"
+        : ""); ?>" data-id="<?php echo (int) $e->id; ?>">
         <div class="lmd-card-img-wrap">
-            <?php if ($photo_url) : ?>
-            <img src="<?php echo esc_url($photo_url); ?>" alt="" class="lmd-card-img" loading="lazy" />
-            <?php else : ?>
+            <?php if ($photo_url): ?>
+            <img src="<?php echo esc_url(
+                $photo_url,
+            ); ?>" alt="" class="lmd-card-img" loading="lazy" />
+            <?php else: ?>
             <div class="lmd-card-img-placeholder">🖼</div>
             <?php endif; ?>
             <div class="lmd-card-overlay-btns">
-                <span class="lmd-card-drag-handle" role="button" tabindex="0" title="Glisser pour réorganiser" aria-label="<?php esc_attr_e('Déplacer', 'lmd-apps-ia'); ?>">⋮⋮</span>
-                <button type="button" class="lmd-card-ia-btn<?php echo ($e->status ?? '') === 'ai_analyzed' ? ' lmd-card-ia-btn-disabled' : ''; ?>" data-id="<?php echo (int) $e->id; ?>" data-analyzed="<?php echo ($e->status ?? '') === 'ai_analyzed' ? '1' : '0'; ?>" title="<?php echo ($e->status ?? '') === 'ai_analyzed' ? 'Déjà analysé' : 'Sélectionner pour analyse IA'; ?>" aria-label="<?php echo ($e->status ?? '') === 'ai_analyzed' ? 'Déjà analysé' : 'Sélectionner pour analyse'; ?>">IA</button>
+                <span class="lmd-card-drag-handle" role="button" tabindex="0" title="Glisser pour réorganiser" aria-label="<?php esc_attr_e(
+                    "Déplacer",
+                    "lmd-apps-ia",
+                ); ?>">⋮⋮</span>
+                <button type="button" class="lmd-card-ia-btn<?php echo ($e->status ??
+                    "") ===
+                "ai_analyzed"
+                    ? " lmd-card-ia-btn-disabled"
+                    : ""; ?>" data-id="<?php echo (int) $e->id; ?>" data-analyzed="<?php echo ($e->status ??
+    "") ===
+"ai_analyzed"
+    ? "1"
+    : "0"; ?>" title="<?php echo ($e->status ?? "") === "ai_analyzed"
+    ? "Déjà analysé"
+    : "Sélectionner pour analyse IA"; ?>" aria-label="<?php echo ($e->status ??
+    "") ===
+"ai_analyzed"
+    ? "Déjà analysé"
+    : "Sélectionner pour analyse"; ?>">IA</button>
                 <button type="button" class="lmd-card-trash" data-id="<?php echo (int) $e->id; ?>" title="Sélectionner pour suppression" aria-label="Sélectionner">🗑</button>
             </div>
         </div>
         <div class="lmd-card-body">
             <div class="lmd-card-title-row">
-                <h3 class="lmd-card-title"><?php echo esc_html($client_label); ?></h3>
+                <h3 class="lmd-card-title"><?php echo esc_html(
+                    $client_label,
+                ); ?></h3>
             </div>
-            <?php if ($desc) : ?>
+            <?php if ($desc): ?>
             <p class="lmd-card-desc"><?php echo esc_html($desc); ?></p>
             <?php endif; ?>
             <div class="lmd-card-meta">
                 <?php
-                $show_msg = function_exists('lmd_pref_show_criterion') ? lmd_pref_show_criterion('message') : true;
+                $show_msg = function_exists("lmd_pref_show_criterion")
+                    ? lmd_pref_show_criterion("message")
+                    : true;
                 if ($show_msg) {
+
                     if ($show_retard) {
-                        $msg_display = $opened ? 'Non répondu' : 'Non lu';
+                        $msg_display = $opened ? "Non répondu" : "Non lu";
                     } else {
                         $msg_display = $msg_tag ? $msg_tag->name : null;
                     }
-                    if ($msg_display) : ?><span class="lmd-card-tag tag-message<?php echo ($msg_tag && ($msg_tag->slug ?? '') === 'vendu') ? ' tag-vendu' : ''; ?>"><?php echo esc_html($msg_display); ?></span><?php endif; ?>
-                    <?php if ($show_retard) : ?><span class="lmd-card-tag <?php echo $retard_7j ? 'tag-retard-7j' : 'tag-retard'; ?>"><?php echo $retard_7j ? '⚠ ' . esc_html($delay_days) . 'j' : esc_html($delay_days) . 'j retard'; ?></span><?php endif; ?>
-                <?php }
-                $show_interet = function_exists('lmd_pref_show_criterion') ? lmd_pref_show_criterion('interet') : true;
-                if ($show_interet) {
-                    $interet_display = $interet_tag ? $interet_tag->name : ($ai_interet_slug && $has_ia && function_exists('lmd_get_interet_name') ? lmd_get_interet_name($ai_interet_slug) : ($ai_interet_slug && $has_ia ? ucfirst(str_replace('_', ' ', $ai_interet_slug)) : null));
-                    if ($interet_display) : ?><span class="lmd-card-tag tag-interet tag-source-<?php echo esc_attr($interet_tag ? $tag_source : 'ia'); ?>"><?php echo esc_html($interet_display); ?></span><?php endif;
+                    if (
+                        $msg_display
+                    ): ?><span class="lmd-card-tag tag-message<?php echo $msg_tag &&
+($msg_tag->slug ?? "") === "vendu"
+    ? " tag-vendu"
+    : ""; ?>"><?php echo esc_html($msg_display); ?></span><?php endif;
+                    ?>
+                    <?php if (
+                        $show_retard
+                    ): ?><span class="lmd-card-tag <?php echo $retard_7j
+    ? "tag-retard-7j"
+    : "tag-retard"; ?>"><?php echo $retard_7j
+    ? "⚠ " . esc_html($delay_days) . "j"
+    : esc_html($delay_days) . "j retard"; ?></span><?php endif; ?>
+                <?php
                 }
-                $show_est = function_exists('lmd_pref_show_criterion') ? lmd_pref_show_criterion('estimation') : true;
+                $show_interet = function_exists("lmd_pref_show_criterion")
+                    ? lmd_pref_show_criterion("interet")
+                    : true;
+                if ($show_interet) {
+                    $interet_display = $interet_tag
+                        ? $interet_tag->name
+                        : ($ai_interet_slug &&
+                        $has_ia &&
+                        function_exists("lmd_get_interet_name")
+                            ? lmd_get_interet_name($ai_interet_slug)
+                            : ($ai_interet_slug && $has_ia
+                                ? ucfirst(
+                                    str_replace("_", " ", $ai_interet_slug),
+                                )
+                                : null));
+                    if (
+                        $interet_display
+                    ): ?><span class="lmd-card-tag tag-interet tag-source-<?php echo esc_attr(
+    $interet_tag ? $tag_source : "ia",
+); ?>"><?php echo esc_html($interet_display); ?></span><?php endif;
+                }
+                $show_est = function_exists("lmd_pref_show_criterion")
+                    ? lmd_pref_show_criterion("estimation")
+                    : true;
                 if ($show_est) { ?>
-                <?php if ($estimate_display !== null) : ?><span class="lmd-card-tag tag-source-<?php echo esc_attr($estimate_source); ?>"><?php echo esc_html($estimate_display); ?></span><?php endif; ?>
-                <?php if ($estimation_tag && $estimate_display === null) : ?><span class="lmd-card-tag tag-source-<?php echo esc_attr($tag_source); ?>"><?php echo esc_html($estimation_tag->name); ?></span><?php endif; ?>
-                <?php if ($estimate_display === null && !$estimation_tag && $has_ia && $ai_estimation_slug) : ?><span class="lmd-card-tag tag-source-ia"><?php echo esc_html(function_exists('lmd_get_estimation_name') ? lmd_get_estimation_name($ai_estimation_slug) : $ai_estimation_slug); ?></span><?php endif; ?>
+                <?php if (
+                    $estimate_display !== null
+                ): ?><span class="lmd-card-tag tag-source-<?php echo esc_attr(
+    $estimate_source,
+); ?>"><?php echo esc_html($estimate_display); ?></span><?php endif; ?>
+                <?php if (
+                    $estimation_tag &&
+                    $estimate_display === null
+                ): ?><span class="lmd-card-tag tag-source-<?php echo esc_attr(
+    $tag_source,
+); ?>"><?php echo esc_html($estimation_tag->name); ?></span><?php endif; ?>
+                <?php if (
+                    $estimate_display === null &&
+                    !$estimation_tag &&
+                    $has_ia &&
+                    $ai_estimation_slug
+                ): ?><span class="lmd-card-tag tag-source-ia"><?php echo esc_html(
+    function_exists("lmd_get_estimation_name")
+        ? lmd_get_estimation_name($ai_estimation_slug)
+        : $ai_estimation_slug,
+); ?></span><?php endif; ?>
                 <?php }
-                $show_theme = function_exists('lmd_pref_show_criterion') ? lmd_pref_show_criterion('theme') : true;
+                $show_theme = function_exists("lmd_pref_show_criterion")
+                    ? lmd_pref_show_criterion("theme")
+                    : true;
                 if ($show_theme) {
                     $theme_display = null;
-                    if (!empty($ai_sub_cats) && $tag_source === 'ia') {
-                        $theme_display = function_exists('lmd_get_theme_vente_name') ? lmd_get_theme_vente_name($ai_sub_cats[0]) : $ai_sub_cats[0];
+                    if (!empty($ai_sub_cats) && $tag_source === "ia") {
+                        $theme_display = function_exists(
+                            "lmd_get_theme_vente_name",
+                        )
+                            ? lmd_get_theme_vente_name($ai_sub_cats[0])
+                            : $ai_sub_cats[0];
                     } elseif ($theme_tag) {
                         $theme_display = $theme_tag->name;
-                    } elseif ($ai_theme && $tag_source === 'ia') {
-                        $theme_display = function_exists('lmd_get_theme_vente_name') ? lmd_get_theme_vente_name($ai_theme) : $ai_theme;
+                    } elseif ($ai_theme && $tag_source === "ia") {
+                        $theme_display = function_exists(
+                            "lmd_get_theme_vente_name",
+                        )
+                            ? lmd_get_theme_vente_name($ai_theme)
+                            : $ai_theme;
                     }
-                    if ($theme_display) : ?><span class="lmd-card-tag tag-source-<?php echo esc_attr($theme_tag ? $tag_source : 'ia'); ?>"><?php echo esc_html($theme_display); ?></span><?php endif;
+                    if (
+                        $theme_display
+                    ): ?><span class="lmd-card-tag tag-source-<?php echo esc_attr(
+    $theme_tag ? $tag_source : "ia",
+); ?>"><?php echo esc_html($theme_display); ?></span><?php endif;
                 }
-                $show_date = function_exists('lmd_pref_show_criterion') ? lmd_pref_show_criterion('date') : true;
-                if ($show_date) : ?><span class="lmd-card-date"><?php echo esc_html($created); ?></span><?php endif; ?>
+                $show_date = function_exists("lmd_pref_show_criterion")
+                    ? lmd_pref_show_criterion("date")
+                    : true;
+                if (
+                    $show_date
+                ): ?><span class="lmd-card-date"><?php echo esc_html(
+    $created,
+); ?></span><?php endif;
+                ?>
                 <?php
-                $show_cp = function_exists('lmd_pref_show_criterion') ? lmd_pref_show_criterion('cp_avis2') : true;
+                $show_cp = function_exists("lmd_pref_show_criterion")
+                    ? lmd_pref_show_criterion("cp_avis2")
+                    : true;
                 if ($show_cp) { ?>
-                <?php if ($has_cp) : ?><span class="lmd-card-tag lmd-card-tag-mini tag-source-cp">CP</span><?php endif; ?>
-                <?php if ($has_avis2) : ?><span class="lmd-card-tag lmd-card-tag-mini tag-source-avis2">2e avis</span><?php endif; ?>
-                <?php } ?>
+                <?php if (
+                    $has_cp
+                ): ?><span class="lmd-card-tag lmd-card-tag-mini tag-source-cp">CP</span><?php endif; ?>
+                <?php if (
+                    $has_avis2
+                ): ?><span class="lmd-card-tag lmd-card-tag-mini tag-source-avis2">2e avis</span><?php endif; ?>
+                <?php }
+                ?>
             </div>
         </div>
     </a>
     </div>
-            <?php endforeach; ?>
+            <?php
+    endforeach; ?>
 </div>
 <?php endif; ?>
 
