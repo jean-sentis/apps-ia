@@ -3,7 +3,7 @@
  * Plugin Name: LMD Apps IA
  * Plugin URI: https://lemarteaudigital.fr
  * Description: Suite LMD Apps IA (Le Marteau Digital) — premier module : aide à l’estimation, conso et facturation IA. Autres apps (Splitscreen, SEO, fidélisation…) : même suite, extensions séparées.
- * Version: 1.0.26
+ * Version: 1.0.38
  * Author: Le Marteau Digital
  * License: GPL-2.0+
  * Text Domain: lmd-apps-ia

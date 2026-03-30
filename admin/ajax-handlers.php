@@ -815,16 +815,6 @@ function lmd_ajax_report_ai_error()
         );
     }
 
-    $et_table = $wpdb->prefix . "lmd_estimation_tags";
-    $t_table = $wpdb->prefix . "lmd_tags";
-    $site_id = get_current_blog_id();
-    $wpdb->query(
-        $wpdb->prepare(
-            "DELETE et FROM $et_table et INNER JOIN $t_table t ON et.tag_id = t.id WHERE et.estimation_id = %d AND t.site_id = %d AND t.type IN ('interet', 'estimation', 'theme_vente')",
-            $id,
-            $site_id,
-        ),
-    );
     $detail_url = admin_url("admin.php?page=lmd-estimation-detail&id=" . $id);
     $client =
         trim($estimation->client_name ?? "") ?:

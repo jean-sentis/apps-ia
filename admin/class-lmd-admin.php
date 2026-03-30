@@ -697,11 +697,10 @@ class LMD_Admin
         }
 
         if ($is_parent) {
-            // menu_title = null : page accessible via URL / onglets hub, pas de doublon dans le menu latéral.
             add_submenu_page(
                 "lmd-apps-ia",
                 "Configuration APIs",
-                null,
+                "Configuration APIs",
                 "manage_options",
                 "lmd-api-config",
                 [$this, "render_api_config"],
@@ -709,7 +708,7 @@ class LMD_Admin
             add_submenu_page(
                 "lmd-apps-ia",
                 "Consommation IA",
-                null,
+                "Consommation IA",
                 "manage_options",
                 "lmd-consumption",
                 [$this, "render_consumption"],
@@ -717,7 +716,7 @@ class LMD_Admin
             add_submenu_page(
                 "lmd-apps-ia",
                 "Marge par produit",
-                null,
+                "Marge par produit",
                 "manage_options",
                 "lmd-product-margin",
                 [$this, "render_product_margin"],
@@ -728,7 +727,7 @@ class LMD_Admin
             add_submenu_page(
                 "lmd-apps-ia",
                 "Promotions clients",
-                null,
+                "Promotions clients",
                 "manage_options",
                 "lmd-promotions",
                 [$this, "render_promotions"],
@@ -736,7 +735,7 @@ class LMD_Admin
             add_submenu_page(
                 "lmd-apps-ia",
                 "Copie export/import",
-                null,
+                "Copie export/import",
                 "manage_options",
                 "lmd-copy-export-import",
                 [$this, "render_copy_export_import"],
@@ -746,18 +745,17 @@ class LMD_Admin
             add_submenu_page(
                 "lmd-apps-ia",
                 "Outils bac à sable",
-                null,
+                "Outils bac à sable",
                 "manage_options",
                 "lmd-sandbox-tools",
                 [$this, "render_sandbox_tools"],
             );
         }
 
-        // menu_title = null : page enregistrée et accessible (admin.php?page=…) mais pas d’entrée dans le menu latéral (WP 5.3+).
         add_submenu_page(
             "lmd-apps-ia",
             "Nouvelle demande",
-            null,
+            $is_parent ? "Nouvelle demande" : null,
             "manage_options",
             "lmd-new-estimation",
             [$this, "render_new_estimation"],
@@ -765,7 +763,7 @@ class LMD_Admin
         add_submenu_page(
             "lmd-apps-ia",
             "Mes estimations",
-            null,
+            $is_parent ? "Mes estimations" : null,
             "manage_options",
             "lmd-estimations-list",
             [$this, "render_estimations_list"],
@@ -781,7 +779,7 @@ class LMD_Admin
         add_submenu_page(
             "lmd-apps-ia",
             "Planning ventes",
-            null,
+            $is_parent ? "Planning ventes" : null,
             "manage_options",
             "lmd-ventes-list",
             [$this, "render_ventes_list"],
@@ -789,7 +787,7 @@ class LMD_Admin
         add_submenu_page(
             "lmd-apps-ia",
             "Liste vendeurs",
-            null,
+            $is_parent ? "Liste vendeurs" : null,
             "manage_options",
             "lmd-vendeurs-list",
             [$this, "render_vendeurs_list"],
@@ -797,7 +795,7 @@ class LMD_Admin
         add_submenu_page(
             "lmd-apps-ia",
             "Réglage affichages et réponses vendeurs",
-            null,
+            $is_parent ? "Préférences" : null,
             "manage_options",
             "lmd-preferences",
             [$this, "render_preferences"],
@@ -805,7 +803,7 @@ class LMD_Admin
         add_submenu_page(
             "lmd-apps-ia",
             "Aide",
-            null,
+            $is_parent ? "Aide" : null,
             "manage_options",
             "lmd-help",
             [$this, "render_help"],
@@ -813,7 +811,7 @@ class LMD_Admin
         add_submenu_page(
             "lmd-apps-ia",
             "Activité",
-            null,
+            $is_parent ? "Activité" : null,
             "manage_options",
             "lmd-activity",
             [$this, "render_activity"],

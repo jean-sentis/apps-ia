@@ -88,17 +88,13 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
 
 ## Priorité moyenne
 
-- [ ] Revoir la stratégie de navigation admin du site principal.
-  Fichiers concernés:
+- [x] Revoir la stratégie de navigation admin du site principal.
+  Fichier corrigé:
   - `wp-content/plugins/apps-ia/admin/class-lmd-admin.php`
-  - `wp-content/plugins/apps-ia/admin/views/hub.php`
-  Constat:
-  - plusieurs pages sont enregistrées avec `menu_title = null`, donc elles sont volontairement masquées dans le menu latéral WordPress;
-  - sur le site principal, cela donne l'impression qu'une partie des menus "manque", alors qu'ils sont en réalité déplacés dans les onglets du hub.
-  À décider:
-  - soit assumer pleinement cette navigation et clarifier visuellement dans le hub où se trouvent les outils parent;
-  - soit rendre visibles certaines entrées dans le menu latéral du site principal;
-  - dans tous les cas, éviter une navigation hybride qui ressemble à un bug pour l'utilisateur final.
+  Correction appliquée:
+  - les sous-menus utiles ne sont plus masqués sur le site principal;
+  - les sites enfants gardent leurs sous-pages masquées comme avant;
+  - la page technique `Détail estimation` reste cachée.
 
 - [x] Corriger la suppression des tags par avis.
   Fichiers corrigés:
@@ -115,6 +111,13 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
   Vérification à faire:
   - confirmer en UI qu'un tag choisi sur l'avis 1 n'efface plus celui de l'avis 2, et inversement;
   - confirmer qu'un même tag peut être choisi sur les deux avis sans perte de données.
+
+- [x] Empêcher le signalement "IA se trompe" de purger les tags manuels.
+  Fichier corrigé:
+  - `wp-content/plugins/apps-ia/admin/ajax-handlers.php`
+  Correction appliquée:
+  - le reset du dossier après signalement d'erreur IA ne supprime plus les tags `interet`, `estimation` et `theme_vente`;
+  - les tags manuels posés en avis 1 ou avis 2 sont donc conservés.
 
 - [x] Corriger l'incohérence du paramètre de token dans le système de délégation externe.
   Fichiers corrigés:
@@ -146,13 +149,11 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
 
 ## Priorité basse
 
-- [ ] Aligner la version du plugin entre l'en-tête WordPress et la constante interne.
-  Fichier concerné:
+- [x] Aligner la version du plugin entre l'en-tête WordPress et la constante interne.
+  Fichier corrigé:
   - `wp-content/plugins/apps-ia/lmd-apps-ia.php`
-  Problème:
-  - la version déclarée dans l'entête du plugin et `LMD_VERSION` ne sont pas identiques.
-  À corriger:
-  - choisir une seule version de référence et garder les deux valeurs synchronisées.
+  Correction appliquée:
+  - l'en-tête WordPress et `LMD_VERSION` sont maintenant synchronisés sur `1.0.38`.
 
 ## Vérifications à prévoir après correctifs
 
@@ -163,4 +164,5 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
 - [ ] Vérifier qu'un utilisateur admin d'un site enfant ne peut pas exécuter les actions réservées au site principal via `admin-post.php` ou AJAX.
 - [ ] Vérifier qu'un tag d'avis 1 n'efface plus un tag d'avis 2.
 - [x] Vérifier qu'un lien de délégation généré côté admin ouvre bien la vue publique prévue.
+- [ ] Vérifier qu'un signalement "IA se trompe" ne supprime plus les tags manuels déjà posés.
 - [ ] Vérifier que la vue publique de délégation expose bien tout le contenu et les actions attendus pour un vrai deuxième avis externe.
