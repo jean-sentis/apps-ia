@@ -224,23 +224,26 @@ $ai_summary_rest =
 .lmd-estimation-detail .ed-header-with-back .ed-header-title { flex: 1 !important; text-align: center !important; }
 .lmd-estimation-detail .ed-header-actions { display: flex !important; gap: 8px; }
 /* Tags bar - style page demandes (dropdowns horizontaux, badges larges) */
-.lmd-estimation-detail .ed-tags-bar { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 12px !important; margin: 16px 0 !important; padding: 10px 14px !important; background: #f9fafb !important; border: 1px solid #e5e7eb !important; border-radius: 10px !important; flex-wrap: wrap !important; overflow-x: auto !important; }
-.lmd-estimation-detail .ed-tags-bar-left { display: flex !important; align-items: center !important; gap: 8px !important; flex-shrink: 0 !important; }
-.lmd-estimation-detail .ed-tags-bar-center { display: flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important; flex: 1 !important; min-width: 0 !important; }
-.lmd-estimation-detail .ed-tags-bar-right { display: flex !important; align-items: center !important; gap: 8px !important; flex-shrink: 0 !important; margin-left: auto !important; }
-.lmd-estimation-detail .ed-tag-supprimer { margin-left: auto !important; flex-shrink: 0 !important; padding: 8px 14px !important; background: #fff !important; border: 2px solid #e5e7eb !important; border-radius: 8px !important; font-size: 13px !important; color: #dc2626 !important; text-decoration: none !important; font-weight: 500 !important; cursor: pointer !important; }
+.lmd-estimation-detail .ed-tags-bar { display: flex !important; align-items: flex-start !important; justify-content: space-between !important; gap: 12px !important; margin: 16px 0 !important; padding: 10px 14px !important; background: #f9fafb !important; border: 1px solid #e5e7eb !important; border-radius: 10px !important; flex-wrap: wrap !important; overflow: visible !important; }
+.lmd-estimation-detail .ed-tags-bar-left,
+.lmd-estimation-detail .ed-tags-bar-center,
+.lmd-estimation-detail .ed-tags-bar-right { display: grid !important; gap: 8px !important; min-width: 0 !important; align-items: stretch !important; }
+.lmd-estimation-detail .ed-tags-bar-left { flex: 1.1 1 12% !important; grid-template-columns: minmax(0, 1fr) !important; }
+.lmd-estimation-detail .ed-tags-bar-center { flex: 2.8 1 42% !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+.lmd-estimation-detail .ed-tags-bar-right { flex: 2.2 1 32% !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; margin-left: 0 !important; }
+.lmd-estimation-detail .ed-tag-supprimer { margin-left: 0 !important; flex: 0 0 auto !important; align-self: stretch !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 8px 14px !important; background: #fff !important; border: 2px solid #e5e7eb !important; border-radius: 8px !important; font-size: 13px !important; color: #dc2626 !important; text-decoration: none !important; font-weight: 500 !important; cursor: pointer !important; white-space: nowrap !important; }
 .lmd-estimation-detail .ed-tag-supprimer:hover { border-color: #dc2626 !important; background: #fef2f2 !important; }
-.lmd-estimation-detail .ed-tag-wrapper[data-type="vente"] .ed-tag-btn { min-width: 70px !important; max-width: 90px !important; }
+.lmd-estimation-detail .ed-tag-wrapper[data-type="vente"] .ed-tag-btn { min-width: 0 !important; max-width: none !important; }
 .lmd-estimation-detail .ed-tags-bar-right .ed-tag-wrapper[data-type="vente"] { align-self: center !important; }
-.lmd-estimation-detail .ed-tag-vente-case { display: flex !important; align-items: center !important; gap: 4px !important; padding: 4px 6px 4px 4px !important; background: #fff !important; border: 2px solid #e5e7eb !important; border-left-width: 4px !important; border-radius: 8px !important; }
-.lmd-estimation-detail .ed-tag-vente-case .ed-tag-btn { margin: 0 !important; border: none !important; border-radius: 6px !important; padding: 6px 10px !important; min-width: 60px !important; max-width: 80px !important; }
-.lmd-estimation-detail .ed-tag-vente-case .ed-lot-number { width: 44px !important; padding: 4px 6px !important; border: 1px solid #e5e7eb !important; border-radius: 6px !important; font-size: 12px !important; text-align: center !important; margin: 0 !important; }
+.lmd-estimation-detail .ed-tag-vente-case { display: flex !important; align-items: center !important; gap: 4px !important; width: 100% !important; min-width: 0 !important; padding: 4px 6px 4px 4px !important; background: #fff !important; border: 2px solid #e5e7eb !important; border-left-width: 4px !important; border-radius: 8px !important; }
+.lmd-estimation-detail .ed-tag-vente-case .ed-tag-btn { flex: 1 1 auto !important; width: auto !important; margin: 0 !important; border: none !important; border-radius: 6px !important; padding: 6px 10px !important; min-width: 0 !important; max-width: none !important; }
+.lmd-estimation-detail .ed-tag-vente-case .ed-lot-number { flex: 0 0 4ch !important; width: 4ch !important; padding: 4px 0 !important; border: 1px solid #e5e7eb !important; border-radius: 6px !important; font-size: 12px !important; text-align: center !important; margin: 0 !important; }
 .lmd-estimation-detail .ed-tag-wrapper[data-type="vendeur"] .ed-tag-btn,
 .lmd-estimation-detail .ed-tag-wrapper[data-type="vendeur"] .ed-tag-btn.ed-tag-source-form { background: #fff !important; border-color: #e5e7eb !important; border-left-color: #9ca3af !important; color: #111827 !important; filter: none !important; }
 .lmd-estimation-detail .ed-tag-wrapper[data-type="vendeur"] .ed-tag-btn:hover,
 .lmd-estimation-detail .ed-tag-wrapper[data-type="vendeur"] .ed-tag-btn.ed-tag-source-form:hover { border-color: #9ca3af !important; box-shadow: 0 0 0 2px rgba(156,163,175,0.2) !important; }
-.lmd-estimation-detail .ed-tag-wrapper { position: relative !important; flex-shrink: 0 !important; }
-.lmd-estimation-detail .ed-tag-btn { position: relative; display: flex !important; align-items: center !important; gap: 6px !important; padding: 8px 14px !important; background: #fff !important; border: 2px solid #e5e7eb !important; border-left-width: 4px !important; border-radius: 8px !important; font-size: 13px !important; cursor: pointer !important; min-width: 200px !important; max-width: 280px !important; font-family: inherit !important; box-shadow: none !important; color: #374151 !important; font-weight: 500 !important; transition: border-color 0.2s, box-shadow 0.2s !important; }
+.lmd-estimation-detail .ed-tag-wrapper { position: relative !important; min-width: 0 !important; width: 100% !important; }
+.lmd-estimation-detail .ed-tag-btn { position: relative; display: flex !important; align-items: center !important; gap: 6px !important; width: 100% !important; padding: 8px 14px !important; background: #fff !important; border: 2px solid #e5e7eb !important; border-left-width: 4px !important; border-radius: 8px !important; font-size: 13px !important; cursor: pointer !important; min-width: 0 !important; max-width: none !important; font-family: inherit !important; box-shadow: none !important; color: #374151 !important; font-weight: 500 !important; transition: border-color 0.2s, box-shadow 0.2s !important; }
 .lmd-estimation-detail .ed-tag-btn:hover { border-color: #9ca3af !important; box-shadow: 0 0 0 2px rgba(156,163,175,0.2) !important; }
 .lmd-estimation-detail .ed-tag-btn.ed-tag-source-ia,
 .lmd-estimation-detail .ed-tag-btn.ed-tag-source-form { background: #f0fdf4 !important; border-color: #22c55e !important; border-left-color: #22c55e !important; color: #15803d !important; filter: saturate(0.67) !important; }
@@ -266,6 +269,23 @@ $ai_summary_rest =
 .lmd-estimation-detail .ed-tag-dd-create-theme .ed-tag-dd-create-parent { color: #6b7280 !important; font-size: 11px !important; }
 .lmd-estimation-detail .ed-tag-dd-gear { background: none !important; border: none !important; padding: 4px 6px !important; cursor: pointer !important; font-size: 26px !important; color: #3b82f6 !important; border-radius: 4px !important; flex-shrink: 0 !important; }
 .lmd-estimation-detail .ed-tag-dd-gear:hover { color: #1d4ed8 !important; background: #eff6ff !important; }
+@media (max-width: 1440px) {
+    .lmd-estimation-detail .ed-tags-bar-left { flex-basis: 18% !important; }
+    .lmd-estimation-detail .ed-tags-bar-center { flex-basis: 100% !important; order: 2 !important; }
+    .lmd-estimation-detail .ed-tags-bar-right { flex-basis: 100% !important; order: 3 !important; }
+    .lmd-estimation-detail .ed-tag-supprimer { order: 4 !important; }
+}
+@media (max-width: 1180px) {
+    .lmd-estimation-detail .ed-tags-bar-center,
+    .lmd-estimation-detail .ed-tags-bar-right { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    .lmd-estimation-detail .ed-tags-bar-right .ed-tag-wrapper[data-type="vendeur"] { grid-column: 1 / -1 !important; }
+}
+@media (max-width: 920px) {
+    .lmd-estimation-detail .ed-tags-bar-left,
+    .lmd-estimation-detail .ed-tags-bar-center,
+    .lmd-estimation-detail .ed-tags-bar-right { flex-basis: 100% !important; grid-template-columns: minmax(0, 1fr) !important; }
+    .lmd-estimation-detail .ed-tag-supprimer { width: 100% !important; }
+}
 /* Modal personnalisation catégories - #ed-category-modal est en dehors du wrap, donc ciblé directement */
 #ed-category-modal { display: none !important; position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; background: rgba(0,0,0,0.4) !important; z-index: 1000001 !important; align-items: center !important; justify-content: center !important; }
 #ed-category-modal.open { display: flex !important; }
