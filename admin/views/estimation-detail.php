@@ -2507,7 +2507,11 @@ var lmdEdMailto = <?php echo wp_json_encode([
                     updateTabProgress(100);
                     $('#ed-ai-btn-progress').hide();
                     $btn.prop('disabled', false);
-                    setTimeout(function(){ location.reload(); }, 500);
+                    setTimeout(function(){
+                        var nextUrl = new URL(window.location.href);
+                        nextUrl.searchParams.set('ai_tab', 'identity');
+                        window.location.href = nextUrl.toString();
+                    }, 500);
                 } else if (r.success && r.data && r.data.status === 'error') {
                     clearInterval(interval);
                     $('#ed-ai-btn-progress').hide();
@@ -2538,19 +2542,33 @@ var lmdEdMailto = <?php echo wp_json_encode([
     })();
     <?php endif; ?>
 
-    function toggleChromeTab(field) {
+    function setChromeTab(field, forceOpen) {
         var $cartouche = $('#ed-ai-cartouche'), $panels = $cartouche.find('.ed-ai-panel'), $tabs = $('.ed-ai-chrome-tab');
         var $active = $tabs.filter('[data-field="' + field + '"]');
+        if (!$active.length) return;
         var wasOpen = $active.hasClass('open');
+        var shouldOpen = forceOpen === true ? true : !wasOpen;
         $tabs.removeClass('open');
         $panels.removeClass('open');
-        if (!wasOpen) {
+        if (shouldOpen) {
             $active.addClass('open');
             $panels.filter('[data-field="' + field + '"]').addClass('open');
         }
         $cartouche.toggleClass('open', $tabs.filter('.open').length > 0);
     }
+    function toggleChromeTab(field) {
+        setChromeTab(field, false);
+    }
     $('.ed-ai-chrome-tab').on('click', function(){ toggleChromeTab($(this).data('field')); });
+    (function openAiTabFromQuery(){
+        var params = new URLSearchParams(window.location.search);
+        var aiTab = params.get('ai_tab');
+        if (!aiTab) return;
+        setChromeTab(aiTab, true);
+        params.delete('ai_tab');
+        var cleaned = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
+        window.history.replaceState({}, document.title, cleaned);
+    })();
 
     (function(){
         var photoUrls = [];

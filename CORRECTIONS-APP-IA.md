@@ -86,6 +86,20 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
   - corrigé dans le flux d'export;
   - validé partiellement par un export manuel réussi depuis le parent.
 
+- [x] Corriger l'agrégation multisite de l'écran `Consommation IA`.
+  Fichier corrigé:
+  - `wp-content/plugins/apps-ia/includes/class-lmd-api-usage.php`
+  Problème:
+  - `LMD_Api_Usage` mémorisait le préfixe SQL du blog au moment de l'instanciation;
+  - depuis le site parent, l'écran `Consommation IA` parcourait bien les sites enfants, mais continuait à lire la table du parent après `switch_to_blog()`;
+  - le tableau réseau pouvait donc afficher `0` ou des chiffres faux alors que les logs existaient bien sur les tables des sites enfants.
+  Correction appliquée:
+  - la classe resynchronise maintenant son contexte WordPress/SQL avant chaque accès à la table `api_usage`;
+  - les lectures multisites (`get_consumption_for_period()`, `get_all_clients_consumption()`, agrégats associés) utilisent désormais la bonne table pour chaque blog.
+  Vérification à faire:
+  - recharger `Consommation IA` sur le site parent;
+  - vérifier que le tableau réseau remonte bien les analyses déjà effectuées sur les sites enfants.
+
 ## Priorité moyenne
 
 - [x] Revoir la stratégie de navigation admin du site principal.
@@ -146,6 +160,23 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
   - le lien tokenisé s'ouvre bien côté public;
   - la page affichée est aujourd'hui minimale: titre `Estimation #ID`, photo(s), description si présente;
   - aucun formulaire ou mécanisme de retour d'avis externe n'est actuellement exposé.
+
+- [x] Corriger la logique des correspondances Lens dans l'analyse IA.
+  Fichier corrigé:
+  - `wp-content/plugins/apps-ia/includes/class-lmd-estimation-processor.php`
+  Problème:
+  - le plugin ne demandait à SerpAPI que `visual_matches`;
+  - si Lens renvoyait surtout `exact_matches` ou `products`, le volet `Correspondances` restait presque vide;
+  - en plus, Gemini pouvait produire des `visual_comparisons` alors qu'aucune vraie correspondance n'avait été conservée.
+  Correction appliquée:
+  - le pipeline Lens interroge maintenant `all` au lieu de `visual_matches` seulement;
+  - les correspondances fusionnent désormais `exact_matches`, `visual_matches` et `products`;
+  - un fallback sans requête texte est tenté si le premier appel Lens revient vide;
+  - les faux `visual_comparisons` sont vidés lorsqu'aucune correspondance réelle n'est disponible.
+  Vérification à faire:
+  - relancer une analyse IA sur quelques objets variés;
+  - vérifier que l'onglet `Correspondances` remonte plus souvent des résultats concrets;
+  - vérifier que les objets qui n'ont vraiment aucune piste n'affichent plus de comparaisons fantômes.
 
 ## Priorité basse
 
