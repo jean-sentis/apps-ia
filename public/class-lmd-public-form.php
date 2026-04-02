@@ -19,10 +19,6 @@ class LMD_Public_Form
         <div class="lmd-form-wrapper" data-style="<?php echo esc_attr(
             $style,
         ); ?>">
-            <div class="lmd-form-header">
-                <h2><?php echo esc_html($titre); ?></h2>
-                <p class="lmd-form-intro">Transmettez vos photos et quelques informations utiles. Le commissaire-priseur vous répond avec un premier avis sous 48h.</p>
-            </div>
             <div class="lmd-form-card lmd-form-main-card">
             <?php if ($style !== "contact"): ?>
             <div class="lmd-left-section">
