@@ -552,6 +552,7 @@ $ai_summary_rest =
 .lmd-estimation-detail .ed-corresp-item { position: relative !important; display: flex !important; flex-direction: column !important; border: 2px solid #e5e7eb !important; border-radius: 8px !important; overflow: visible !important; background: #f9fafb !important; }
 .lmd-estimation-detail .ed-corresp-num { position: absolute !important; top: 6px !important; left: 6px !important; width: 22px !important; height: 22px !important; background: #6b7280 !important; color: #fff !important; border-radius: 50% !important; font-size: 11px !important; font-weight: 700 !important; display: flex !important; align-items: center !important; justify-content: center !important; z-index: 2 !important; }
 .lmd-estimation-detail .ed-corresp-link { display: block !important; flex-shrink: 0 !important; aspect-ratio: 1 !important; background: #f9fafb !important; min-height: 180px !important; overflow: hidden !important; border-radius: 6px 6px 0 0 !important; }
+.lmd-estimation-detail .ed-corresp-link--disabled { cursor: default !important; pointer-events: none !important; }
 .lmd-estimation-detail .ed-corresp-link img { width: 100% !important; height: 100% !important; object-fit: contain !important; display: block !important; }
 .lmd-estimation-detail .ed-corresp-placeholder { display: flex !important; align-items: center !important; justify-content: center !important; padding: 12px !important; font-size: 11px !important; color: #6b7280 !important; text-align: center !important; min-height: 100px !important; }
 .lmd-estimation-detail .ed-corresp-verdict { position: absolute !important; top: 6px !important; right: 6px !important; padding: 2px 8px !important; font-size: 10px !important; font-weight: 700 !important; border-radius: 4px !important; z-index: 2 !important; }
@@ -1835,6 +1836,12 @@ endforeach;
 
                     $thumb = $c["thumbnail"] ?? ($c["url"] ?? "");
                     $url = $c["url"] ?? "";
+                    if (
+                        $url === "" &&
+                        !empty($ai["visual_matches"][$i]["link"])
+                    ) {
+                        $url = (string) $ai["visual_matches"][$i]["link"];
+                    }
                     $title = $c["title"] ?? "";
                     $verdict = $c["verdict"] ?? "similaire";
                     $details = trim($c["details"] ?? "");
@@ -1855,14 +1862,21 @@ endforeach;
                                 : ($verdict === "même_modèle"
                                     ? "meme-modele"
                                     : "similaire"));
+                    $has_click_url = is_string($url) && trim($url) !== "";
                     ?><div class="ed-corresp-item">
                         <span class="ed-corresp-num"><?php echo (int) ($i +
                             1); ?></span>
+                        <?php if ($has_click_url): ?>
                         <a href="<?php echo esc_url(
                             $url,
                         ); ?>" target="_blank" rel="noopener" class="ed-corresp-link" title="<?php echo esc_attr(
     $title,
 ); ?>">
+                        <?php else: ?>
+                        <div class="ed-corresp-link ed-corresp-link--disabled" title="<?php echo esc_attr(
+                            $title ?: "Lien indisponible",
+                        ); ?>">
+                        <?php endif; ?>
                             <?php if ($thumb): ?><img src="<?php echo esc_url(
     $thumb,
 ); ?>" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block';"><span class="ed-corresp-placeholder" style="display:none;"><?php echo esc_html(
@@ -1870,7 +1884,11 @@ endforeach;
 ); ?></span><?php else: ?><span class="ed-corresp-placeholder"><?php echo esc_html(
     substr($title, 0, 30),
 ); ?></span><?php endif; ?>
+                        <?php if ($has_click_url): ?>
                         </a>
+                        <?php else: ?>
+                        </div>
+                        <?php endif; ?>
                         <span class="ed-corresp-verdict ed-corresp-verdict-<?php echo esc_attr(
                             $verdict_class,
                         ); ?>" <?php echo $details

@@ -205,8 +205,8 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
 - [ ] Vérifier qu'aucune importation depuis le site principal ne laisse WordPress bloqué sur le mauvais blog après exécution.
 - [x] Vérifier qu'une exportation depuis le site principal ne laisse pas WordPress bloqué sur le mauvais blog après exécution.
 - [x] Vérifier qu'un utilisateur admin d'un site enfant ne peut pas accéder aux pages réservées au site principal via `admin.php?page=...`.
-- [ ] Vérifier qu'un utilisateur admin d'un site enfant ne peut pas exécuter les actions réservées au site principal via `admin-post.php` ou AJAX.
-- [ ] Vérifier qu'un tag d'avis 1 n'efface plus un tag d'avis 2.
+- [x] Vérifier qu'un utilisateur admin d'un site enfant ne peut pas exécuter les actions réservées au site principal via `admin-post.php` ou AJAX.
+- [x] Vérifier qu'un tag d'avis 1 n'efface plus un tag d'avis 2.
 - [x] Vérifier qu'un lien de délégation généré côté admin ouvre bien la vue publique prévue.
-- [ ] Vérifier qu'un signalement "IA se trompe" ne supprime plus les tags manuels déjà posés.
-- [ ] Vérifier que la vue publique de délégation permet bien d'enregistrer un avis externe complet dans les champs `avis2_*`.
+- [x] Vérifier qu'un signalement "IA se trompe" ne supprime plus les tags manuels déjà posés.
+- [x] Vérifier que la vue publique de délégation permet bien d'enregistrer un avis externe complet dans les champs `avis2_*`.

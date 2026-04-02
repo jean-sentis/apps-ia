@@ -1150,10 +1150,9 @@ class LMD_Estimation_Processor
                 $notes = $scraped_by_url[$link];
             }
             if ($should_empty_url($link)) {
-                $link = "";
                 if (empty($notes)) {
                     $notes =
-                        "Lien non vérifié (page potentiellement inaccessible).";
+                        "Lien externe conservé mais non vérifié (page potentiellement inaccessible ou paywall).";
                 }
             }
             $correspondances[] = [
