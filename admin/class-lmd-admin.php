@@ -11,6 +11,13 @@ if (!defined("ABSPATH")) {
 
 class LMD_Admin
 {
+    private function require_main_site_or_die()
+    {
+        if (is_multisite() && !is_main_site()) {
+            wp_die(esc_html__("Non autorisé.", "lmd-apps-ia"));
+        }
+    }
+
     public function __construct()
     {
         add_action("admin_init", [$this, "maybe_redirect_legacy_app_pages"], 1);
@@ -18,6 +25,7 @@ class LMD_Admin
         add_action("admin_menu", [$this, "remove_parent_only_menu_items"], 999);
         add_action("admin_enqueue_scripts", [$this, "enqueue_assets"]);
         add_action("admin_head", [$this, "menu_icon_scale"]);
+        add_action("admin_head", [$this, "hide_global_notices_on_lmd_pages"]);
         add_filter("admin_body_class", [$this, "admin_body_class_lmd"]);
         add_filter(
             "parent_file",
@@ -846,6 +854,32 @@ class LMD_Admin
     }
 
     /**
+     * Masque les notices globales WordPress sur les écrans LMD pour éviter le bruit visuel.
+     * On conserve les notices intégrées dans les vues du plugin (souvent rendues dans le wrapper `.wrap`).
+     */
+    public function hide_global_notices_on_lmd_pages()
+    {
+        if (!is_admin()) {
+            return;
+        }
+        $page = isset($_GET["page"])
+            ? sanitize_key(wp_unslash($_GET["page"]))
+            : "";
+        if ($page === "" || strpos($page, "lmd-") !== 0) {
+            return;
+        }
+        echo '<style id="lmd-apps-ia-hide-global-notices">
+            body.lmd-suite-admin #wpbody-content > .notice,
+            body.lmd-suite-admin #wpbody-content > .update-nag,
+            body.lmd-suite-admin #wpbody-content > .updated,
+            body.lmd-suite-admin #wpbody-content > .error,
+            body.lmd-suite-admin #wpbody-content > .is-dismissible {
+                display: none !important;
+            }
+        </style>';
+    }
+
+    /**
      * Classe body pour harmoniser le style (boutons, badges, typo) sur toutes les pages LMD.
      */
     /**
@@ -1112,6 +1146,7 @@ class LMD_Admin
         if (!current_user_can("manage_options")) {
             wp_die(esc_html__("Non autorisé.", "lmd-apps-ia"));
         }
+        $this->require_main_site_or_die();
         $url = function_exists("lmd_app_estimation_admin_url")
             ? lmd_app_estimation_admin_url("dashboard", [
                     "dash_sub" => "stats",
@@ -1145,6 +1180,7 @@ class LMD_Admin
 
     public function render_consumption()
     {
+        $this->require_main_site_or_die();
         $view = LMD_PLUGIN_DIR . "admin/views/consumption.php";
         if (file_exists($view)) {
             include $view;
@@ -1155,6 +1191,7 @@ class LMD_Admin
 
     public function render_product_margin()
     {
+        $this->require_main_site_or_die();
         $view = LMD_PLUGIN_DIR . "admin/views/product-margin.php";
         if (file_exists($view)) {
             include $view;
@@ -1345,6 +1382,7 @@ class LMD_Admin
 
     public function render_api_config()
     {
+        $this->require_main_site_or_die();
         $view = LMD_PLUGIN_DIR . "admin/views/api-config.php";
         if (file_exists($view)) {
             include $view;
@@ -1385,6 +1423,7 @@ class LMD_Admin
 
     public function render_promotions()
     {
+        $this->require_main_site_or_die();
         $view = LMD_PLUGIN_DIR . "admin/views/promotions.php";
         if (file_exists($view)) {
             include $view;
@@ -1395,6 +1434,7 @@ class LMD_Admin
 
     public function render_copy_export_import()
     {
+        $this->require_main_site_or_die();
         $view = LMD_PLUGIN_DIR . "admin/views/copy-export-import.php";
         if (file_exists($view)) {
             include $view;

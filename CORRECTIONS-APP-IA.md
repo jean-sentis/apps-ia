@@ -55,7 +55,7 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
   - corrigé dans le runtime des lectures API;
   - validé par test manuel: l'analyse IA fonctionne maintenant aussi sur un site enfant avec les clés configurées sur le parent.
 
-- [ ] Uniformiser les protections serveur des écrans et routes parent-only.
+- [x] Uniformiser les protections serveur des écrans et routes parent-only.
   Fichiers concernés:
   - `wp-content/plugins/apps-ia/admin/class-lmd-admin.php`
   - `wp-content/plugins/apps-ia/admin/views/api-config.php`
@@ -71,7 +71,9 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
   État du test:
   - les accès directs depuis un site enfant à `admin.php?page=lmd-api-config`, `lmd-consumption`, `lmd-product-margin`, `lmd-copy-export-import`, `lmd-promotions` et `lmd-activity` sont déjà refusés par WordPress;
   - les routes `admin-post` parent-only d'export/import ont été verrouillées côté serveur;
-  - le point restant à auditer concerne surtout certains endpoints AJAX si l'on veut fermer complètement cette priorité.
+  - les renderers réseau-only (`api-config`, `consumption`, `product-margin`, `promotions`, `copy-export-import`, `activity`) ont maintenant une garde explicite côté serveur;
+  - `api-config.php` a aussi une garde directe;
+  - l'audit des endpoints AJAX n'a pas mis en évidence d'action supplémentaire clairement réservée au parent: les endpoints restants servent aux écrans locaux des sites enfants (préférences, formules, réglages CP, tags et catégories).
 
 - [x] Corriger l'export multisite pour qu'il embarque les bonnes options parent.
   Fichier concerné:
@@ -145,21 +147,19 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
   - regénérer un lien et vérifier qu'il ouvre toujours la vue publique;
   - si le shortcode est utilisé, vérifier qu'il fonctionne avec le paramètre `lmd_delegation_token`.
 
-- [ ] Vérifier la cohérence globale du workflow de deuxième avis externe.
-  Fichiers concernés:
-  - `wp-content/plugins/apps-ia/admin/class-lmd-ajax.php`
+- [x] Mettre en place un vrai formulaire de deuxième avis externe sur la page tokenisée.
+  Fichier corrigé:
   - `wp-content/plugins/apps-ia/public/class-lmd-delegation-view.php`
-  - `wp-content/plugins/apps-ia/admin/views/estimation-detail.php`
-  Constat:
-  - le système actuel partage bien un dossier par lien tokenisé;
-  - mais il ne fournit pas encore un vrai workflow complet de retour externe de l'avis 2.
-  Action attendue:
-  - décider si le comportement actuel est volontaire;
-  - sinon, cadrer une correction fonctionnelle distincte pour permettre une réponse externe exploitable.
-  État du test:
-  - le lien tokenisé s'ouvre bien côté public;
-  - la page affichée est aujourd'hui minimale: titre `Estimation #ID`, photo(s), description si présente;
-  - aucun formulaire ou mécanisme de retour d'avis externe n'est actuellement exposé.
+  Correction appliquée:
+  - la page publique affiche maintenant un layout en deux colonnes inspiré du back-office;
+  - à gauche: intitulé de la demande, photo(s), description;
+  - à droite: formulaire avec titre, avis, estimation basse, prix de réserve et estimation haute;
+  - la soumission enregistre directement les champs `avis2_titre`, `second_opinion`, `avis2_estimate_low`, `avis2_prix_reserve` et `avis2_estimate_high`;
+  - le rendu direct par lien tokenisé et le shortcode partagent désormais la même structure et les mêmes styles.
+  Vérification à faire:
+  - ouvrir un lien tokenisé en navigation privée;
+  - remplir le formulaire;
+  - vérifier dans le back-office que les champs de l'avis 2 ont bien été mis à jour.
 
 - [x] Corriger la logique des correspondances Lens dans l'analyse IA.
   Fichier corrigé:
@@ -178,13 +178,26 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
   - vérifier que l'onglet `Correspondances` remonte plus souvent des résultats concrets;
   - vérifier que les objets qui n'ont vraiment aucune piste n'affichent plus de comparaisons fantômes.
 
+- [x] Ouvrir automatiquement l'onglet `Identité / Biographie` après la fin de l'analyse IA.
+  Fichier corrigé:
+  - `wp-content/plugins/apps-ia/admin/views/estimation-detail.php`
+  Correction appliquée:
+  - quand le polling détecte la fin de l'analyse IA, la page se recharge avec l'onglet `Identité / Biographie` déjà ouvert, sans clic utilisateur.
+
+- [x] Masquer les notices WordPress globales sur les écrans d'admin du plugin.
+  Fichier corrigé:
+  - `wp-content/plugins/apps-ia/admin/class-lmd-admin.php`
+  Correction appliquée:
+  - les notices injectées en haut de `#wpbody-content` par WordPress ou d'autres plugins ne s'affichent plus sur les écrans `LMD Apps IA`;
+  - les messages rendus à l'intérieur des vues du plugin restent possibles.
+
 ## Priorité basse
 
 - [x] Aligner la version du plugin entre l'en-tête WordPress et la constante interne.
   Fichier corrigé:
   - `wp-content/plugins/apps-ia/lmd-apps-ia.php`
   Correction appliquée:
-  - l'en-tête WordPress et `LMD_VERSION` sont maintenant synchronisés sur `1.0.38`.
+  - l'en-tête WordPress et `LMD_VERSION` sont maintenant synchronisés sur `1.0.41`.
 
 ## Vérifications à prévoir après correctifs
 
@@ -196,4 +209,4 @@ Objectif: lister les corrections à implémenter, sans encore faire les patchs.
 - [ ] Vérifier qu'un tag d'avis 1 n'efface plus un tag d'avis 2.
 - [x] Vérifier qu'un lien de délégation généré côté admin ouvre bien la vue publique prévue.
 - [ ] Vérifier qu'un signalement "IA se trompe" ne supprime plus les tags manuels déjà posés.
-- [ ] Vérifier que la vue publique de délégation expose bien tout le contenu et les actions attendus pour un vrai deuxième avis externe.
+- [ ] Vérifier que la vue publique de délégation permet bien d'enregistrer un avis externe complet dans les champs `avis2_*`.
