@@ -42,6 +42,10 @@ class LMD_Ajax
             "generate_delegation_token",
         ]);
         add_action("wp_ajax_lmd_save_reponse", [$this, "save_reponse"]);
+        add_action("wp_ajax_lmd_send_reponse_email", [
+            $this,
+            "send_reponse_email",
+        ]);
         add_action("wp_ajax_lmd_add_delegation_recipient", [
             $this,
             "add_delegation_recipient",
@@ -918,14 +922,24 @@ class LMD_Ajax
             isset($_POST["questions_selected"]) &&
             is_array($_POST["questions_selected"])
                 ? array_map("absint", $_POST["questions_selected"])
-                : [];
+                : null;
+        $this->save_reponse_data($id, $subject, $body, $questions);
+        if ($mark_sent) {
+            $sent_at = $this->mark_reponse_as_sent($id);
+        }
+        wp_send_json_success([
+            "sent_at" => $mark_sent ? $sent_at ?? null : null,
+        ]);
+    }
+
+    private function save_reponse_data($id, $subject, $body, $questions = null)
+    {
         global $wpdb;
         $data = ["reponse_subject" => $subject, "reponse_body" => $body];
-        if ($mark_sent) {
-            $data["reponse_sent_at"] = current_time("mysql");
-        }
-        if (isset($_POST["questions_selected"])) {
-            $data["reponse_questions_selected"] = wp_json_encode($questions);
+        if (is_array($questions)) {
+            $data["reponse_questions_selected"] = wp_json_encode(
+                array_values(array_map("absint", $questions)),
+            );
         }
         $wpdb->update(
             $wpdb->prefix . "lmd_estimations",
@@ -934,30 +948,141 @@ class LMD_Ajax
             null,
             ["%d"],
         );
-        if ($mark_sent) {
-            $site_id = get_current_blog_id();
-            $tag = $wpdb->get_row(
+    }
+
+    private function mark_reponse_as_sent($id, $sent_at = null)
+    {
+        global $wpdb;
+        $sent_at = $sent_at ?: current_time("mysql");
+        $wpdb->update(
+            $wpdb->prefix . "lmd_estimations",
+            ["reponse_sent_at" => $sent_at],
+            ["id" => $id],
+            ["%s"],
+            ["%d"],
+        );
+        $site_id = get_current_blog_id();
+        $tag = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT id FROM {$wpdb->prefix}lmd_tags WHERE site_id = %d AND type = 'message' AND slug = 'repondu'",
+                $site_id,
+            ),
+        );
+        if ($tag) {
+            $wpdb->query(
                 $wpdb->prepare(
-                    "SELECT id FROM {$wpdb->prefix}lmd_tags WHERE site_id = %d AND type = 'message' AND slug = 'repondu'",
-                    $site_id,
+                    "DELETE et FROM {$wpdb->prefix}lmd_estimation_tags et INNER JOIN {$wpdb->prefix}lmd_tags t ON et.tag_id = t.id WHERE et.estimation_id = %d AND t.type = 'message'",
+                    $id,
                 ),
             );
-            if ($tag) {
-                $wpdb->query(
-                    $wpdb->prepare(
-                        "DELETE et FROM {$wpdb->prefix}lmd_estimation_tags et INNER JOIN {$wpdb->prefix}lmd_tags t ON et.tag_id = t.id WHERE et.estimation_id = %d AND t.type = 'message'",
-                        $id,
-                    ),
-                );
-                $wpdb->insert(
-                    $wpdb->prefix . "lmd_estimation_tags",
-                    ["estimation_id" => $id, "tag_id" => $tag->id],
-                    ["%d", "%d"],
-                );
+            $wpdb->insert(
+                $wpdb->prefix . "lmd_estimation_tags",
+                ["estimation_id" => $id, "tag_id" => $tag->id],
+                ["%d", "%d"],
+            );
+        }
+        return $sent_at;
+    }
+
+    public function send_reponse_email()
+    {
+        check_ajax_referer("lmd_admin", "nonce");
+        if (!current_user_can("manage_options")) {
+            wp_send_json_error(["message" => "Non autorisé"]);
+        }
+        $id = isset($_POST["id"]) ? absint($_POST["id"]) : 0;
+        if (!$id) {
+            wp_send_json_error(["message" => "ID manquant"]);
+        }
+        $subject = isset($_POST["subject"])
+            ? sanitize_text_field(wp_unslash($_POST["subject"]))
+            : "";
+        $body = isset($_POST["body"])
+            ? wp_kses_post(wp_unslash($_POST["body"]))
+            : "";
+        $questions =
+            isset($_POST["questions_selected"]) &&
+            is_array($_POST["questions_selected"])
+                ? array_map("absint", $_POST["questions_selected"])
+                : null;
+        $interet_slug = isset($_POST["interet_slug"])
+            ? sanitize_key(wp_unslash($_POST["interet_slug"]))
+            : "";
+        $estimation_slug = isset($_POST["estimation_slug"])
+            ? sanitize_key(wp_unslash($_POST["estimation_slug"]))
+            : "";
+        global $wpdb;
+        $this->save_reponse_data($id, $subject, $body, $questions);
+
+        $estimation = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT id, client_email FROM {$wpdb->prefix}lmd_estimations WHERE id = %d",
+                $id,
+            ),
+        );
+        if (!$estimation) {
+            wp_send_json_error(["message" => "Estimation introuvable"]);
+        }
+
+        $email = sanitize_email($estimation->client_email ?? "");
+        if (!$email) {
+            wp_send_json_error(["message" => "Email client non disponible"]);
+        }
+
+        $cp = function_exists("lmd_get_cp_settings_for_user")
+            ? lmd_get_cp_settings_for_user()
+            : ["email" => "", "signature" => "", "copy_emails" => []];
+        $prefs = function_exists("lmd_get_prefs") ? lmd_get_prefs() : [];
+        $excluded =
+            isset($prefs["bcc_exclude_response_slugs"]) &&
+            is_array($prefs["bcc_exclude_response_slugs"])
+                ? array_map(
+                    "sanitize_key",
+                    $prefs["bcc_exclude_response_slugs"],
+                )
+                : [];
+        $skip_bcc =
+            ($interet_slug && in_array($interet_slug, $excluded, true)) ||
+            ($estimation_slug && in_array($estimation_slug, $excluded, true));
+
+        $signature_html = !empty($cp["signature"])
+            ? wp_kses_post($cp["signature"])
+            : "";
+        $body_html = wpautop(esc_html($body));
+        if ($signature_html !== "") {
+            $body_html .=
+                '<div style="margin-top:16px;padding-top:16px;border-top:1px solid #e5e7eb;">' .
+                $signature_html .
+                "</div>";
+        }
+
+        $headers = ["Content-Type: text/html; charset=UTF-8"];
+        $cp_email = sanitize_email($cp["email"] ?? "");
+        if ($cp_email) {
+            $headers[] = "Reply-To: " . $cp_email;
+        }
+        if (
+            !$skip_bcc &&
+            !empty($cp["copy_emails"]) &&
+            is_array($cp["copy_emails"])
+        ) {
+            foreach ($cp["copy_emails"] as $bcc_email) {
+                $bcc_email = sanitize_email($bcc_email);
+                if ($bcc_email && strcasecmp($bcc_email, $email) !== 0) {
+                    $headers[] = "Bcc: " . $bcc_email;
+                }
             }
         }
+
+        $sent = wp_mail($email, $subject, $body_html, $headers);
+        if (!$sent) {
+            wp_send_json_error(["message" => "Échec de l'envoi."]);
+        }
+
+        $sent_at = $this->mark_reponse_as_sent($id);
         wp_send_json_success([
-            "sent_at" => $mark_sent ? $data["reponse_sent_at"] ?? null : null,
+            "message" => "Email envoyé.",
+            "sent_at" => $sent_at,
         ]);
     }
 

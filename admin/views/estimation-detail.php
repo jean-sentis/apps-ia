@@ -1436,11 +1436,11 @@ endforeach;
                             "lmd-apps-ia",
                         ); ?></div>
                         <p class="ed-reponse-preview-hint"><?php echo esc_html__(
-                            "Le bouton Envoi ouvre votre messagerie avec un message en texte brut (compatible tous les clients). Les liens et les logos (images) ne restent pas en HTML dans ce message : chaque lien est recopié sous la forme libellé + adresse, chaque image sous la forme légende ou [Image] + adresse du fichier, pour que tout soit cliquable ou recopiable depuis le texte.",
+                            "Le bouton Envoi expédie directement l'email via WordPress. Le texte ci-dessous correspond au corps du message, et la signature HTML enregistrée est ajoutée à l'envoi.",
                             "lmd-apps-ia",
                         ); ?></p>
                         <div class="ed-reponse-preview-label"><?php echo esc_html__(
-                            "Texte exact envoyé (corps + signature)",
+                            "Corps du message envoyé",
                             "lmd-apps-ia",
                         ); ?></div>
                         <pre class="ed-reponse-preview-plain" id="ed-reponse-preview-plain-<?php echo (int) $id; ?>" aria-live="polite"></pre>
@@ -2931,13 +2931,24 @@ var lmdEdMailto = <?php echo wp_json_encode([
     updateEdReponsePreview();
 
     $('.lmd-send-reponse').on('click', function(){
-        var id = $(this).data('id'), email = $(this).data('email'), sujet = $('#reponse-objet-'+id).val(), corps = $('#reponse-corps-'+id).val();
-        var corpsPourMailto = (typeof lmdBuildMailtoBodyFromReponse === 'function') ? lmdBuildMailtoBodyFromReponse() : corps;
+        var $btnSend = $(this);
+        var id = $btnSend.data('id'), email = $btnSend.data('email'), sujet = $('#reponse-objet-'+id).val(), corps = $('#reponse-corps-'+id).val();
         var questionsSelected = [];
         $('#action-panel-reponse .ed-question-ia-item.selected').each(function(){ questionsSelected.push(parseInt($(this).data('idx'), 10)); });
-        $.post(ajaxurl, { action: 'lmd_save_reponse', nonce: nonce, id: id, subject: sujet, body: corps, mark_sent: 1, questions_selected: questionsSelected }).done(function(r){
+        if (!email) { alert('Email client non disponible'); return; }
+        $btnSend.prop('disabled', true);
+        $.post(ajaxurl, {
+            action: 'lmd_send_reponse_email',
+            nonce: nonce,
+            id: id,
+            subject: sujet,
+            body: corps,
+            questions_selected: questionsSelected,
+            interet_slug: (typeof lmdEdMailto !== 'undefined' ? (lmdEdMailto.interetSlug || '') : ''),
+            estimation_slug: (typeof lmdEdMailto !== 'undefined' ? (lmdEdMailto.estimationSlug || '') : '')
+        }).done(function(r){
             if (r.success && r.data && r.data.sent_at) {
-                var d = new Date(r.data.sent_at);
+                var d = new Date(r.data.sent_at.replace(' ', 'T'));
                 var dateStr = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
                 var timeStr = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
                 var $msg = $('<div class="ed-courrier-parti" style="margin-top: 8px; padding: 12px; background: #f0fdf4; border: 1px solid #22c55e; border-radius: 8px; font-weight: 700; text-transform: uppercase; font-size: 12px; color: #166534;">Ce courrier est parti le '+dateStr+' à '+timeStr+'</div>');
@@ -2945,19 +2956,14 @@ var lmdEdMailto = <?php echo wp_json_encode([
                 if (typeof lmd_set_tag_by_slug === 'function') lmd_set_tag_by_slug(id, 'message', 'repondu');
                 var $btn = $('.ed-tag-btn[data-type="message"]');
                 if ($btn.length) $btn.find('.ed-tag-label').text('Répondu');
-            }
-        });
-        if (email) {
-            var q = ['subject=' + encodeURIComponent(sujet), 'body=' + encodeURIComponent(corpsPourMailto)];
-            if (typeof lmdEdMailto !== 'undefined' && lmdEdMailto.copyEmails && lmdEdMailto.copyEmails.length) {
-                var ex = lmdEdMailto.bccExcludeSlugs || [];
-                var skipBcc = false;
-                if (lmdEdMailto.interetSlug && ex.indexOf(lmdEdMailto.interetSlug) !== -1) skipBcc = true;
-                if (lmdEdMailto.estimationSlug && ex.indexOf(lmdEdMailto.estimationSlug) !== -1) skipBcc = true;
-                if (!skipBcc) q.push('bcc=' + encodeURIComponent(lmdEdMailto.copyEmails.join(',')));
-            }
-            window.location.href = 'mailto:' + encodeURIComponent(email) + '?' + q.join('&');
-        } else alert('Email client non disponible');
+            } else {
+                alert(r.data && r.data.message ? r.data.message : "Échec de l'envoi.");
+              }
+          }).fail(function(){
+              alert("Échec de l'envoi.");
+          }).always(function(){
+              $btnSend.prop('disabled', false);
+          });
     });
 
     $('.lmd-send-delegation').on('click', function(){
