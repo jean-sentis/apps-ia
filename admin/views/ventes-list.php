@@ -5,8 +5,14 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+if (class_exists('LMD_Calendar_Sync')) {
+    LMD_Calendar_Sync::sync_upcoming_sales_tags();
+}
 $db = new LMD_Database();
 $ventes = $db->get_tag_options_for_type('date_vente');
+$expertises = class_exists('LMD_Calendar_Sync')
+    ? LMD_Calendar_Sync::get_upcoming_expertise_events()
+    : [];
 global $wpdb;
 $et = $wpdb->prefix . 'lmd_estimation_tags';
 $t = $wpdb->prefix . 'lmd_tags';
@@ -19,7 +25,14 @@ foreach ($ventes as $v) {
         $site_id
     ));
     $date = preg_match('/^(\d{4}-\d{2}-\d{2})/', $v->slug, $m) ? $m[1] : $v->slug;
-    $ventes_with_count[] = (object) ['id' => $v->id, 'name' => $v->name, 'slug' => $v->slug, 'date' => $date, 'count' => $cnt];
+    $ventes_with_count[] = (object) [
+        'id' => $v->id,
+        'name' => $v->name,
+        'slug' => $v->slug,
+        'date' => $date,
+        'count' => $cnt,
+        'sync_source' => $v->sync_source ?? '',
+    ];
 }
 usort($ventes_with_count, function ($a, $b) {
     return strcmp($b->date, $a->date);
@@ -34,7 +47,7 @@ $nonce = wp_create_nonce('lmd_admin');
 
     <div class="lmd-ui-panel" style="margin-bottom:1.25rem;">
         <h2 style="margin-top:0;"><?php esc_html_e('Ajouter une vente (date de vente pour les estimations)', 'lmd-apps-ia'); ?></h2>
-        <p class="description" style="margin-top:0;"><?php esc_html_e('Crée une date de vente utilisable sur les fiches estimation (uniquement côté aide à l’estimation).', 'lmd-apps-ia'); ?></p>
+        <p class="description" style="margin-top:0;"><?php esc_html_e('Crée une date de vente utilisable sur les fiches estimation. Les ventes issues du site sont synchronisées automatiquement ; seules les dates manuelles se créent ici.', 'lmd-apps-ia'); ?></p>
         <p class="lmd-vente-add-row">
             <label><?php esc_html_e('Intitulé', 'lmd-apps-ia'); ?><br>
                 <input type="text" id="lmd-vente-new-name" class="regular-text" placeholder="<?php esc_attr_e('Ex. Vente du 12 juin', 'lmd-apps-ia'); ?>" />
@@ -57,6 +70,7 @@ $nonce = wp_create_nonce('lmd_admin');
             <tr>
                 <th><?php esc_html_e('Nom', 'lmd-apps-ia'); ?></th>
                 <th><?php esc_html_e('Date', 'lmd-apps-ia'); ?></th>
+                <th><?php esc_html_e('Origine', 'lmd-apps-ia'); ?></th>
                 <th><?php esc_html_e('Estimations liées', 'lmd-apps-ia'); ?></th>
             </tr>
         </thead>
@@ -65,7 +79,42 @@ $nonce = wp_create_nonce('lmd_admin');
             <tr>
                 <td><?php echo esc_html($v->name); ?></td>
                 <td><?php echo esc_html($v->date); ?></td>
+                <td>
+                    <?php if (!empty($v->sync_source)) : ?>
+                    <span class="lmd-vente-badge lmd-vente-badge-sync"><?php esc_html_e('Synchronisée', 'lmd-apps-ia'); ?></span>
+                    <?php else : ?>
+                    <span class="lmd-vente-badge lmd-vente-badge-manual"><?php esc_html_e('Manuelle', 'lmd-apps-ia'); ?></span>
+                    <?php endif; ?>
+                </td>
                 <td><a href="<?php echo esc_url($list_url . '&filter_date_vente[]=' . rawurlencode($v->slug)); ?>"><?php echo (int) $v->count; ?></a></td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+    </div>
+    <?php endif; ?>
+
+    <h2><?php esc_html_e("Journées d'expertise à venir", 'lmd-apps-ia'); ?></h2>
+    <?php if (empty($expertises)) : ?>
+    <div class="lmd-ui-panel"><p style="margin:0;"><?php esc_html_e("Aucune journée d'expertise à venir.", 'lmd-apps-ia'); ?></p></div>
+    <?php else : ?>
+    <div class="lmd-ui-panel" style="padding:0;overflow:hidden;">
+    <table class="widefat striped">
+        <thead>
+            <tr>
+                <th><?php esc_html_e('Nom', 'lmd-apps-ia'); ?></th>
+                <th><?php esc_html_e('Date', 'lmd-apps-ia'); ?></th>
+                <th><?php esc_html_e('Lieu', 'lmd-apps-ia'); ?></th>
+                <th><?php esc_html_e('Type', 'lmd-apps-ia'); ?></th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($expertises as $expertise) : ?>
+            <tr>
+                <td><?php echo esc_html($expertise['title'] ?? ''); ?></td>
+                <td><?php echo esc_html($expertise['date'] ?? ''); ?></td>
+                <td><?php echo esc_html($expertise['location'] ?? ''); ?></td>
+                <td><span class="lmd-vente-badge lmd-vente-badge-expertise"><?php esc_html_e("Expertise", 'lmd-apps-ia'); ?></span></td>
             </tr>
             <?php endforeach; ?>
         </tbody>
@@ -97,6 +146,26 @@ $nonce = wp_create_nonce('lmd_admin');
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+.lmd-ventes-planning-wrap .lmd-vente-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.lmd-ventes-planning-wrap .lmd-vente-badge-sync {
+    background: #eef2ff;
+    color: #4338ca;
+}
+.lmd-ventes-planning-wrap .lmd-vente-badge-manual {
+    background: #f3f4f6;
+    color: #374151;
+}
+.lmd-ventes-planning-wrap .lmd-vente-badge-expertise {
+    background: #fff7ed;
+    color: #c2410c;
 }
 </style>
 <script>

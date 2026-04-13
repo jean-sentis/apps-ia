@@ -582,6 +582,24 @@ function lmd_ajax_update_vente()
     global $wpdb;
     $site_id = get_current_blog_id();
     $t = $wpdb->prefix . "lmd_tags";
+    $tag_cols = $wpdb->get_col("DESCRIBE $t");
+    if (in_array("sync_source", $tag_cols, true)) {
+        $sync_source = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT sync_source FROM $t WHERE id = %d AND site_id = %d AND type = 'date_vente'",
+                $tag_id,
+                $site_id,
+            ),
+        );
+        if (!empty($sync_source)) {
+            wp_send_json_error([
+                "message" => __(
+                    "Cette vente est synchronisée automatiquement et ne peut pas être modifiée ici.",
+                    "lmd-apps-ia",
+                ),
+            ]);
+        }
+    }
     $new_slug = $date;
     $n = 1;
     while (
@@ -616,6 +634,9 @@ function lmd_ajax_list_ventes()
     if (!current_user_can("manage_options")) {
         wp_send_json_error(["message" => "Non autorisé"]);
     }
+    if (class_exists("LMD_Calendar_Sync")) {
+        LMD_Calendar_Sync::sync_upcoming_sales_tags();
+    }
     $db = new LMD_Database();
     $opts = $db->get_tag_options_for_type("date_vente");
     $list = [];
@@ -628,6 +649,12 @@ function lmd_ajax_list_ventes()
             )
                 ? lmd_get_theme_vente_name($o->theme_vente_slug)
                 : $o->theme_vente_slug;
+        }
+        if (!empty($o->sync_source)) {
+            $item["sync_source"] = (string) $o->sync_source;
+        }
+        if (!empty($o->sync_ref)) {
+            $item["sync_ref"] = (string) $o->sync_ref;
         }
         $list[] = $item;
     }
@@ -645,9 +672,13 @@ function lmd_ajax_list_ventes()
             ];
         }
     }
+    $expertises = class_exists("LMD_Calendar_Sync")
+        ? LMD_Calendar_Sync::get_upcoming_expertise_events()
+        : [];
     wp_send_json_success([
         "ventes" => $list,
         "hotel_calendar" => $hotel_calendar,
+        "expertises" => $expertises,
     ]);
 }
 

@@ -40,6 +40,7 @@ class LMD_Migration_Lovable {
             'delegation_subject' => "ALTER TABLE $table ADD COLUMN delegation_subject varchar(500) DEFAULT NULL",
             'delegation_body' => "ALTER TABLE $table ADD COLUMN delegation_body longtext",
             'reponse_sent_at' => "ALTER TABLE $table ADD COLUMN reponse_sent_at datetime DEFAULT NULL",
+            'delegation_sent_at' => "ALTER TABLE $table ADD COLUMN delegation_sent_at datetime DEFAULT NULL",
             'reponse_questions_selected' => "ALTER TABLE $table ADD COLUMN reponse_questions_selected longtext",
             'first_viewed_at' => "ALTER TABLE $table ADD COLUMN first_viewed_at datetime DEFAULT NULL",
             'ai_error_reported_at' => "ALTER TABLE $table ADD COLUMN ai_error_reported_at datetime DEFAULT NULL",
@@ -71,6 +72,12 @@ class LMD_Migration_Lovable {
             $tag_cols = $wpdb->get_col("DESCRIBE $tags_table");
             if (!in_array('theme_vente_slug', $tag_cols, true)) {
                 $wpdb->query("ALTER TABLE $tags_table ADD COLUMN theme_vente_slug varchar(100) DEFAULT NULL");
+            }
+            if (!in_array('sync_source', $tag_cols, true)) {
+                $wpdb->query("ALTER TABLE $tags_table ADD COLUMN sync_source varchar(50) DEFAULT NULL");
+            }
+            if (!in_array('sync_ref', $tag_cols, true)) {
+                $wpdb->query("ALTER TABLE $tags_table ADD COLUMN sync_ref varchar(100) DEFAULT NULL");
             }
         }
 
@@ -107,3 +114,4 @@ class LMD_Migration_Lovable {
         }
     }
 }
+

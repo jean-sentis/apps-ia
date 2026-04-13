@@ -857,10 +857,28 @@ class LMD_Ajax
         $headers = ["Content-Type: text/html; charset=UTF-8"];
         $sent = wp_mail($email, $subject, $body_html, $headers);
         if ($sent) {
-            wp_send_json_success(["message" => "Email envoyé."]);
+            $sent_at = $this->mark_delegation_as_sent($id);
+            wp_send_json_success([
+                "message" => "Email envoyé.",
+                "sent_at" => $sent_at,
+            ]);
         } else {
             wp_send_json_error(["message" => 'Échec de l\'envoi.']);
         }
+    }
+
+    private function mark_delegation_as_sent($id, $sent_at = null)
+    {
+        global $wpdb;
+        $sent_at = $sent_at ?: current_time("mysql");
+        $wpdb->update(
+            $wpdb->prefix . "lmd_estimations",
+            ["delegation_sent_at" => $sent_at],
+            ["id" => $id],
+            ["%s"],
+            ["%d"],
+        );
+        return $sent_at;
     }
 
     public function generate_delegation_token()

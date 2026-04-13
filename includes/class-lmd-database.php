@@ -59,6 +59,7 @@ class LMD_Database
             delegated_to varchar(255) DEFAULT NULL,
             delegation_draft text,
             delegation_email varchar(255) DEFAULT NULL,
+            delegation_sent_at datetime DEFAULT NULL,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
@@ -75,6 +76,8 @@ class LMD_Database
             type varchar(50) NOT NULL,
             slug varchar(100) NOT NULL,
             theme_vente_slug varchar(100) DEFAULT NULL,
+            sync_source varchar(50) DEFAULT NULL,
+            sync_ref varchar(100) DEFAULT NULL,
             PRIMARY KEY (id),
             UNIQUE KEY site_type_slug (site_id, type, slug),
             KEY site_id (site_id),
@@ -787,6 +790,12 @@ class LMD_Database
         if (in_array("theme_vente_slug", $tag_cols, true)) {
             $cols[] = "theme_vente_slug";
         }
+        if (in_array("sync_source", $tag_cols, true)) {
+            $cols[] = "sync_source";
+        }
+        if (in_array("sync_ref", $tag_cols, true)) {
+            $cols[] = "sync_ref";
+        }
         return $this->wpdb->get_results(
             $this->wpdb->prepare(
                 "SELECT " .
@@ -979,3 +988,4 @@ class LMD_Database
         );
     }
 }
+

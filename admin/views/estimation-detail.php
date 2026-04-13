@@ -311,7 +311,12 @@ $ai_summary_rest =
 .lmd-estimation-detail .ed-vente-calendar-grid .ed-vente-day { padding: 10px !important; text-align: center !important; border-radius: 6px !important; cursor: pointer !important; }
 .lmd-estimation-detail .ed-vente-calendar-grid .ed-vente-day:hover { background: #f3f4f6 !important; }
 .lmd-estimation-detail .ed-vente-calendar-grid .ed-vente-day.has-vente { background: #eef2ff !important; color: #4f46e5 !important; font-weight: 600 !important; }
+.lmd-estimation-detail .ed-vente-calendar-grid .ed-vente-day.has-expertise { background: #fff7ed !important; color: #c2410c !important; font-weight: 600 !important; }
+.lmd-estimation-detail .ed-vente-calendar-grid .ed-vente-day.has-vente.has-expertise { background: linear-gradient(135deg, #eef2ff 0%, #eef2ff 50%, #fff7ed 50%, #fff7ed 100%) !important; color: #4338ca !important; }
 .lmd-estimation-detail .ed-vente-calendar-grid .ed-vente-day.has-hotel-prep { box-shadow: inset 0 0 0 2px #10b981 !important; background: #ecfdf5 !important; color: #065f46 !important; font-weight: 600 !important; }
+.lmd-estimation-detail .ed-vente-calendar-grid .ed-vente-day.has-vente.has-hotel-prep { box-shadow: inset 0 0 0 2px #10b981 !important; background: #eef2ff !important; color: #4338ca !important; }
+.lmd-estimation-detail .ed-vente-calendar-grid .ed-vente-day.has-expertise.has-hotel-prep { box-shadow: inset 0 0 0 2px #10b981 !important; background: #fff7ed !important; color: #c2410c !important; }
+.lmd-estimation-detail .ed-vente-calendar-grid .ed-vente-day.has-vente.has-expertise.has-hotel-prep { box-shadow: inset 0 0 0 2px #10b981 !important; background: linear-gradient(135deg, #eef2ff 0%, #eef2ff 50%, #fff7ed 50%, #fff7ed 100%) !important; color: #4338ca !important; }
 .lmd-estimation-detail .ed-vente-calendar-grid .ed-vente-day.other-month { color: #d1d5db !important; }
 .lmd-estimation-detail .ed-vente-list { max-height: 220px !important; overflow-y: auto !important; margin-bottom: 14px !important; border: 1px solid #e5e7eb !important; border-radius: 8px !important; padding: 8px !important; }
 .lmd-estimation-detail .ed-vente-list-item { display: flex !important; align-items: center !important; gap: 10px !important; padding: 8px 10px !important; border-radius: 6px !important; margin-bottom: 6px !important; }
@@ -319,6 +324,9 @@ $ai_summary_rest =
 .lmd-estimation-detail .ed-vente-list-item input[type="text"] { flex: 1 !important; min-width: 0 !important; padding: 6px 10px !important; border: 1px solid #e5e7eb !important; border-radius: 6px !important; font-size: 13px !important; }
 .lmd-estimation-detail .ed-vente-list-item input[type="date"] { width: 130px !important; padding: 6px 8px !important; border: 1px solid #e5e7eb !important; border-radius: 6px !important; font-size: 12px !important; }
 .lmd-estimation-detail .ed-vente-cat-badge { font-size: 10px !important; color: #6b7280 !important; background: #f3f4f6 !important; padding: 2px 6px !important; border-radius: 4px !important; max-width: 120px !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+.lmd-estimation-detail .ed-vente-sync-badge { font-size: 10px !important; color: #4338ca !important; background: #eef2ff !important; padding: 2px 6px !important; border-radius: 4px !important; white-space: nowrap !important; }
+.lmd-estimation-detail .ed-vente-expertise-block { margin-top: 10px !important; padding-top: 10px !important; border-top: 1px solid #e5e7eb !important; }
+.lmd-estimation-detail .ed-vente-expertise-row { font-size: 12px !important; color: #9a3412 !important; padding: 6px 0 !important; }
 .lmd-estimation-detail .ed-vente-create { display: flex !important; flex-direction: column !important; gap: 10px !important; padding-top: 12px !important; border-top: 1px solid #e5e7eb !important; }
 .lmd-estimation-detail .ed-vente-create-row { display: flex !important; gap: 8px !important; align-items: center !important; flex-wrap: wrap !important; }
 .lmd-estimation-detail .ed-vente-create input { padding: 8px 12px !important; border: 1px solid #e5e7eb !important; border-radius: 6px !important; font-size: 13px !important; }
@@ -579,7 +587,7 @@ $ai_summary_rest =
 
 <?php
 $first = trim(wp_unslash($estimation->client_first_name ?? ""));
-$last = trim($estimation->client_last_name ?? "");
+$last = trim(wp_unslash($estimation->client_name ?? ""));
 $display_name = trim(wp_unslash($estimation->client_name ?? ""));
 if ($first || $last) {
     $civ = trim($estimation->client_civility ?? "");
@@ -1393,6 +1401,9 @@ endforeach;
     $reponse_questions_selected = is_array($reponse_questions_selected)
         ? $reponse_questions_selected
         : [];
+    $delegation_sent_at = !empty($estimation->delegation_sent_at)
+        ? $estimation->delegation_sent_at
+        : null;
     $ai_questions_col3 = $ai["questions"] ?? [];
     $ai_questions_col3 = is_array($ai_questions_col3) ? $ai_questions_col3 : [];
     ?>
@@ -1537,6 +1548,15 @@ endforeach;
                     <div class="ed-actions-send-row">
                         <button type="button" class="ed-send-btn ed-send-btn-left lmd-generate-delegation-link" data-id="<?php echo (int) $id; ?>">Générer lien d'accès</button>
                         <button type="button" class="ed-send-btn ed-send-btn-right lmd-send-delegation" data-id="<?php echo (int) $id; ?>">Envoi</button>
+                    </div>
+                    <div class="ed-courrier-parti ed-delegation-sent-status" id="ed-delegation-sent-<?php echo (int) $id; ?>" style="margin-top: 8px; padding: 12px; background: #f0fdf4; border: 1px solid #22c55e; border-radius: 8px; font-weight: 700; text-transform: uppercase; font-size: 12px; color: #166534; <?php echo $delegation_sent_at ? '' : 'display:none;'; ?>">
+                        <?php if ($delegation_sent_at): ?>
+                        Message envoyé le <?php echo esc_html(
+                            date_i18n("d/m/Y", strtotime($delegation_sent_at)),
+                        ); ?> à <?php echo esc_html(
+                            date_i18n("H:i", strtotime($delegation_sent_at)),
+                        ); ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -2311,12 +2331,13 @@ var lmdEdMailto = <?php echo wp_json_encode([
     });
 
     /* Date de vente - calendrier */
-    var venteCalMonth = new Date().getMonth(), venteCalYear = new Date().getFullYear(), venteList = [], hotelList = [];
+    var venteCalMonth = new Date().getMonth(), venteCalYear = new Date().getFullYear(), venteList = [], hotelList = [], expertiseList = [];
     var monthsFr = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
     function loadVentes(cb) {
         $.post(ajaxurl, { action: 'lmd_list_ventes', nonce: nonce }).done(function(r){
             if (r.success && r.data && r.data.ventes) venteList = r.data.ventes;
             hotelList = (r.success && r.data && r.data.hotel_calendar) ? r.data.hotel_calendar : [];
+            expertiseList = (r.success && r.data && r.data.expertises) ? r.data.expertises : [];
             if (cb) cb();
         });
     }
@@ -2333,11 +2354,17 @@ var lmdEdMailto = <?php echo wp_json_encode([
         for (var i = 1; i < startDay; i++) html += '<div class="ed-vente-day other-month">' + (prevDays - startDay + i + 1) + '</div>';
         for (var d = 1; d <= days; d++) {
             var dt = venteCalYear + '-' + String(venteCalMonth + 1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
-            var hasV = venteList.some(function(v){ return slugToDate(v.slug) === dt; });
+            var dayVentes = venteList.filter(function(v){ return slugToDate(v.slug) === dt; });
+            var hasV = dayVentes.length > 0;
+            var dayExpertises = expertiseList.filter(function(x){ return x.date === dt; });
+            var hasExpertise = dayExpertises.length > 0;
             var hotelH = hotelList.filter(function(h){ return h.date === dt; });
             var hasHotel = hotelH.length > 0;
-            var ht = hasHotel ? hotelH.map(function(h){ return (h.title || '').replace(/"/g,'&quot;'); }).join(' · ') : '';
-            html += '<div class="ed-vente-day' + (hasV ? ' has-vente' : '') + (hasHotel ? ' has-hotel-prep' : '') + '" data-date="' + dt + '" title="' + (hasHotel ? ('Calendrier hôtel — ' + ht) : '') + '">' + d + '</div>';
+            var tooltips = [];
+            if (hasV) tooltips.push('Ventes — ' + dayVentes.map(function(v){ return (v.name || '').replace(/"/g,'&quot;'); }).join(' · '));
+            if (hasExpertise) tooltips.push('Expertises — ' + dayExpertises.map(function(x){ return (x.title || '').replace(/"/g,'&quot;'); }).join(' · '));
+            if (hasHotel) tooltips.push('Calendrier hôtel — ' + hotelH.map(function(h){ return (h.title || '').replace(/"/g,'&quot;'); }).join(' · '));
+            html += '<div class="ed-vente-day' + (hasV ? ' has-vente' : '') + (hasExpertise ? ' has-expertise' : '') + (hasHotel ? ' has-hotel-prep' : '') + '" data-date="' + dt + '" title="' + tooltips.join(' | ') + '">' + d + '</div>';
         }
         var remaining = 42 - (startDay - 1 + days);
         for (var j = 1; j <= remaining; j++) html += '<div class="ed-vente-day other-month">' + j + '</div>';
@@ -2347,9 +2374,19 @@ var lmdEdMailto = <?php echo wp_json_encode([
         monthVentes.forEach(function(v){
             var d = slugToDate(v.slug) || '';
             var catBadge = (v.theme_vente_name || v.theme_vente_slug) ? '<span class="ed-vente-cat-badge" title="' + (v.theme_vente_name || v.theme_vente_slug || '').replace(/"/g,'&quot;') + '">' + (v.theme_vente_name || v.theme_vente_slug || '').substring(0, 20) + '</span>' : '';
-            listHtml += '<div class="ed-vente-list-item" data-id="' + v.id + '" data-slug="' + v.slug + '"><label><input type="checkbox" class="ed-vente-select" ' + (v.slug === ($('#ed-tags-bar .ed-tag-wrapper[data-type="date_vente"] .ed-tag-btn').data('slug') || '') ? 'checked' : '') + '></label><input type="text" class="ed-vente-item-name" value="' + (v.name || '').replace(/"/g,'&quot;') + '"><input type="date" class="ed-vente-item-date" value="' + d + '">' + catBadge + '</div>';
+            var syncBadge = v.sync_source ? '<span class="ed-vente-sync-badge">Sync</span>' : '';
+            var disabledAttr = v.sync_source ? ' disabled readonly' : '';
+            listHtml += '<div class="ed-vente-list-item" data-id="' + v.id + '" data-slug="' + v.slug + '" data-sync-source="' + (v.sync_source || '') + '"><label><input type="checkbox" class="ed-vente-select" ' + (v.slug === ($('#ed-tags-bar .ed-tag-wrapper[data-type="date_vente"] .ed-tag-btn').data('slug') || '') ? 'checked' : '') + '></label><input type="text" class="ed-vente-item-name" value="' + (v.name || '').replace(/"/g,'&quot;') + '"' + disabledAttr + '><input type="date" class="ed-vente-item-date" value="' + d + '"' + disabledAttr + '>' + catBadge + syncBadge + '</div>';
         });
+        var monthExpertises = expertiseList.filter(function(x){ return x.date && x.date.indexOf(venteCalYear + '-' + String(venteCalMonth + 1).padStart(2,'0')) === 0; });
         var monthHotels = hotelList.filter(function(h){ return h.date && h.date.indexOf(venteCalYear + '-' + String(venteCalMonth + 1).padStart(2,'0')) === 0; });
+        if (monthExpertises.length) {
+            listHtml += '<div class="ed-vente-expertise-block"><strong style="font-size:12px;color:#c2410c;">Journées d\'expertise</strong>';
+            monthExpertises.forEach(function(x){
+                listHtml += '<div class="ed-vente-expertise-row">' + (x.title || '').replace(/</g,'&lt;') + ' <span style="color:#6b7280;">(' + x.date + ')</span></div>';
+            });
+            listHtml += '</div>';
+        }
         if (monthHotels.length) {
             listHtml += '<div class="ed-vente-hotel-block" style="margin-top:10px;padding-top:10px;border-top:1px solid #e5e7eb;"><strong style="font-size:12px;color:#047857;">Ventes hôtel (calendrier officiel)</strong>';
             monthHotels.forEach(function(h){
@@ -2370,7 +2407,8 @@ var lmdEdMailto = <?php echo wp_json_encode([
     $('#ed-tags-bar').on('click', '.ed-vente-next', function(){ venteCalMonth++; if (venteCalMonth > 11) { venteCalMonth = 0; venteCalYear++; } renderVenteCalendar($(this).closest('.ed-vente-calendar-panel')); });
     $('#ed-tags-bar').on('click', '.ed-vente-day:not(.other-month)', function(){
         var dt = $(this).data('date');
-        var v = venteList.find(function(x){ return slugToDate(x.slug) === dt; });
+        var matches = venteList.filter(function(x){ return slugToDate(x.slug) === dt; });
+        var v = matches.length === 1 ? matches[0] : null;
         if (v) { lmd_set_tag_by_slug(estId, 'date_vente', v.slug); var $w = $('#ed-tags-bar .ed-tag-wrapper[data-type="date_vente"]'); $w.find('.ed-tag-label').text(v.name); $w.find('.ed-tag-btn').data('slug', v.slug).css('border-left-color', '#c7d2fe'); $w.removeClass('open'); }
     });
     $('#ed-tags-bar').on('change', '.ed-vente-select', function(){
@@ -2380,6 +2418,7 @@ var lmdEdMailto = <?php echo wp_json_encode([
     });
     $('#ed-tags-bar').on('blur', '.ed-vente-item-name, .ed-vente-item-date', function(){
         var $item = $(this).closest('.ed-vente-list-item'), id = $item.data('id'), name = $item.find('.ed-vente-item-name').val(), date = $item.find('.ed-vente-item-date').val();
+        if ($item.data('sync-source')) return;
         if (!id || !date) return;
         $.post(ajaxurl, { action: 'lmd_update_vente', nonce: nonce, tag_id: id, name: name, date: date }).done(function(r){
             if (r.success) loadVentes(function(){ var $p = $item.closest('.ed-vente-calendar-panel'); if ($p.length) renderVenteCalendar($p); });
@@ -2964,15 +3003,41 @@ var lmdEdMailto = <?php echo wp_json_encode([
               $btnSend.prop('disabled', false);
           });
     });
+    function formatDelegationSentAt(sentAt) {
+        if (!sentAt) {
+            return '';
+        }
+        var date = new Date(String(sentAt).replace(' ', 'T'));
+        if (isNaN(date.getTime())) {
+            return '';
+        }
+        var pad = function(value) {
+            return String(value).padStart(2, '0');
+        };
+        return 'Message envoyé le ' + pad(date.getDate()) + '/' + pad(date.getMonth() + 1) + '/' + date.getFullYear() + ' à ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+    }
 
     $('.lmd-send-delegation').on('click', function(){
-        var id = $(this).data('id'), email = $('#delegation-email-'+id).val(), subject = $('#delegation-objet-'+id).val(), body = $('#delegation-corps-'+id).val();
+        var $btnSend = $(this);
+        var id = $btnSend.data('id'), email = $('#delegation-email-'+id).val(), subject = $('#delegation-objet-'+id).val(), body = $('#delegation-corps-'+id).val();
         if (!email) { alert('Indiquez le destinataire.'); return; }
+        $btnSend.prop('disabled', true);
         $.post(ajaxurl, { action: 'lmd_send_delegation_email', nonce: nonce, id: id, email: email, subject: subject, body: body })
-            .done(function(r){ if (r.success) alert(r.data && r.data.message ? r.data.message : 'Email envoyé.'); else alert(r.data && r.data.message ? r.data.message : 'Échec de l\'envoi.'); })
-            .fail(function(){ alert('Échec de l\'envoi.'); });
+            .done(function(r){
+                if (r.success) {
+                    var label = formatDelegationSentAt(r.data && r.data.sent_at ? r.data.sent_at : '');
+                    if (label) {
+                        $('#ed-delegation-sent-'+id).text(label).show();
+                    }
+                } else {
+                    alert(r.data && r.data.message ? r.data.message : 'Échec de l\'envoi.');
+                }
+            })
+            .fail(function(){ alert('Échec de l\'envoi.'); })
+            .always(function(){
+                $btnSend.prop('disabled', false);
+            });
     });
-
     $('.lmd-generate-delegation-link').on('click', function(){
         var id = $(this).data('id'), email = $('#delegation-email-'+id).val();
         $.post(ajaxurl, { action: 'lmd_generate_delegation_token', nonce: nonce, id: id, email: email || '' }).done(function(r){
@@ -2987,3 +3052,5 @@ var lmdEdMailto = <?php echo wp_json_encode([
     });
 })(jQuery);
 </script>
+
+
