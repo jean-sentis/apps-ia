@@ -19,7 +19,6 @@ $lmd_suite_banner_title = 'Mes applications utilisant des modèles d\'I.A.';
 $lmd_suite_banner_subtitle = 'Le Marteau Digital — LMD Apps IA';
 
 $hub_url = admin_url('admin.php?page=lmd-apps-ia');
-$splitscreen_active = post_type_exists('splitscreen');
 
 $hub_feature_usage = null;
 if ($is_parent && class_exists('LMD_Activity_Analytics')) {
@@ -75,22 +74,8 @@ if ($is_parent && class_exists('LMD_Activity_Analytics')) {
                 <div class="lmd-suite-hub-card-icon dashicons dashicons-visibility" aria-hidden="true"></div>
                 <h3>Aide à l’estimation</h3>
                 <p>Demandes, analyses IA, planning ventes, vendeurs, préférences.</p>
-                <a class="button button-primary" href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('dashboard') : admin_url('admin.php?page=lmd-app-estimation')); ?>"><?php esc_html_e('Ouvrir l’application', 'lmd-apps-ia'); ?></a>
+                <a class="button button-primary" href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('list') : admin_url('admin.php?page=lmd-app-estimation')); ?>"><?php esc_html_e('Ouvrir l’application', 'lmd-apps-ia'); ?></a>
             </article>
-            <?php if ($splitscreen_active) : ?>
-            <article class="lmd-suite-hub-card lmd-suite-hub-card--app">
-                <div class="lmd-suite-hub-card-icon dashicons dashicons-format-gallery" aria-hidden="true"></div>
-                <h3>Splitscreen</h3>
-                <p>Montages 1440×650, photos, cartouches, génération IA, shortcode.</p>
-                <a class="button button-primary" href="<?php echo esc_url(admin_url('edit.php?post_type=splitscreen')); ?>"><?php esc_html_e('Ouvrir Splitscreen', 'lmd-apps-ia'); ?></a>
-            </article>
-            <?php else : ?>
-            <article class="lmd-suite-hub-card lmd-suite-hub-card--soon">
-                <h3>Splitscreen</h3>
-                <p class="lmd-suite-hub-soon"><?php esc_html_e('Activez le plugin Splitscreen pour composer les montages ici.', 'lmd-apps-ia'); ?></p>
-                <span class="button disabled" aria-disabled="true"><?php esc_html_e('Plugin requis', 'lmd-apps-ia'); ?></span>
-            </article>
-            <?php endif; ?>
             <article class="lmd-suite-hub-card lmd-suite-hub-card--soon">
                 <h3>SEO</h3>
                 <p class="lmd-suite-hub-soon"><?php esc_html_e('Espace dédié dans la roadmap suite.', 'lmd-apps-ia'); ?></p>

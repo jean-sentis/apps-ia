@@ -116,6 +116,30 @@ class LMD_Delegation_View
             ];
         }
 
+        $interest_slug = isset($_POST["avis_interet"])
+            ? sanitize_text_field(wp_unslash($_POST["avis_interet"]))
+            : "";
+        $interest_options = self::get_interest_options();
+        $interest_slugs = array_values(
+            array_filter(
+                array_map(
+                    static function ($option) {
+                        return (string) ($option["slug"] ?? "");
+                    },
+                    $interest_options,
+                ),
+            ),
+        );
+        if (
+            $interest_slug !== "" &&
+            !in_array($interest_slug, $interest_slugs, true)
+        ) {
+            return [
+                "type" => "error",
+                "message" => "Le niveau d’intérêt sélectionné est invalide.",
+            ];
+        }
+
         global $wpdb;
         $table = $wpdb->prefix . "lmd_estimations";
         $data = [
@@ -150,6 +174,21 @@ class LMD_Delegation_View
             ];
         }
 
+        if (
+            $interest_slug !== "" &&
+            !self::save_opinion_tag_selection(
+                (int) $estimation->id,
+                "interet",
+                $interest_slug,
+                2,
+            )
+        ) {
+            return [
+                "type" => "error",
+                "message" => "L’avis a été enregistré, mais le niveau d’intérêt n’a pas pu être mis à jour.",
+            ];
+        }
+
         foreach ($data as $key => $value) {
             $estimation->$key = $value;
         }
@@ -158,6 +197,201 @@ class LMD_Delegation_View
             "type" => "success",
             "message" => "L'avis externe a bien été enregistré.",
         ];
+    }
+
+    private static function get_interest_options()
+    {
+        $categories = function_exists("lmd_get_tag_categories")
+            ? lmd_get_tag_categories()
+            : [];
+        $options = $categories["interet"]["options"] ?? [];
+        return is_array($options) ? $options : [];
+    }
+
+    private static function save_opinion_tag_selection(
+        $estimation_id,
+        $type,
+        $slug,
+        $opinion = 2,
+    ) {
+        global $wpdb;
+
+        $estimation_id = (int) $estimation_id;
+        $type = (string) $type;
+        $slug = (string) $slug;
+        $opinion = (int) $opinion === 2 ? 2 : 1;
+        if (!$estimation_id || $type === "" || $slug === "") {
+            return false;
+        }
+
+        $site_id = get_current_blog_id();
+        $tags_table = $wpdb->prefix . "lmd_tags";
+        $et_table = $wpdb->prefix . "lmd_estimation_tags";
+        $is_opinion_specific = function_exists("lmd_is_opinion_specific_tag_type")
+            ? lmd_is_opinion_specific_tag_type($type)
+            : in_array($type, ["interet", "estimation", "theme_vente"], true);
+        $other_opinion = $opinion === 2 ? 1 : 2;
+
+        $existing_links = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT t.id, t.type, t.slug, t.name, et.modified_by_avis
+                 FROM $et_table et
+                 INNER JOIN $tags_table t ON et.tag_id = t.id
+                 WHERE et.estimation_id = %d AND t.type = %s AND t.site_id = %d",
+                $estimation_id,
+                $type,
+                $site_id,
+            ),
+        );
+
+        $current_link = function_exists("lmd_get_linked_tag_by_type")
+            ? lmd_get_linked_tag_by_type($existing_links, $type, $opinion)
+            : null;
+        $other_link =
+            $is_opinion_specific && function_exists("lmd_get_linked_tag_by_type")
+                ? lmd_get_linked_tag_by_type(
+                    $existing_links,
+                    $type,
+                    $other_opinion,
+                )
+                : null;
+        $current_link_opinion =
+            $current_link && function_exists("lmd_get_linked_tag_opinion")
+                ? lmd_get_linked_tag_opinion($current_link)
+                : null;
+        $other_link_opinion =
+            $other_link && function_exists("lmd_get_linked_tag_opinion")
+                ? lmd_get_linked_tag_opinion($other_link)
+                : null;
+
+        $tag = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT id, name FROM $tags_table WHERE site_id = %d AND type = %s AND slug = %s",
+                $site_id,
+                $type,
+                $slug,
+            ),
+        );
+        if (!$tag) {
+            $categories = function_exists("lmd_get_tag_categories")
+                ? lmd_get_tag_categories()
+                : [];
+            $name = $slug;
+            if (isset($categories[$type]["options"])) {
+                foreach ($categories[$type]["options"] as $option) {
+                    if (($option["slug"] ?? "") === $slug) {
+                        $name = $option["name"] ?? $slug;
+                        break;
+                    }
+                }
+            }
+            $inserted = $wpdb->insert(
+                $tags_table,
+                [
+                    "site_id" => $site_id,
+                    "name" => $name,
+                    "type" => $type,
+                    "slug" => $slug,
+                ],
+                ["%d", "%s", "%s", "%s"],
+            );
+            if ($inserted === false) {
+                return false;
+            }
+            $tag_id = (int) $wpdb->insert_id;
+        } else {
+            $tag_id = (int) $tag->id;
+        }
+
+        if (!$is_opinion_specific) {
+            $wpdb->query(
+                $wpdb->prepare(
+                    "DELETE et FROM $et_table et INNER JOIN $tags_table t ON et.tag_id = t.id WHERE et.estimation_id = %d AND t.type = %s",
+                    $estimation_id,
+                    $type,
+                ),
+            );
+            return false !== $wpdb->insert(
+                $et_table,
+                [
+                    "estimation_id" => $estimation_id,
+                    "tag_id" => $tag_id,
+                    "modified_by_avis" => 0,
+                ],
+                ["%d", "%d", "%d"],
+            );
+        }
+
+        if ($current_link && (int) $current_link->id === $tag_id) {
+            if ($current_link_opinion === null && $opinion === 1) {
+                return false !== $wpdb->update(
+                    $et_table,
+                    ["modified_by_avis" => 1],
+                    ["estimation_id" => $estimation_id, "tag_id" => $tag_id],
+                    ["%d"],
+                    ["%d", "%d"],
+                );
+            }
+            return true;
+        }
+
+        if ($other_link && (int) $other_link->id === $tag_id) {
+            if ($other_link_opinion !== 0) {
+                $wpdb->update(
+                    $et_table,
+                    ["modified_by_avis" => 0],
+                    ["estimation_id" => $estimation_id, "tag_id" => $tag_id],
+                    ["%d"],
+                    ["%d", "%d"],
+                );
+            }
+            if ($current_link && (int) $current_link->id !== $tag_id) {
+                if ($current_link_opinion === 0) {
+                    $wpdb->update(
+                        $et_table,
+                        ["modified_by_avis" => $other_opinion],
+                        ["estimation_id" => $estimation_id, "tag_id" => $current_link->id],
+                        ["%d"],
+                        ["%d", "%d"],
+                    );
+                } else {
+                    $wpdb->delete(
+                        $et_table,
+                        ["estimation_id" => $estimation_id, "tag_id" => $current_link->id],
+                        ["%d", "%d"],
+                    );
+                }
+            }
+            return true;
+        }
+
+        if ($current_link) {
+            if ($current_link_opinion === 0) {
+                $wpdb->update(
+                    $et_table,
+                    ["modified_by_avis" => $other_opinion],
+                    ["estimation_id" => $estimation_id, "tag_id" => $current_link->id],
+                    ["%d"],
+                    ["%d", "%d"],
+                );
+            } else {
+                $wpdb->delete(
+                    $et_table,
+                    ["estimation_id" => $estimation_id, "tag_id" => $current_link->id],
+                    ["%d", "%d"],
+                );
+            }
+        }
+
+        return false !== $wpdb->insert(
+            $et_table,
+            [
+                "estimation_id" => $estimation_id,
+                "tag_id" => $tag_id,
+                "modified_by_avis" => $opinion,
+            ],
+            ["%d", "%d", "%d"],
+        );
     }
 
     private static function parse_decimal($value)
@@ -340,11 +574,19 @@ class LMD_Delegation_View
                     }
                     .lmd-delegation-photo {
                         display: block;
+                        position: relative;
                         background: #f8fafc;
                         border: 1px solid var(--lmd-border);
                         border-radius: 18px;
                         overflow: hidden;
                         min-height: 180px;
+                        cursor: zoom-in;
+                        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+                    }
+                    .lmd-delegation-photo:hover {
+                        transform: translateY(-2px);
+                        border-color: #bfdbfe;
+                        box-shadow: 0 16px 28px rgba(37, 99, 235, 0.10);
                     }
                     .lmd-delegation-photo img {
                         width: 100%;
@@ -353,6 +595,109 @@ class LMD_Delegation_View
                         object-fit: contain;
                         display: block;
                         background: #fff;
+                    }
+                    .lmd-delegation-viewer {
+                        position: fixed;
+                        inset: 0;
+                        z-index: 99999;
+                        display: none;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 28px;
+                        background: rgba(15, 23, 42, 0.82);
+                        backdrop-filter: blur(3px);
+                    }
+                    .lmd-delegation-viewer.open {
+                        display: flex;
+                    }
+                    .lmd-delegation-viewer-dialog {
+                        position: relative;
+                        width: min(1120px, 100%);
+                        max-height: min(90vh, 920px);
+                        display: grid;
+                        gap: 16px;
+                    }
+                    .lmd-delegation-viewer-stage {
+                        position: relative;
+                        min-height: min(72vh, 760px);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 56px 88px;
+                        border-radius: 28px;
+                        background: rgba(15, 23, 42, 0.92);
+                        box-shadow: 0 28px 64px rgba(15, 23, 42, 0.34);
+                        overflow: hidden;
+                    }
+                    .lmd-delegation-viewer-image {
+                        width: 100%;
+                        max-width: 100%;
+                        max-height: min(72vh, 760px);
+                        object-fit: contain;
+                        display: block;
+                        user-select: none;
+                    }
+                    .lmd-delegation-viewer-close,
+                    .lmd-delegation-viewer-nav {
+                        position: absolute;
+                        border: none;
+                        color: #fff;
+                        cursor: pointer;
+                        background: rgba(15, 23, 42, 0.68);
+                        backdrop-filter: blur(8px);
+                        transition: background .18s ease, transform .18s ease, opacity .18s ease;
+                    }
+                    .lmd-delegation-viewer-close:hover,
+                    .lmd-delegation-viewer-nav:hover {
+                        background: rgba(30, 41, 59, 0.92);
+                        transform: translateY(-1px);
+                    }
+                    .lmd-delegation-viewer-close {
+                        top: 18px;
+                        right: 18px;
+                        width: 42px;
+                        height: 42px;
+                        border-radius: 999px;
+                        font-size: 26px;
+                        line-height: 1;
+                    }
+                    .lmd-delegation-viewer-nav {
+                        top: 50%;
+                        transform: translateY(-50%);
+                        width: 52px;
+                        height: 52px;
+                        border-radius: 999px;
+                        font-size: 30px;
+                        line-height: 1;
+                    }
+                    .lmd-delegation-viewer-nav:hover {
+                        transform: translateY(-50%) translateY(-1px);
+                    }
+                    .lmd-delegation-viewer-nav[disabled] {
+                        opacity: .35;
+                        cursor: default;
+                        pointer-events: none;
+                    }
+                    .lmd-delegation-viewer-prev {
+                        left: 18px;
+                    }
+                    .lmd-delegation-viewer-next {
+                        right: 18px;
+                    }
+                    .lmd-delegation-viewer-meta {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 12px;
+                        color: #e2e8f0;
+                        font-size: 14px;
+                    }
+                    .lmd-delegation-viewer-counter {
+                        font-weight: 700;
+                        letter-spacing: .04em;
+                    }
+                    .lmd-delegation-viewer-hint {
+                        color: #cbd5e1;
                     }
                     .lmd-delegation-description {
                         padding: 10px 22px 24px;
@@ -393,6 +738,7 @@ class LMD_Delegation_View
                         text-transform: uppercase;
                     }
                     .lmd-delegation-field input,
+                    .lmd-delegation-field select,
                     .lmd-delegation-field textarea {
                         width: 100%;
                         border: 1px solid var(--lmd-border-strong);
@@ -405,6 +751,7 @@ class LMD_Delegation_View
                         transition: border-color .2s ease, box-shadow .2s ease;
                     }
                     .lmd-delegation-field input:focus,
+                    .lmd-delegation-field select:focus,
                     .lmd-delegation-field textarea:focus {
                         border-color: #93c5fd;
                         box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
@@ -476,6 +823,119 @@ class LMD_Delegation_View
         CSS;
     }
 
+    private static function get_delegation_script()
+    {
+        return <<<'JS'
+                    (function () {
+                        var viewer = document.getElementById('lmd-delegation-viewer');
+                        if (!viewer) {
+                            return;
+                        }
+                        var triggers = Array.prototype.slice.call(document.querySelectorAll('.lmd-delegation-photo[data-photo-index]'));
+                        if (!triggers.length) {
+                            return;
+                        }
+                        var stage = viewer.querySelector('.lmd-delegation-viewer-stage');
+                        var image = viewer.querySelector('.lmd-delegation-viewer-image');
+                        var counter = viewer.querySelector('.lmd-delegation-viewer-counter');
+                        var prev = viewer.querySelector('.lmd-delegation-viewer-prev');
+                        var next = viewer.querySelector('.lmd-delegation-viewer-next');
+                        var close = viewer.querySelector('.lmd-delegation-viewer-close');
+                        var urls = triggers.map(function (node) {
+                            return node.getAttribute('href') || node.getAttribute('data-photo-url') || '';
+                        }).filter(Boolean);
+                        if (!urls.length) {
+                            return;
+                        }
+                        var currentIndex = 0;
+
+                        function updateCounter() {
+                            if (counter) {
+                                counter.textContent = (currentIndex + 1) + ' / ' + urls.length;
+                            }
+                            if (prev) {
+                                prev.disabled = currentIndex <= 0;
+                            }
+                            if (next) {
+                                next.disabled = currentIndex >= urls.length - 1;
+                            }
+                        }
+
+                        function show(index) {
+                            if (index < 0 || index >= urls.length) {
+                                return;
+                            }
+                            currentIndex = index;
+                            image.src = urls[currentIndex];
+                            updateCounter();
+                        }
+
+                        function open(index) {
+                            show(index);
+                            viewer.classList.add('open');
+                            document.body.style.overflow = 'hidden';
+                        }
+
+                        function closeViewer() {
+                            viewer.classList.remove('open');
+                            document.body.style.overflow = '';
+                        }
+
+                        triggers.forEach(function (trigger, index) {
+                            trigger.addEventListener('click', function (event) {
+                                event.preventDefault();
+                                open(index);
+                            });
+                        });
+
+                        if (close) {
+                            close.addEventListener('click', function () {
+                                closeViewer();
+                            });
+                        }
+                        if (prev) {
+                            prev.addEventListener('click', function (event) {
+                                event.stopPropagation();
+                                show(currentIndex - 1);
+                            });
+                        }
+                        if (next) {
+                            next.addEventListener('click', function (event) {
+                                event.stopPropagation();
+                                show(currentIndex + 1);
+                            });
+                        }
+                        viewer.addEventListener('click', function (event) {
+                            if (event.target === viewer) {
+                                closeViewer();
+                            }
+                        });
+                        if (stage) {
+                            stage.addEventListener('click', function (event) {
+                                event.stopPropagation();
+                            });
+                        }
+                        document.addEventListener('keydown', function (event) {
+                            if (!viewer.classList.contains('open')) {
+                                return;
+                            }
+                            if (event.key === 'Escape') {
+                                closeViewer();
+                                return;
+                            }
+                            if (event.key === 'ArrowLeft') {
+                                event.preventDefault();
+                                show(currentIndex - 1);
+                            }
+                            if (event.key === 'ArrowRight') {
+                                event.preventDefault();
+                                show(currentIndex + 1);
+                            }
+                        });
+                    })();
+        JS;
+    }
+
     private static function render_delegation_page($estimation, $args = [])
     {
         $args = wp_parse_args($args, [
@@ -527,6 +987,7 @@ class LMD_Delegation_View
             "estimate_low" => "",
             "prix_reserve" => "",
             "estimate_high" => "",
+            "avis_interet" => "",
         ];
         if (
             ($_SERVER["REQUEST_METHOD"] ?? "") === "POST" &&
@@ -548,8 +1009,12 @@ class LMD_Delegation_View
                 "estimate_high" => self::format_decimal(
                     self::parse_decimal($_POST["estimate_high"] ?? null),
                 ),
+                "avis_interet" => sanitize_text_field(
+                    wp_unslash($_POST["avis_interet"] ?? ""),
+                ),
             ];
         }
+        $interest_options = self::get_interest_options();
         $page_html = function () use (
             $id,
             $request_title,
@@ -559,6 +1024,7 @@ class LMD_Delegation_View
             $estimation,
             $token,
             $form_values,
+            $interest_options,
         ) {
             ?>
         <div class="lmd-delegation-shell">
@@ -585,6 +1051,7 @@ class LMD_Delegation_View
                     <div class="lmd-delegation-request-title">Estimation #<?php echo (int) $id; ?></div>
                     <?php if (!empty($photos)): ?>
                     <div class="lmd-delegation-photos">
+                        <?php $photo_index = 0; ?>
                         <?php foreach ($photos as $p):
 
                             $url = $photo_url_fn($p);
@@ -594,10 +1061,13 @@ class LMD_Delegation_View
                             ?>
                         <a href="<?php echo esc_url(
                             $url,
-                        ); ?>" target="_blank" rel="noopener" class="lmd-delegation-photo">
+                        ); ?>" target="_blank" rel="noopener" class="lmd-delegation-photo" data-photo-index="<?php echo (int) $photo_index; ?>" data-photo-url="<?php echo esc_url(
+    $url,
+); ?>" aria-label="Ouvrir l'image en grand">
                             <img src="<?php echo esc_url($url); ?>" alt="" />
                         </a>
                         <?php
+                            $photo_index++;
                         endforeach; ?>
                     </div>
                     <?php endif; ?>
@@ -647,6 +1117,25 @@ class LMD_Delegation_View
                             ); ?></textarea>
                         </label>
 
+                        <label class="lmd-delegation-field">
+                            <span class="lmd-delegation-label">Intérêt</span>
+                            <select name="avis_interet">
+                                <option value="">Choisir un niveau d’intérêt</option>
+                                <?php foreach ($interest_options as $option):
+                                    $option_slug = (string) ($option["slug"] ?? "");
+                                    $option_name = (string) ($option["name"] ?? $option_slug);
+                                    if ($option_slug === "") {
+                                        continue;
+                                    }
+                                    ?>
+                                <option value="<?php echo esc_attr($option_slug); ?>" <?php selected(
+    $form_values["avis_interet"],
+    $option_slug,
+); ?>><?php echo esc_html($option_name); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+
                         <div class="lmd-delegation-estimates">
                             <label class="lmd-delegation-field">
                                 <span class="lmd-delegation-label">Estimation basse</span>
@@ -685,6 +1174,23 @@ class LMD_Delegation_View
                     </form>
                 </section>
             </div>
+
+            <?php if (!empty($photos)): ?>
+            <div class="lmd-delegation-viewer" id="lmd-delegation-viewer" aria-hidden="true">
+                <div class="lmd-delegation-viewer-dialog" role="dialog" aria-modal="true" aria-label="Visionneuse des photos">
+                    <div class="lmd-delegation-viewer-stage">
+                        <button type="button" class="lmd-delegation-viewer-close" aria-label="Fermer">&times;</button>
+                        <button type="button" class="lmd-delegation-viewer-nav lmd-delegation-viewer-prev" aria-label="Image précédente">&#8249;</button>
+                        <img class="lmd-delegation-viewer-image" src="" alt="" />
+                        <button type="button" class="lmd-delegation-viewer-nav lmd-delegation-viewer-next" aria-label="Image suivante">&#8250;</button>
+                    </div>
+                    <div class="lmd-delegation-viewer-meta">
+                        <div class="lmd-delegation-viewer-counter"></div>
+                        <div class="lmd-delegation-viewer-hint">Cliquez hors de l'image ou appuyez sur Echap pour fermer.</div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
             <?php
         };
@@ -698,11 +1204,13 @@ class LMD_Delegation_View
         <style><?php echo self::get_delegation_styles(); ?></style>
         </head><body>
         <?php $page_html(); ?>
+        <script><?php echo self::get_delegation_script(); ?></script>
         </body></html>
         <?php else: ?>
         <div class="lmd-delegation-shortcode">
             <style><?php echo self::get_delegation_styles(); ?></style>
             <?php $page_html(); ?>
+            <script><?php echo self::get_delegation_script(); ?></script>
         </div>
         <?php endif; ?>
         <?php

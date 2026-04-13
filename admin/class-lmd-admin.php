@@ -693,16 +693,6 @@ class LMD_Admin
             [$this, "render_app_fideliser_super_acheteur_placeholder"],
         );
 
-        if (post_type_exists("splitscreen")) {
-            add_submenu_page(
-                "lmd-apps-ia",
-                "Splitscreen",
-                "Splitscreen",
-                "manage_options",
-                "lmd-splitscreen-montages",
-                [$this, "redirect_to_splitscreen_list"],
-            );
-        }
 
         if ($is_parent) {
             add_submenu_page(
@@ -985,14 +975,6 @@ class LMD_Admin
         }
     }
 
-    public function redirect_to_splitscreen_list()
-    {
-        if (!current_user_can("manage_options")) {
-            wp_die(esc_html__("Non autorisé.", "lmd-apps-ia"));
-        }
-        wp_safe_redirect(admin_url("edit.php?post_type=splitscreen"));
-        exit();
-    }
 
     public function render_app_seo_placeholder()
     {
@@ -1028,7 +1010,7 @@ class LMD_Admin
     {
         $tab = isset($_GET["tab"])
             ? sanitize_key(wp_unslash($_GET["tab"]))
-            : "dashboard";
+            : "list";
         /* Ancien sous-onglet « Aide » du tableau de bord → onglet principal dédié. */
         if (
             $tab === "dashboard" &&

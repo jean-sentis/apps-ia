@@ -333,7 +333,6 @@ $ai_summary_rest =
 .lmd-estimation-detail .ed-col:nth-child(2) { border-left-width: 1px !important; border-right-width: 1px !important; padding: 0 !important; }
 .lmd-estimation-detail .ed-col:nth-child(2).has-open { border-color: #22c55e !important; }
 .lmd-estimation-detail .ed-col:last-child { border-radius: 0 12px 12px 0 !important; border-left-width: 1px !important; }
-.lmd-estimation-detail .ed-col.ed-actions.has-open { border-color: #22c55e !important; }
 .lmd-estimation-detail .ed-col-photos { padding: 16px !important; }
 /* Photo principale (1ère) en grand */
 .lmd-estimation-detail .ed-photo-main { width: 100%; max-height: 340px; object-fit: contain; border-radius: 12px; cursor: pointer; border: 2px solid #e5e7eb; display: block; background: #f9fafb; margin-bottom: 12px; }

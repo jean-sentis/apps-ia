@@ -123,6 +123,21 @@ if ($lmd_inner_shell) {
     };
 }
 
+$lmd_notification_saved = false;
+$lmd_notification_emails = function_exists('lmd_get_new_estimation_notification_emails_string') ? lmd_get_new_estimation_notification_emails_string() : '';
+if (
+    $lmd_inner_shell &&
+    $dash_sub === 'prefs' &&
+    isset($_POST['lmd_save_notification_settings']) &&
+    check_admin_referer('lmd_save_notification_settings')
+) {
+    if (function_exists('lmd_save_new_estimation_notification_emails')) {
+        lmd_save_new_estimation_notification_emails($_POST['lmd_new_estimation_notification_emails'] ?? '');
+        $lmd_notification_emails = function_exists('lmd_get_new_estimation_notification_emails_string') ? lmd_get_new_estimation_notification_emails_string() : '';
+        $lmd_notification_saved = true;
+    }
+}
+
 $lmd_help_url_standalone = function_exists('lmd_app_estimation_admin_url')
     ? lmd_app_estimation_admin_url('help')
     : admin_url('admin.php?page=lmd-help');
@@ -261,6 +276,23 @@ $lmd_help_url_standalone = function_exists('lmd_app_estimation_admin_url')
         $lmd_prefs_embed = true;
         include LMD_PLUGIN_DIR . 'admin/views/preferences.php';
         ?>
+        <section class="lmd-dashboard-notifications">
+            <h2 class="lmd-ui-section-title"><?php esc_html_e('Notifications', 'lmd-apps-ia'); ?></h2>
+            <p class="description"><?php esc_html_e('Indiquez ici une ou plusieurs adresses email qui recevront une notification pour chaque nouvelle demande envoyee depuis le formulaire public de ce site. Separez les adresses par des virgules.', 'lmd-apps-ia'); ?></p>
+            <?php if ($lmd_notification_saved) : ?>
+            <div class="notice notice-success"><p><?php esc_html_e('Destinataires des notifications enregistres.', 'lmd-apps-ia'); ?></p></div>
+            <?php endif; ?>
+            <form method="post" action="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('dashboard', ['dash_sub' => 'prefs']) : admin_url('admin.php?page=lmd-app-estimation&tab=dashboard&dash_sub=prefs')); ?>" class="lmd-dashboard-notifications-form">
+                <?php wp_nonce_field('lmd_save_notification_settings'); ?>
+                <input type="hidden" name="lmd_save_notification_settings" value="1" />
+                <p>
+                    <label for="lmd-new-estimation-notification-emails"><strong><?php esc_html_e('Emails destinataires', 'lmd-apps-ia'); ?></strong></label><br />
+                    <input type="text" id="lmd-new-estimation-notification-emails" name="lmd_new_estimation_notification_emails" value="<?php echo esc_attr($lmd_notification_emails); ?>" class="regular-text lmd-dashboard-notifications-input" placeholder="cp1@maison.fr, cp2@maison.fr" />
+                </p>
+                <p class="description"><?php esc_html_e('Exemple : cp@maison.fr, assistant@maison.fr. Ce reglage est propre a ce site enfant.', 'lmd-apps-ia'); ?></p>
+                <p class="submit"><button type="submit" class="button button-primary"><?php esc_html_e('Enregistrer', 'lmd-apps-ia'); ?></button></p>
+            </form>
+        </section>
     <?php elseif ($dash_sub === 'stats') : ?>
     <?php
     $stats_dialog_from = $stats_all ? $stats_default_from : ($stats_from !== '' ? $stats_from : $stats_default_from);
@@ -762,6 +794,12 @@ $lmd_help_url_standalone = function_exists('lmd_app_estimation_admin_url')
 .lmd-trend--up .lmd-trend-arrow { color: #059669; }
 .lmd-trend--down .lmd-trend-arrow { color: #dc2626; }
 .lmd-trend--flat { width: 10px; height: 2px; background: #cbd5e1; border-radius: 1px; }
+.lmd-dashboard-notifications { margin-top: 32px; padding-top: 24px; border-top: 1px solid #d1d5db; }
+.lmd-dashboard-notifications-form { max-width: 720px; }
+.lmd-dashboard-notifications-input { width: 100%; max-width: 100%; }
+.lmd-dashboard-notifications { margin-top: 32px; padding-top: 24px; border-top: 1px solid #d1d5db; }
+.lmd-dashboard-notifications-form { max-width: 720px; }
+.lmd-dashboard-notifications-input { width: 100%; max-width: 100%; }
 </style>
 
 <script>

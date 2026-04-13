@@ -69,6 +69,29 @@ function lmd_save_prefs($prefs, $user_id = null) {
     return $merged;
 }
 
+function lmd_get_new_estimation_notification_emails() {
+    $raw = (string) get_option('lmd_new_estimation_notification_emails', '');
+    if ($raw === '') {
+        return [];
+    }
+    $emails = array_filter(array_map('sanitize_email', array_map('trim', explode(',', wp_unslash($raw)))));
+    return array_values(array_unique($emails));
+}
+
+function lmd_get_new_estimation_notification_emails_string() {
+    return implode(', ', lmd_get_new_estimation_notification_emails());
+}
+
+function lmd_save_new_estimation_notification_emails($emails_raw) {
+    if (is_array($emails_raw)) {
+        $emails_raw = implode(', ', $emails_raw);
+    }
+    $emails = array_filter(array_map('sanitize_email', array_map('trim', explode(',', (string) wp_unslash($emails_raw)))));
+    $emails = array_values(array_unique($emails));
+    update_option('lmd_new_estimation_notification_emails', implode(', ', $emails));
+    return $emails;
+}
+
 /**
  * Enregistre toutes les préférences (grille, affichage, thèmes, BCC, signature, paliers estimation).
  * Même logique que l’ancien POST du formulaire Préférences.

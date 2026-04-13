@@ -509,10 +509,10 @@ function lmd_get_ai_error_reports($site_id = null, $args = [])
 /**
  * URL admin pour l’application « Aide à l’estimation » (page à onglets).
  *
- * @param string $tab dashboard|new|list|help|ventes|vendeurs (preferences|activity redirigent vers dashboard&dash_sub=…)
+ * @param string $tab list|new|dashboard|help|ventes|vendeurs (preferences|activity redirigent vers dashboard&dash_sub=…)
  * @param array  $args Paramètres additionnels : month, id, dash_sub, help_sub, etc.
  */
-function lmd_app_estimation_admin_url($tab = "dashboard", array $args = [])
+function lmd_app_estimation_admin_url($tab = "list", array $args = [])
 {
     $args = array_merge(["page" => "lmd-app-estimation", "tab" => $tab], $args);
     return add_query_arg($args, admin_url("admin.php"));

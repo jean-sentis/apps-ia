@@ -9,19 +9,19 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-$current = isset($tab) ? sanitize_key($tab) : 'dashboard';
+$current = isset($tab) ? sanitize_key($tab) : 'list';
 $is_parent = !is_multisite() || get_current_blog_id() === 1;
 
 $tabs = [
-    'dashboard' => ['Tableau de bord', 'dashicons-dashboard'],
-    'new' => ['Nouvelle demande', 'dashicons-plus-alt2'],
     'list' => ['Mes estimations', 'dashicons-list-view'],
+    'new' => ['Nouvelle demande', 'dashicons-plus-alt2'],
+    'dashboard' => ['Tableau de bord', 'dashicons-dashboard'],
     'help' => [__('Aide', 'lmd-apps-ia'), 'dashicons-editor-help'],
     'ventes' => ['Planning ventes', 'dashicons-calendar-alt'],
     'vendeurs' => [__('Liste vendeurs', 'lmd-apps-ia'), 'dashicons-groups'],
 ];
 
-$tabs_primary = ['dashboard', 'new', 'list', 'help', 'ventes', 'vendeurs'];
+$tabs_primary = ['list', 'new', 'dashboard', 'help', 'ventes', 'vendeurs'];
 
 $lmd_suite_banner_title = 'Aide à l’estimation';
 $lmd_suite_banner_subtitle = '';

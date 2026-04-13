@@ -207,6 +207,44 @@ class LMD_Public_Form
             $insert_fmt,
         );
         $estimation_id = (int) $wpdb->insert_id;
+
+        $notification_emails = function_exists("lmd_get_new_estimation_notification_emails")
+            ? lmd_get_new_estimation_notification_emails()
+            : [];
+        if (!empty($notification_emails)) {
+            $site_name = get_bloginfo("name") ?: home_url("/");
+            $detail_url = admin_url(
+                "admin.php?page=lmd-estimation-detail&id=" . $estimation_id,
+            );
+            $subject = sprintf(
+                "[%s] Nouvelle demande d’estimation #%d",
+                $site_name,
+                $estimation_id,
+            );
+            $body = "Une nouvelle demande d’estimation a été envoyée depuis le formulaire public.\n\n";
+            $body .= "Site : " . $site_name . "\n";
+            $body .= "Demande : #" . $estimation_id . "\n";
+            $body .= "Nom : " . trim($prenom . " " . $nom) . "\n";
+            $body .= "Email : " . $email . "\n";
+            if (!empty($phone)) {
+                $body .= "Téléphone : " . $phone . "\n";
+            }
+            if (!empty($code_postal) || !empty($commune)) {
+                $body .= "Localisation : " . trim($code_postal . " " . $commune) . "\n";
+            }
+            if (!empty($dimensions)) {
+                $body .= "Dimensions : " . $dimensions . "\n";
+            }
+            $body .= "Photos : " . count($photo_urls) . "\n\n";
+            $body .= "Description :\n" . ($desc ?: "-") . "\n\n";
+            $body .= "Voir la fiche : " . $detail_url . "\n";
+            foreach ($notification_emails as $to) {
+                wp_mail($to, $subject, $body, [
+                    "Content-Type: text/plain; charset=UTF-8",
+                ]);
+            }
+        }
+
         if (function_exists("ob_end_clean")) {
             ob_end_clean();
         }
