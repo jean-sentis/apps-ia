@@ -76,10 +76,11 @@ if ($is_parent && class_exists('LMD_Activity_Analytics')) {
                 <p>Demandes, analyses IA, planning ventes, vendeurs, préférences.</p>
                 <a class="button button-primary" href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('list') : admin_url('admin.php?page=lmd-app-estimation')); ?>"><?php esc_html_e('Ouvrir l’application', 'lmd-apps-ia'); ?></a>
             </article>
-            <article class="lmd-suite-hub-card lmd-suite-hub-card--soon">
-                <h3>SEO</h3>
-                <p class="lmd-suite-hub-soon"><?php esc_html_e('Espace dédié dans la roadmap suite.', 'lmd-apps-ia'); ?></p>
-                <span class="button disabled" aria-disabled="true"><?php esc_html_e('Bientôt', 'lmd-apps-ia'); ?></span>
+            <article class="lmd-suite-hub-card lmd-suite-hub-card--app">
+                <div class="lmd-suite-hub-card-icon dashicons dashicons-chart-line" aria-hidden="true"></div>
+                <h3>Enrichissement SEO</h3>
+                <p><?php esc_html_e('Réglages d’éligibilité et de génération SEO pour les CPT lot.', 'lmd-apps-ia'); ?></p>
+                <a class="button button-primary" href="<?php echo esc_url(admin_url('admin.php?page=lmd-app-seo')); ?>"><?php esc_html_e('Ouvrir l’application', 'lmd-apps-ia'); ?></a>
             </article>
         </div>
     </section>
