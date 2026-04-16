@@ -16,6 +16,13 @@ class LMD_Seo_Renderer
         add_filter("pre_get_document_title", [$this, "filter_document_title"], 20);
         add_action("wp_head", [$this, "output_meta_description"], 5);
         add_action("wp_head", [$this, "output_schema_payload"], 25);
+        add_filter("rank_math/frontend/title", [$this, "filter_rank_math_title"], 20);
+        add_filter(
+            "rank_math/frontend/description",
+            [$this, "filter_rank_math_description"],
+            20,
+        );
+        add_filter("rank_math/json_ld", [$this, "filter_rank_math_json_ld"], 110, 2);
         add_filter(
             "wp_get_attachment_image_attributes",
             [$this, "filter_attachment_image_attributes"],
@@ -32,6 +39,7 @@ class LMD_Seo_Renderer
 
         $stored = $this->get_current_lot_seo();
         $seo_title = $this->sanitize_text($stored["title"] ?? "");
+        $seo_title = $this->append_site_name($seo_title);
 
         return $seo_title !== "" ? $seo_title : $title;
     }
@@ -57,10 +65,7 @@ class LMD_Seo_Renderer
             return;
         }
 
-        $stored = $this->get_current_lot_seo();
-        $payload = is_array($stored["schema_payload"] ?? null)
-            ? $stored["schema_payload"]
-            : [];
+        $payload = $this->get_current_lot_schema_entity(false);
         if (empty($payload)) {
             return;
         }
@@ -74,6 +79,54 @@ class LMD_Seo_Renderer
         }
 
         echo '<script type="application/ld+json">' . $json . '</script>' . "\n";
+    }
+
+    public function filter_rank_math_title($title)
+    {
+        if (!$this->has_rank_math()) {
+            return $title;
+        }
+
+        $stored = $this->get_current_lot_seo();
+        $seo_title = $this->sanitize_text($stored["title"] ?? "");
+        $seo_title = $this->append_site_name($seo_title);
+
+        return $seo_title !== "" ? $seo_title : $title;
+    }
+
+    public function filter_rank_math_description($description)
+    {
+        if (!$this->has_rank_math()) {
+            return $description;
+        }
+
+        $stored = $this->get_current_lot_seo();
+        $seo_description = $this->sanitize_text($stored["description"] ?? "");
+
+        return $seo_description !== "" ? $seo_description : $description;
+    }
+
+    public function filter_rank_math_json_ld($data, $jsonld)
+    {
+        unset($jsonld);
+
+        if (!$this->has_rank_math()) {
+            return $data;
+        }
+
+        $payload = $this->get_current_lot_schema_entity(true);
+        if (empty($payload) || !is_array($data)) {
+            return $data;
+        }
+
+        foreach ($data as $key => $entity) {
+            if ($this->should_replace_rank_math_schema_entity($key, $entity)) {
+                unset($data[$key]);
+            }
+        }
+
+        $data["lmd-seo-product"] = $payload;
+        return $data;
     }
 
     public function filter_attachment_image_attributes($attr, $attachment, $size)
@@ -136,6 +189,23 @@ class LMD_Seo_Renderer
 
         $cache[$lot_id] = $stored;
         return $cache[$lot_id];
+    }
+
+    private function get_current_lot_schema_entity($for_rank_math = false)
+    {
+        $stored = $this->get_current_lot_seo();
+        $payload = is_array($stored["schema_payload"] ?? null)
+            ? $stored["schema_payload"]
+            : [];
+        if (empty($payload)) {
+            return [];
+        }
+
+        if ($for_rank_math) {
+            unset($payload["@context"]);
+        }
+
+        return $payload;
     }
 
     private function get_lot_image_alt_map($lot_id)
@@ -203,10 +273,52 @@ class LMD_Seo_Renderer
 
     private function has_external_seo_plugin()
     {
-        return defined("WPSEO_VERSION") ||
-            class_exists("WPSEO_Frontend") ||
-            defined("RANK_MATH_VERSION") ||
-            class_exists("RankMath\\Helper");
+        return $this->has_yoast() || $this->has_rank_math();
+    }
+
+    private function has_yoast()
+    {
+        return defined("WPSEO_VERSION") || class_exists("WPSEO_Frontend");
+    }
+
+    private function has_rank_math()
+    {
+        return defined("RANK_MATH_VERSION") || class_exists("RankMath\\Helper");
+    }
+
+    private function should_replace_rank_math_schema_entity($key, $entity)
+    {
+        if ($key === "richSnippet") {
+            return true;
+        }
+
+        if (!is_array($entity) || empty($entity["@type"])) {
+            return false;
+        }
+
+        $types = is_array($entity["@type"]) ? $entity["@type"] : [$entity["@type"]];
+        $types = array_map("strval", $types);
+
+        return !empty(array_intersect($types, ["Product", "ProductGroup"]));
+    }
+
+    private function append_site_name($title)
+    {
+        $title = $this->sanitize_text($title);
+        if ($title === "") {
+            return "";
+        }
+
+        $site_name = $this->sanitize_text(get_bloginfo("name"));
+        if ($site_name === "") {
+            return $title;
+        }
+
+        if ($title === $site_name || str_ends_with($title, " | " . $site_name)) {
+            return $title;
+        }
+
+        return $title . " | " . $site_name;
     }
 
     private function sanitize_text($value)

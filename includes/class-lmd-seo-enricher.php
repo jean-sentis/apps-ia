@@ -12,6 +12,14 @@ if (!defined("ABSPATH")) {
 class LMD_Seo_Enricher
 {
     const PROMPT_VERSION = "gemini-only-v1";
+    const MAX_GEMINI_IMAGES = 3;
+    const BATCH_OPTION = "lmd_seo_batch_state";
+    const BATCH_DEFAULT_SIZE = 1;
+    const AUTO_QUEUE_OPTION = "lmd_seo_auto_queue_state";
+    const AUTO_QUEUE_HOOK = "lmd_seo_process_auto_queue";
+    const AUTO_QUEUE_DELAY = 900;
+    const AUTO_QUEUE_INTERVAL = 60;
+    const AUTO_QUEUE_BATCH_SIZE = 1;
 
     private $api;
     private $settings;
@@ -28,8 +36,35 @@ class LMD_Seo_Enricher
                 : lmd_get_seo_settings_defaults());
     }
 
+    public static function register_hooks()
+    {
+        static $registered = false;
+
+        if ($registered) {
+            return;
+        }
+
+        add_action("plmd_import_completed", [__CLASS__, "handle_passerelle_import"], 10, 2);
+        add_action(self::AUTO_QUEUE_HOOK, [__CLASS__, "handle_scheduled_auto_queue"]);
+
+        $registered = true;
+    }
+
+    public static function handle_passerelle_import($sale_id, $result = [])
+    {
+        $enricher = new self();
+        $enricher->enqueue_sale_after_import($sale_id, is_array($result) ? $result : []);
+    }
+
+    public static function handle_scheduled_auto_queue()
+    {
+        $enricher = new self();
+        $enricher->process_auto_queue();
+    }
+
     public static function get_meta_keys()
     {
+
         return [
             "status" => "_lmd_seo_status",
             "error" => "_lmd_seo_error",
@@ -51,10 +86,12 @@ class LMD_Seo_Enricher
     {
         $lot_id = absint($lot_id);
         if (!$lot_id) {
-            return [];
+
+        return [];
         }
 
         $meta = self::get_meta_keys();
+
 
         return [
             "status" => (string) get_post_meta($lot_id, $meta["status"], true),
@@ -105,11 +142,571 @@ class LMD_Seo_Enricher
         ];
     }
 
+    public function get_batch_state()
+    {
+        return $this->normalize_batch_state(get_option(self::BATCH_OPTION, []));
+    }
+
+    public function get_auto_queue_state()
+    {
+        $state = $this->normalize_auto_queue_state(get_option(self::AUTO_QUEUE_OPTION, []));
+        $scheduled = wp_next_scheduled(self::AUTO_QUEUE_HOOK);
+        $state["next_run_ts"] = $scheduled ? (int) $scheduled : 0;
+        if ($state["pending"] > 0 && $state["status"] === "idle" && $state["next_run_ts"] > 0) {
+            $state["status"] = "scheduled";
+        }
+        return $state;
+    }
+
+    public function reset_batch_state()
+    {
+        delete_option(self::BATCH_OPTION);
+        return $this->get_batch_state_defaults();
+    }
+
+    public function reset_auto_queue_state()
+    {
+        $this->unschedule_auto_queue();
+        delete_option(self::AUTO_QUEUE_OPTION);
+        return $this->get_auto_queue_state_defaults();
+    }
+
+    public function prepare_batch($args = [])
+    {
+        $current_state = $this->get_batch_state();
+        if (($current_state["status"] ?? "idle") === "running") {
+
+        return [
+                "success" => false,
+                "warning" => true,
+                "message" => __(
+                    "Mettez d'abord le batch SEO en pause avant de preparer une nouvelle file.",
+                    "lmd-apps-ia",
+                ),
+                "state" => $current_state,
+            ];
+        }
+
+        $batch_size = absint($args["batch_size"] ?? self::BATCH_DEFAULT_SIZE);
+        if ($batch_size < 1) {
+            $batch_size = self::BATCH_DEFAULT_SIZE;
+        }
+
+        $cleared_marks = $this->clear_pending_batch_marks();
+        $lot_ids = $this->get_candidate_lot_ids();
+        $queue = [];
+        $scanned = is_array($lot_ids) ? count($lot_ids) : 0;
+        $eligible = 0;
+        $ineligible = 0;
+        $up_to_date = 0;
+        $invalid = 0;
+
+        foreach ((array) $lot_ids as $lot_id) {
+            $lot_id = absint($lot_id);
+            if (!$lot_id) {
+                continue;
+            }
+
+            $context = $this->collect_lot_context($lot_id);
+            if (!$context) {
+                $invalid++;
+                continue;
+            }
+
+            $eligibility = $this->evaluate_lot_eligibility($context, $this->settings);
+            if (empty($eligibility["eligible"])) {
+                $ineligible++;
+                continue;
+            }
+
+            $eligible++;
+            $stored = $this->get_stored_output($lot_id);
+            $source_hash = $this->build_source_hash($context, $this->settings);
+            if (
+                !empty($stored["source_hash"]) &&
+                $stored["source_hash"] === $source_hash &&
+                ($stored["status"] ?? "") === "done"
+            ) {
+                $up_to_date++;
+                continue;
+            }
+
+            $queue[] = $lot_id;
+            $this->mark_status($lot_id, "queued", "");
+        }
+
+        $message = empty($queue)
+            ? __(
+                "Aucun lot supplementaire n'est a traiter avec les reglages SEO actuels.",
+                "lmd-apps-ia",
+            )
+            : sprintf(
+                __(
+                    'File SEO preparee : %1$d lot(s) en attente, %2$d deja a jour, %3$d non eligibles.',
+                    "lmd-apps-ia",
+                ),
+                count($queue),
+                $up_to_date,
+                $ineligible,
+            );
+
+        $state = $this->normalize_batch_state([
+            "status" => !empty($queue) ? "ready" : "idle",
+            "queue" => $queue,
+            "total" => count($queue),
+            "cursor" => 0,
+            "processed" => 0,
+            "success" => 0,
+            "errors" => 0,
+            "skipped" => 0,
+            "cached" => 0,
+            "scanned" => $scanned,
+            "eligible" => $eligible,
+            "ineligible" => $ineligible,
+            "up_to_date" => $up_to_date,
+            "invalid" => $invalid,
+            "prepared_at" => current_time("mysql"),
+            "started_at" => "",
+            "finished_at" => "",
+            "current_lot_id" => 0,
+            "last_lot_id" => 0,
+            "last_lot_title" => "",
+            "last_message" => $message,
+            "batch_size" => $batch_size,
+            "cleared_marks" => $cleared_marks,
+        ]);
+
+        $this->save_batch_state($state);
+
+
+        return [
+            "success" => true,
+            "warning" => empty($queue),
+            "message" => $message,
+            "state" => $state,
+        ];
+    }
+
+    public function resume_batch()
+    {
+        $state = $this->get_batch_state();
+        if (empty($state["queue"]) || empty($state["total"])) {
+
+        return [
+                "success" => false,
+                "warning" => true,
+                "message" => __(
+                    "Preparez d'abord une file de lots avant de lancer le batch SEO.",
+                    "lmd-apps-ia",
+                ),
+                "state" => $state,
+            ];
+        }
+
+        if (($state["processed"] ?? 0) >= ($state["total"] ?? 0)) {
+            $state["status"] = "completed";
+            $state["finished_at"] = $state["finished_at"] ?: current_time("mysql");
+            $state["last_message"] = __(
+                "Le batch SEO est deja termine. Repreparez une file pour relancer un traitement.",
+                "lmd-apps-ia",
+            );
+            $this->save_batch_state($state);
+
+
+        return [
+                "success" => true,
+                "warning" => true,
+                "message" => $state["last_message"],
+                "state" => $state,
+            ];
+        }
+
+        $state["status"] = "running";
+        if (empty($state["started_at"])) {
+            $state["started_at"] = current_time("mysql");
+        }
+        $state["finished_at"] = "";
+        $state["last_message"] = __(
+            "Traitement SEO en cours.",
+            "lmd-apps-ia",
+        );
+        $this->save_batch_state($state);
+
+
+        return [
+            "success" => true,
+            "message" => $state["last_message"],
+            "state" => $state,
+        ];
+    }
+
+    public function pause_batch()
+    {
+        $state = $this->get_batch_state();
+        if (($state["status"] ?? "idle") !== "running") {
+
+        return [
+                "success" => true,
+                "warning" => true,
+                "message" => __(
+                    "Le batch SEO n'etait pas en cours d'execution.",
+                    "lmd-apps-ia",
+                ),
+                "state" => $state,
+            ];
+        }
+
+        $state["status"] = "paused";
+        $state["current_lot_id"] = 0;
+        $state["last_message"] = __(
+            "Traitement SEO mis en pause.",
+            "lmd-apps-ia",
+        );
+        $this->save_batch_state($state);
+
+
+        return [
+            "success" => true,
+            "message" => $state["last_message"],
+            "state" => $state,
+        ];
+    }
+
+    public function process_batch($args = [])
+    {
+        $state = $this->get_batch_state();
+        if (($state["status"] ?? "idle") !== "running") {
+
+        return [
+                "success" => false,
+                "warning" => true,
+                "message" => __(
+                    "Le batch SEO n'est pas en cours. Lancez-le ou reprenez-le avant de traiter une tranche.",
+                    "lmd-apps-ia",
+                ),
+                "state" => $state,
+            ];
+        }
+
+        $batch_size = absint($args["batch_size"] ?? ($state["batch_size"] ?? self::BATCH_DEFAULT_SIZE));
+        if ($batch_size < 1) {
+            $batch_size = self::BATCH_DEFAULT_SIZE;
+        }
+        $state["batch_size"] = $batch_size;
+
+        $queue = array_values(array_filter(array_map("absint", (array) ($state["queue"] ?? []))));
+        $cursor = absint($state["cursor"] ?? 0);
+        if ($cursor >= count($queue)) {
+            $state["status"] = "completed";
+            $state["finished_at"] = current_time("mysql");
+            $state["current_lot_id"] = 0;
+            $state["last_message"] = $this->build_batch_completed_message($state);
+            $this->save_batch_state($state);
+
+
+        return [
+                "success" => true,
+                "message" => $state["last_message"],
+                "state" => $state,
+            ];
+        }
+
+        if (function_exists("ignore_user_abort")) {
+            ignore_user_abort(true);
+        }
+        if (function_exists("set_time_limit")) {
+            @set_time_limit(180);
+        }
+
+        $chunk = array_slice($queue, $cursor, $batch_size);
+        foreach ($chunk as $lot_id) {
+            $lot_id = absint($lot_id);
+            if (!$lot_id) {
+                $state["cursor"]++;
+                $state["processed"]++;
+                $state["skipped"]++;
+                continue;
+            }
+
+            $state["current_lot_id"] = $lot_id;
+            $result = $this->enrich_lot($lot_id, ["force" => false]);
+            $state["cursor"]++;
+            $state["processed"]++;
+            $state["last_lot_id"] = $lot_id;
+            $state["last_lot_title"] = get_the_title($lot_id);
+            $state["last_message"] = (string) ($result["message"] ?? "");
+
+            if (!empty($result["success"])) {
+                if (!empty($result["cached"])) {
+                    $state["cached"]++;
+                } else {
+                    $state["success"]++;
+                }
+            } elseif (!empty($result["skipped"])) {
+                $state["skipped"]++;
+            } else {
+                $state["errors"]++;
+            }
+        }
+
+        if (($state["cursor"] ?? 0) >= ($state["total"] ?? 0)) {
+            $state["status"] = "completed";
+            $state["finished_at"] = current_time("mysql");
+            $state["current_lot_id"] = 0;
+            $state["last_message"] = $this->build_batch_completed_message($state);
+        }
+
+        $state = $this->normalize_batch_state($state);
+        $this->save_batch_state($state);
+
+
+        return [
+            "success" => true,
+            "message" => $state["last_message"],
+            "state" => $state,
+        ];
+    }
+
+
+    public function enqueue_sale_after_import($sale_id, $result = [])
+    {
+        $sale_id = absint($sale_id);
+        if (!$sale_id || get_post_type($sale_id) !== "vente") {
+
+        return [
+                "success" => false,
+                "warning" => true,
+                "message" => __(
+                    "La vente importee n'a pas pu etre identifiee pour la file SEO automatique.",
+                    "lmd-apps-ia",
+                ),
+                "state" => $this->get_auto_queue_state(),
+            ];
+        }
+
+        $lot_ids = $this->get_sale_lot_ids($sale_id);
+        return $this->enqueue_auto_queue(
+            $lot_ids,
+            [
+                "sale_id" => $sale_id,
+                "source_name" => sanitize_text_field((string) ($result["source_name"] ?? "")),
+            ],
+        );
+    }
+
+    public function enqueue_auto_queue($lot_ids, $args = [])
+    {
+        $state = $this->get_auto_queue_state();
+        $queue = is_array($state["queue"]) ? $state["queue"] : [];
+        $sale_id = absint($args["sale_id"] ?? 0);
+        $source_name = sanitize_text_field((string) ($args["source_name"] ?? ""));
+        $queued_at = current_time("mysql");
+
+        $added = 0;
+        $already_queued = 0;
+        $up_to_date = 0;
+        $ineligible = 0;
+        $invalid = 0;
+
+        foreach ((array) $lot_ids as $lot_id) {
+            $lot_id = absint($lot_id);
+            if (!$lot_id) {
+                continue;
+            }
+
+            $context = $this->collect_lot_context($lot_id);
+            if (!$context) {
+                $invalid++;
+                continue;
+            }
+
+            $eligibility = $this->evaluate_lot_eligibility($context, $this->settings);
+            if (empty($eligibility["eligible"])) {
+                $ineligible++;
+                continue;
+            }
+
+            $source_hash = $this->build_source_hash($context, $this->settings);
+            $stored = $this->get_stored_output($lot_id);
+            if (
+                !empty($stored["source_hash"]) &&
+                $stored["source_hash"] === $source_hash &&
+                ($stored["status"] ?? "") === "done"
+            ) {
+                $up_to_date++;
+                continue;
+            }
+
+            $queue_key = (string) $lot_id;
+            if (
+                !empty($queue[$queue_key]["source_hash"]) &&
+                $queue[$queue_key]["source_hash"] === $source_hash
+            ) {
+                $already_queued++;
+                continue;
+            }
+
+            $queue[$queue_key] = [
+                "lot_id" => $lot_id,
+                "sale_id" => $sale_id,
+                "source_hash" => $source_hash,
+                "queued_at" => $queued_at,
+                "source_name" => $source_name,
+            ];
+            $this->mark_status($lot_id, "queued", "");
+            $added++;
+        }
+
+        $state["queue"] = $queue;
+        $state["last_sale_id"] = $sale_id;
+        $state["last_source_name"] = $source_name;
+        $state["added_total"] = absint($state["added_total"] ?? 0) + $added;
+        $state["up_to_date_total"] = absint($state["up_to_date_total"] ?? 0) + $up_to_date;
+        $state["ineligible_total"] = absint($state["ineligible_total"] ?? 0) + $ineligible;
+        $state["invalid_total"] = absint($state["invalid_total"] ?? 0) + $invalid;
+        $state["last_queued_at"] = $queued_at;
+
+        if ($added > 0) {
+            $scheduled = $this->schedule_auto_queue_run_if_needed(self::AUTO_QUEUE_DELAY);
+            $state["status"] = $scheduled ? "scheduled" : "idle";
+            $state["last_message"] = sprintf(
+                __(
+                    'File SEO automatique mise a jour : %1$d lot(s) ajoute(s), %2$d deja a jour, %3$d non eligibles.',
+                    "lmd-apps-ia",
+                ),
+                $added,
+                $up_to_date,
+                $ineligible,
+            );
+        } else {
+            $state["last_message"] = sprintf(
+                __(
+                    'Aucun nouveau lot ajoute a la file SEO automatique (%1$d deja en file, %2$d deja a jour, %3$d non eligibles).',
+                    "lmd-apps-ia",
+                ),
+                $already_queued,
+                $up_to_date,
+                $ineligible,
+            );
+        }
+
+        $state = $this->normalize_auto_queue_state($state);
+        $this->save_auto_queue_state($state);
+
+
+        return [
+            "success" => true,
+            "warning" => ($added === 0),
+            "message" => $state["last_message"],
+            "state" => $state,
+        ];
+    }
+
+    public function process_auto_queue()
+    {
+        $state = $this->get_auto_queue_state();
+        $queue = is_array($state["queue"]) ? $state["queue"] : [];
+
+        if (empty($queue)) {
+            $state["status"] = "idle";
+            $state["last_message"] = __(
+                "Aucun lot en attente dans la file SEO automatique.",
+                "lmd-apps-ia",
+            );
+            $state = $this->normalize_auto_queue_state($state);
+            $this->save_auto_queue_state($state);
+            return $state;
+        }
+
+        $manual_batch = $this->get_batch_state();
+        if (($manual_batch["status"] ?? "idle") === "running") {
+            $scheduled = $this->schedule_auto_queue_run_if_needed(300);
+            $state["status"] = $scheduled ? "scheduled" : "idle";
+            $state["last_message"] = __(
+                "Le worker SEO automatique a ete reporte car un batch manuel est en cours.",
+                "lmd-apps-ia",
+            );
+            $state = $this->normalize_auto_queue_state($state);
+            $this->save_auto_queue_state($state);
+            return $state;
+        }
+
+        $state["status"] = "running";
+        $state["last_run_at"] = current_time("mysql");
+        $this->save_auto_queue_state($state);
+
+        if (function_exists("ignore_user_abort")) {
+            ignore_user_abort(true);
+        }
+        if (function_exists("set_time_limit")) {
+            @set_time_limit(180);
+        }
+
+        $items = array_slice($queue, 0, self::AUTO_QUEUE_BATCH_SIZE, true);
+        foreach ($items as $queue_key => $item) {
+            $lot_id = absint($item["lot_id"] ?? 0);
+            if (!$lot_id) {
+                unset($queue[$queue_key]);
+                $state["processed_total"] = absint($state["processed_total"] ?? 0) + 1;
+                $state["skipped_total"] = absint($state["skipped_total"] ?? 0) + 1;
+                continue;
+            }
+
+            $result = $this->enrich_lot($lot_id, ["force" => false]);
+            unset($queue[$queue_key]);
+
+            $state["processed_total"] = absint($state["processed_total"] ?? 0) + 1;
+            $state["last_lot_id"] = $lot_id;
+            $state["last_lot_title"] = get_the_title($lot_id);
+            $state["last_message"] = (string) ($result["message"] ?? "");
+
+            if (!empty($result["success"])) {
+                if (!empty($result["cached"]) || !empty($result["skipped"])) {
+                    $state["skipped_total"] = absint($state["skipped_total"] ?? 0) + 1;
+                } else {
+                    $state["success_total"] = absint($state["success_total"] ?? 0) + 1;
+                }
+            } else {
+                $state["errors_total"] = absint($state["errors_total"] ?? 0) + 1;
+            }
+        }
+
+        $state["queue"] = $queue;
+
+        if (!empty($queue)) {
+            $scheduled = $this->schedule_auto_queue_run_if_needed(self::AUTO_QUEUE_INTERVAL);
+            $state["status"] = $scheduled ? "scheduled" : "idle";
+            $state["last_message"] = sprintf(
+                __(
+                    'File SEO automatique en cours : %d lot(s) restant(s).',
+                    "lmd-apps-ia",
+                ),
+                count($queue),
+            );
+        } else {
+            $state["status"] = "idle";
+            $state["last_message"] = sprintf(
+                __(
+                    'File SEO automatique terminee : %1$d succes, %2$d erreur(s), %3$d saute(s).',
+                    "lmd-apps-ia",
+                ),
+                absint($state["success_total"] ?? 0),
+                absint($state["errors_total"] ?? 0),
+                absint($state["skipped_total"] ?? 0),
+            );
+        }
+
+        $state = $this->normalize_auto_queue_state($state);
+        $this->save_auto_queue_state($state);
+
+        return $state;
+    }
     public function purge_lot($lot_id)
     {
         $lot_id = absint($lot_id);
         if (!$lot_id) {
-            return [
+
+        return [
                 "success" => false,
                 "message" => __(
                     "Identifiant de lot invalide.",
@@ -120,7 +717,8 @@ class LMD_Seo_Enricher
 
         $post = get_post($lot_id);
         if (!$post || $post->post_type !== "lot") {
-            return [
+
+        return [
                 "success" => false,
                 "message" => __(
                     "Lot introuvable ou type de contenu non pris en charge.",
@@ -129,7 +727,9 @@ class LMD_Seo_Enricher
             ];
         }
 
+        $this->remove_lot_from_auto_queue($lot_id);
         $removed = $this->purge_lot_meta($lot_id);
+
 
         return [
             "success" => true,
@@ -174,6 +774,7 @@ class LMD_Seo_Enricher
             }
         }
 
+
         return [
             "success" => true,
             "warning" => ($touched === 0),
@@ -193,7 +794,8 @@ class LMD_Seo_Enricher
     {
         $lot_id = absint($lot_id);
         if (!$lot_id) {
-            return [
+
+        return [
                 "success" => false,
                 "message" => __(
                     "Identifiant de lot invalide.",
@@ -204,7 +806,8 @@ class LMD_Seo_Enricher
 
         $context = $this->collect_lot_context($lot_id);
         if (!$context) {
-            return [
+
+        return [
                 "success" => false,
                 "message" => __(
                     "Lot introuvable ou type de contenu non pris en charge.",
@@ -222,7 +825,8 @@ class LMD_Seo_Enricher
         if (!$force && !$eligibility["eligible"]) {
             $this->mark_status($lot_id, "skipped", $eligibility["message"]);
 
-            return [
+
+        return [
                 "success" => false,
                 "skipped" => true,
                 "message" => $eligibility["message"],
@@ -239,7 +843,8 @@ class LMD_Seo_Enricher
             $stored["source_hash"] === $source_hash &&
             ($stored["status"] ?? "") === "done"
         ) {
-            return [
+
+        return [
                 "success" => true,
                 "cached" => true,
                 "message" => __(
@@ -260,7 +865,8 @@ class LMD_Seo_Enricher
                 __("Module API indisponible.", "lmd-apps-ia"),
             );
 
-            return [
+
+        return [
                 "success" => false,
                 "message" => __("Module API indisponible.", "lmd-apps-ia"),
                 "lot_id" => $lot_id,
@@ -280,7 +886,8 @@ class LMD_Seo_Enricher
             $message = (string) $result["error"];
             $this->mark_status($lot_id, "error", $message);
 
-            return [
+
+        return [
                 "success" => false,
                 "message" => $message,
                 "lot_id" => $lot_id,
@@ -298,7 +905,8 @@ class LMD_Seo_Enricher
             );
             $this->mark_status($lot_id, "error", $message);
 
-            return [
+
+        return [
                 "success" => false,
                 "message" => $message,
                 "lot_id" => $lot_id,
@@ -315,6 +923,7 @@ class LMD_Seo_Enricher
         if (function_exists("lmd_update_consumption_summary")) {
             lmd_update_consumption_summary();
         }
+
 
         return [
             "success" => true,
@@ -335,7 +944,8 @@ class LMD_Seo_Enricher
         $settings = is_array($settings) ? $settings : $this->settings;
 
         if (empty($settings["enabled"])) {
-            return [
+
+        return [
                 "eligible" => false,
                 "message" => __(
                     "L'enrichissement SEO est desactive sur ce site.",
@@ -345,7 +955,8 @@ class LMD_Seo_Enricher
         }
 
         if (!$this->has_enabled_outputs($settings)) {
-            return [
+
+        return [
                 "eligible" => false,
                 "message" => __(
                     "Aucun contenu SEO n'est active dans les reglages.",
@@ -357,7 +968,8 @@ class LMD_Seo_Enricher
         if ($this->has_sale_type_filter($settings)) {
             $sale_type = (string) ($context["sale"]["type_normalized"] ?? "");
             if ($sale_type === "") {
-                return [
+
+        return [
                     "eligible" => false,
                     "message" => __(
                         "Le type de vente de ce lot n'est pas reconnu.",
@@ -366,7 +978,8 @@ class LMD_Seo_Enricher
                 ];
             }
             if (empty($settings["sale_types"][$sale_type])) {
-                return [
+
+        return [
                     "eligible" => false,
                     "message" => __(
                         "Le type de vente de ce lot n'est pas active dans les reglages SEO.",
@@ -391,7 +1004,8 @@ class LMD_Seo_Enricher
                 ),
             );
             if (empty($allowed_categories)) {
-                return [
+
+        return [
                     "eligible" => false,
                     "message" => __(
                         "Le filtre par categories est actif, mais aucune categorie n'est selectionnee.",
@@ -402,7 +1016,8 @@ class LMD_Seo_Enricher
 
             $sale_slugs = (array) ($context["sale"]["category_slugs"] ?? []);
             if (empty(array_intersect($allowed_categories, $sale_slugs))) {
-                return [
+
+        return [
                     "eligible" => false,
                     "message" => __(
                         "La categorie de vente de ce lot n'est pas incluse dans le ciblage SEO.",
@@ -411,6 +1026,7 @@ class LMD_Seo_Enricher
                 ];
             }
         }
+
 
         return [
             "eligible" => true,
@@ -439,6 +1055,7 @@ class LMD_Seo_Enricher
         }
 
         $lot_description_text = $this->plain_text($lot->post_content);
+
 
         return [
             "lot_id" => $lot_id,
@@ -578,7 +1195,7 @@ class LMD_Seo_Enricher
             ];
         }
 
-        return array_slice($images, 0, 5);
+        return array_slice($images, 0, self::MAX_GEMINI_IMAGES);
     }
 
     private function prepare_images_for_gemini($images)
@@ -593,7 +1210,7 @@ class LMD_Seo_Enricher
                 $out[] = $url;
             }
         }
-        return $out;
+        return array_slice($out, 0, self::MAX_GEMINI_IMAGES);
     }
 
     private function build_gemini_prompt($context)
@@ -713,6 +1330,7 @@ class LMD_Seo_Enricher
             )
             : [];
 
+
         return [
             "canonical_label" => $canonical_label,
             "title" => !empty($outputs["title"]) ? $seo_title : "",
@@ -777,6 +1395,7 @@ class LMD_Seo_Enricher
             $lot_id,
             $meta["schema_payload"],
             $output["schema_payload"],
+            true,
         );
         update_post_meta($lot_id, $meta["source_hash"], $source_hash);
         update_post_meta($lot_id, $meta["enriched_at"], current_time("mysql"));
@@ -786,6 +1405,289 @@ class LMD_Seo_Enricher
             $this->api ? $this->api->get_gemini_model() : "",
         );
         update_post_meta($lot_id, $meta["prompt_version"], self::PROMPT_VERSION);
+    }
+
+
+    private function get_auto_queue_state_defaults()
+    {
+
+        return [
+            "status" => "idle",
+            "queue" => [],
+            "pending" => 0,
+            "added_total" => 0,
+            "processed_total" => 0,
+            "success_total" => 0,
+            "errors_total" => 0,
+            "skipped_total" => 0,
+            "up_to_date_total" => 0,
+            "ineligible_total" => 0,
+            "invalid_total" => 0,
+            "last_sale_id" => 0,
+            "last_lot_id" => 0,
+            "last_lot_title" => "",
+            "last_source_name" => "",
+            "last_queued_at" => "",
+            "last_run_at" => "",
+            "last_message" => "",
+            "next_run_ts" => 0,
+        ];
+    }
+
+    private function normalize_auto_queue_state($state)
+    {
+        $defaults = $this->get_auto_queue_state_defaults();
+        $state = is_array($state) ? array_merge($defaults, $state) : $defaults;
+
+        $state["status"] = sanitize_key((string) $state["status"]);
+        if ($state["status"] === "") {
+            $state["status"] = "idle";
+        }
+
+        $normalized_queue = [];
+        foreach ((array) ($state["queue"] ?? []) as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $lot_id = absint($item["lot_id"] ?? 0);
+            if (!$lot_id) {
+                continue;
+            }
+            $normalized_queue[(string) $lot_id] = [
+                "lot_id" => $lot_id,
+                "sale_id" => absint($item["sale_id"] ?? 0),
+                "source_hash" => sanitize_text_field((string) ($item["source_hash"] ?? "")),
+                "queued_at" => is_string($item["queued_at"] ?? null) ? $item["queued_at"] : "",
+                "source_name" => sanitize_text_field((string) ($item["source_name"] ?? "")),
+            ];
+        }
+        $state["queue"] = $normalized_queue;
+        $state["pending"] = count($normalized_queue);
+
+        foreach (["added_total", "processed_total", "success_total", "errors_total", "skipped_total", "up_to_date_total", "ineligible_total", "invalid_total", "last_sale_id", "last_lot_id", "next_run_ts"] as $key) {
+            $state[$key] = absint($state[$key]);
+        }
+
+        foreach (["last_lot_title", "last_source_name", "last_queued_at", "last_run_at", "last_message"] as $key) {
+            $state[$key] = is_string($state[$key]) ? $state[$key] : "";
+        }
+
+        return $state;
+    }
+
+    private function save_auto_queue_state($state)
+    {
+        $state = $this->normalize_auto_queue_state($state);
+        if (false === get_option(self::AUTO_QUEUE_OPTION, false)) {
+            add_option(self::AUTO_QUEUE_OPTION, $state, "", "no");
+        } else {
+            update_option(self::AUTO_QUEUE_OPTION, $state, false);
+        }
+    }
+
+    private function schedule_auto_queue_run_if_needed($delay = self::AUTO_QUEUE_DELAY)
+    {
+        $delay = max(1, absint($delay));
+        $scheduled = wp_next_scheduled(self::AUTO_QUEUE_HOOK);
+        if ($scheduled) {
+            return (int) $scheduled;
+        }
+
+        $timestamp = time() + $delay;
+        wp_schedule_single_event($timestamp, self::AUTO_QUEUE_HOOK);
+        return $timestamp;
+    }
+
+    private function unschedule_auto_queue()
+    {
+        while ($timestamp = wp_next_scheduled(self::AUTO_QUEUE_HOOK)) {
+            wp_unschedule_event($timestamp, self::AUTO_QUEUE_HOOK);
+        }
+    }
+
+    private function get_sale_lot_ids($sale_id)
+    {
+        $sale_id = absint($sale_id);
+        if (!$sale_id) {
+
+        return [];
+        }
+
+        return get_posts([
+            "post_type" => "lot",
+            "post_status" => ["publish", "future", "draft", "pending", "private"],
+            "post_parent" => $sale_id,
+            "fields" => "ids",
+            "posts_per_page" => -1,
+            "no_found_rows" => true,
+            "orderby" => "ID",
+            "order" => "ASC",
+            "suppress_filters" => true,
+        ]);
+    }
+
+    private function remove_lot_from_auto_queue($lot_id)
+    {
+        $lot_id = absint($lot_id);
+        if (!$lot_id) {
+            return;
+        }
+
+        $state = $this->get_auto_queue_state();
+        $queue_key = (string) $lot_id;
+        if (!isset($state["queue"][$queue_key])) {
+            return;
+        }
+
+        unset($state["queue"][$queue_key]);
+        $state = $this->normalize_auto_queue_state($state);
+        $this->save_auto_queue_state($state);
+    }
+    private function get_batch_state_defaults()
+    {
+
+        return [
+            "status" => "idle",
+            "queue" => [],
+            "total" => 0,
+            "cursor" => 0,
+            "processed" => 0,
+            "success" => 0,
+            "errors" => 0,
+            "skipped" => 0,
+            "cached" => 0,
+            "scanned" => 0,
+            "eligible" => 0,
+            "ineligible" => 0,
+            "up_to_date" => 0,
+            "invalid" => 0,
+            "cleared_marks" => 0,
+            "prepared_at" => "",
+            "started_at" => "",
+            "finished_at" => "",
+            "current_lot_id" => 0,
+            "last_lot_id" => 0,
+            "last_lot_title" => "",
+            "last_message" => "",
+            "batch_size" => self::BATCH_DEFAULT_SIZE,
+        ];
+    }
+
+    private function normalize_batch_state($state)
+    {
+        $defaults = $this->get_batch_state_defaults();
+        $state = is_array($state) ? array_merge($defaults, $state) : $defaults;
+
+        $state["status"] = sanitize_key($state["status"]);
+        if ($state["status"] === "") {
+            $state["status"] = "idle";
+        }
+
+        $state["queue"] = array_values(
+            array_filter(array_map("absint", (array) $state["queue"])),
+        );
+
+        foreach (
+            [
+                "total",
+                "cursor",
+                "processed",
+                "success",
+                "errors",
+                "skipped",
+                "cached",
+                "scanned",
+                "eligible",
+                "ineligible",
+                "up_to_date",
+                "invalid",
+                "cleared_marks",
+                "current_lot_id",
+                "last_lot_id",
+                "batch_size",
+            ] as $key
+        ) {
+            $state[$key] = absint($state[$key]);
+        }
+
+        if ($state["batch_size"] < 1) {
+            $state["batch_size"] = self::BATCH_DEFAULT_SIZE;
+        }
+
+        foreach (
+            ["prepared_at", "started_at", "finished_at", "last_message", "last_lot_title"] as $key
+        ) {
+            $state[$key] = is_string($state[$key]) ? $state[$key] : "";
+        }
+
+        return $state;
+    }
+
+    private function save_batch_state($state)
+    {
+        $state = $this->normalize_batch_state($state);
+        if (false === get_option(self::BATCH_OPTION, false)) {
+            add_option(self::BATCH_OPTION, $state, "", "no");
+        } else {
+            update_option(self::BATCH_OPTION, $state, false);
+        }
+    }
+
+    private function get_candidate_lot_ids()
+    {
+        return get_posts([
+            "post_type" => "lot",
+            "post_status" => ["publish", "future", "draft", "pending", "private"],
+            "fields" => "ids",
+            "posts_per_page" => -1,
+            "no_found_rows" => true,
+            "orderby" => "ID",
+            "order" => "ASC",
+            "suppress_filters" => true,
+        ]);
+    }
+
+    private function clear_pending_batch_marks()
+    {
+        $meta = self::get_meta_keys();
+        $cleared = 0;
+        foreach (["queued", "processing"] as $status) {
+            $lot_ids = get_posts([
+                "post_type" => "lot",
+                "post_status" => ["publish", "future", "draft", "pending", "private"],
+                "fields" => "ids",
+                "posts_per_page" => -1,
+                "no_found_rows" => true,
+                "orderby" => "ID",
+                "order" => "ASC",
+                "suppress_filters" => true,
+                "meta_key" => $meta["status"],
+                "meta_value" => $status,
+            ]);
+
+            foreach ((array) $lot_ids as $lot_id) {
+                delete_post_meta((int) $lot_id, $meta["status"]);
+                delete_post_meta((int) $lot_id, $meta["error"]);
+                $cleared++;
+            }
+        }
+
+        return $cleared;
+    }
+
+    private function build_batch_completed_message($state)
+    {
+        return sprintf(
+            __(
+                'Batch SEO termine : %1$d lot(s) traites, %2$d succes, %3$d erreur(s), %4$d saute(s), %5$d deja a jour.',
+                "lmd-apps-ia",
+            ),
+            absint($state["processed"] ?? 0),
+            absint($state["success"] ?? 0),
+            absint($state["errors"] ?? 0),
+            absint($state["skipped"] ?? 0),
+            absint($state["cached"] ?? 0),
+        );
     }
 
     private function build_schema_payload($context, $output)
@@ -894,7 +1796,9 @@ class LMD_Seo_Enricher
                 $payload["isRelatedTo"]["sameAs"] = $context["sale"]["external_url"];
             }
             if (!empty($context["sale"]["date"])) {
-                $payload["isRelatedTo"]["startDate"] = $context["sale"]["date"];
+                $payload["isRelatedTo"]["startDate"] = $this->format_schema_datetime(
+                    $context["sale"]["date"],
+                );
             }
             if (!empty($context["site_name"])) {
                 $payload["isRelatedTo"]["organizer"] = [
@@ -941,7 +1845,8 @@ class LMD_Seo_Enricher
 
         if ($mode === "low") {
             if ($low_min === null) {
-                return ["eligible" => true, "message" => ""];
+
+        return ["eligible" => true, "message" => ""];
             }
             return $passes_low
                 ? ["eligible" => true, "message" => ""]
@@ -956,7 +1861,8 @@ class LMD_Seo_Enricher
 
         if ($mode === "high") {
             if ($high_min === null) {
-                return ["eligible" => true, "message" => ""];
+
+        return ["eligible" => true, "message" => ""];
             }
             return $passes_high
                 ? ["eligible" => true, "message" => ""]
@@ -977,12 +1883,15 @@ class LMD_Seo_Enricher
             $checks[] = $passes_high;
         }
         if (empty($checks)) {
-            return ["eligible" => true, "message" => ""];
+
+        return ["eligible" => true, "message" => ""];
         }
 
         if (in_array(true, $checks, true)) {
-            return ["eligible" => true, "message" => ""];
+
+        return ["eligible" => true, "message" => ""];
         }
+
 
         return [
             "eligible" => false,
@@ -1013,7 +1922,8 @@ class LMD_Seo_Enricher
                 "category_slugs" => $context["sale"]["category_slugs"] ?? [],
             ],
             "images" => array_map(function ($image) {
-                return [
+
+        return [
                     "id" => (int) ($image["id"] ?? 0),
                     "url" => (string) ($image["url"] ?? ""),
                 ];
@@ -1075,7 +1985,8 @@ class LMD_Seo_Enricher
     private function normalize_string_list($value)
     {
         if (!is_array($value)) {
-            return [];
+
+        return [];
         }
         return array_values(
             array_filter(
@@ -1096,13 +2007,14 @@ class LMD_Seo_Enricher
         update_post_meta($lot_id, $meta_key, $value);
     }
 
-    private function save_array_or_delete($lot_id, $meta_key, $value)
+    private function save_array_or_delete($lot_id, $meta_key, $value, $preserve_keys = false)
     {
-        $value = is_array($value) ? array_values($value) : [];
-        if (empty($value)) {
+        if (!is_array($value) || empty($value)) {
             delete_post_meta($lot_id, $meta_key);
             return;
         }
+
+        $value = $preserve_keys ? $value : array_values($value);
         update_post_meta($lot_id, $meta_key, $value);
     }
 
@@ -1244,11 +2156,38 @@ class LMD_Seo_Enricher
             return null;
         }
 
+
         return [
             "@type" => "QuantitativeValue",
             "value" => (float) $value,
             "unitCode" => "CMT",
         ];
+    }
+
+    private function format_schema_datetime($value)
+    {
+        $value = $this->plain_text($value);
+        if ($value === "") {
+            return "";
+        }
+
+        try {
+            $timezone = function_exists("wp_timezone")
+                ? wp_timezone()
+                : new DateTimeZone("UTC");
+            $date = date_create_immutable($value, $timezone);
+            if (!$date) {
+                $timestamp = strtotime($value);
+                if ($timestamp === false) {
+                    return $value;
+                }
+                $date = (new DateTimeImmutable("@" . $timestamp))->setTimezone($timezone);
+            }
+
+            return $date->format("c");
+        } catch (Exception $e) {
+            return $value;
+        }
     }
 
     private function extract_explicit_brand($title, $description)
@@ -1323,5 +2262,14 @@ class LMD_Seo_Enricher
             : substr($value, $start, $length);
     }
 }
+
+
+
+
+
+
+
+
+
 
 

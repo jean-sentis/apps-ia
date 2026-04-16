@@ -86,6 +86,11 @@ class LMD_Admin
             $this,
             "handle_import_full_copy",
         ]);
+        add_action("wp_ajax_lmd_seo_prepare_batch", [$this, "ajax_seo_prepare_batch"]);
+        add_action("wp_ajax_lmd_seo_resume_batch", [$this, "ajax_seo_resume_batch"]);
+        add_action("wp_ajax_lmd_seo_pause_batch", [$this, "ajax_seo_pause_batch"]);
+        add_action("wp_ajax_lmd_seo_process_batch", [$this, "ajax_seo_process_batch"]);
+        add_action("wp_ajax_lmd_seo_get_batch_state", [$this, "ajax_seo_get_batch_state"]);
     }
 
     /**
@@ -1086,9 +1091,73 @@ class LMD_Admin
         $lmd_seo_categories = function_exists("lmd_get_seo_sale_category_terms")
             ? lmd_get_seo_sale_category_terms()
             : [];
+        $lmd_seo_batch_state = class_exists("LMD_Seo_Enricher")
+            ? (new LMD_Seo_Enricher())->get_batch_state()
+            : [];
+        $lmd_seo_auto_queue_state = class_exists("LMD_Seo_Enricher")
+            ? (new LMD_Seo_Enricher())->get_auto_queue_state()
+            : [];
 
         include LMD_PLUGIN_DIR . "admin/views/app-seo.php";
     }
+
+    private function get_seo_enricher_for_ajax()
+    {
+        check_ajax_referer("lmd_admin", "nonce");
+
+        if (!current_user_can("manage_options")) {
+            wp_send_json_error([
+                "success" => false,
+                "message" => esc_html__("Non autorisé.", "lmd-apps-ia"),
+            ], 403);
+        }
+
+        if (!class_exists("LMD_Seo_Enricher")) {
+            wp_send_json_error([
+                "success" => false,
+                "message" => esc_html__(
+                    "Le moteur SEO est indisponible.",
+                    "lmd-apps-ia",
+                ),
+            ], 500);
+        }
+
+        return new LMD_Seo_Enricher();
+    }
+
+    public function ajax_seo_prepare_batch()
+    {
+        $enricher = $this->get_seo_enricher_for_ajax();
+        wp_send_json_success($enricher->prepare_batch());
+    }
+
+    public function ajax_seo_resume_batch()
+    {
+        $enricher = $this->get_seo_enricher_for_ajax();
+        wp_send_json_success($enricher->resume_batch());
+    }
+
+    public function ajax_seo_pause_batch()
+    {
+        $enricher = $this->get_seo_enricher_for_ajax();
+        wp_send_json_success($enricher->pause_batch());
+    }
+
+    public function ajax_seo_process_batch()
+    {
+        $enricher = $this->get_seo_enricher_for_ajax();
+        wp_send_json_success($enricher->process_batch());
+    }
+
+    public function ajax_seo_get_batch_state()
+    {
+        $enricher = $this->get_seo_enricher_for_ajax();
+        wp_send_json_success([
+            "success" => true,
+            "state" => $enricher->get_batch_state(),
+        ]);
+    }
+
     public function render_app_fideliser_client_placeholder()
     {
         $lmd_placeholder_title = __("Fidéliser client", "lmd-apps-ia");
@@ -1608,4 +1677,6 @@ class LMD_Admin
         exit();
     }
 }
+
+
 

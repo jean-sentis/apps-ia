@@ -1657,6 +1657,52 @@ body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-callout--neutral {
     background: #f9fafb;
     color: #4b5563;
 }
+body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-batch-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+}
+body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-batch-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+}
+body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-batch-actions .button {
+    min-width: 148px;
+}
+body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-batch-progress {
+    margin: 18px 0 20px;
+}
+body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-batch-track {
+    height: 12px;
+    border-radius: 999px;
+    background: #e5e7eb;
+    overflow: hidden;
+}
+body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-batch-track > span {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #0f766e 0%, #10b981 100%);
+    transition: width 180ms ease;
+}
+body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-batch-progress-meta {
+    margin-top: 8px;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 13px;
+    color: #475569;
+}
+body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-batch-stats {
+    margin-top: 8px;
+}
+body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-batch-last {
+    margin-top: 14px !important;
+}
 body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-test-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1703,6 +1749,18 @@ body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-preview-pre {
     line-height: 1.5;
 }
 @media (max-width: 782px) {
+    body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-batch-header,
+    body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-batch-progress-meta {
+        flex-direction: column;
+    }
+    body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-batch-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-batch-actions .button {
+        min-width: 0;
+        width: 100%;
+    }
     body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-test-grid {
         grid-template-columns: 1fr;
     }
@@ -1710,5 +1768,6 @@ body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-preview-pre {
         grid-column: auto;
     }
 }
+
 
 

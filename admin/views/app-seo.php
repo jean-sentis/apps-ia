@@ -25,6 +25,9 @@ $lmd_seo_run_result = isset($lmd_seo_run_result) && is_array($lmd_seo_run_result
 $lmd_seo_purge_result = isset($lmd_seo_purge_result) && is_array($lmd_seo_purge_result)
     ? $lmd_seo_purge_result
     : [];
+$lmd_seo_batch_state = isset($lmd_seo_batch_state) && is_array($lmd_seo_batch_state)
+    ? $lmd_seo_batch_state
+    : [];
 $lmd_seo_test_lot_id = isset($lmd_seo_test_lot_id) ? absint($lmd_seo_test_lot_id) : 0;
 $lmd_seo_purge_lot_id = isset($lmd_seo_purge_lot_id) ? absint($lmd_seo_purge_lot_id) : $lmd_seo_test_lot_id;
 
@@ -189,6 +192,68 @@ $run_schema_json = !empty($run_stored["schema_payload"])
         </div>
     </form>
 
+    <div class="lmd-ui-panel" id="lmd-seo-batch-app">
+        <div class="lmd-seo-batch-header">
+            <div>
+                <h2 class="lmd-ui-section-title"><?php esc_html_e("Traitement par lot", "lmd-apps-ia"); ?></h2>
+                <p class="lmd-ui-prose">
+                    <?php esc_html_e("Preparez une file de lots eligibles, puis lancez un traitement progressif par paquets. Chaque passage envoie au maximum 3 images par lot a Gemini. Les images supplementaires reutiliseront l'alt enrichi avec la mention autre vue.", "lmd-apps-ia"); ?>
+                </p>
+            </div>
+            <div class="lmd-seo-batch-actions">
+                <button type="button" class="button" data-batch-action="prepare"><?php esc_html_e("Preparer la file", "lmd-apps-ia"); ?></button>
+                <button type="button" class="button button-primary" data-batch-action="resume"><?php esc_html_e("Lancer le batch", "lmd-apps-ia"); ?></button>
+                <button type="button" class="button" data-batch-action="pause"><?php esc_html_e("Mettre en pause", "lmd-apps-ia"); ?></button>
+                <button type="button" class="button" data-batch-action="refresh"><?php esc_html_e("Actualiser", "lmd-apps-ia"); ?></button>
+            </div>
+        </div>
+
+        <div id="lmd-seo-batch-feedback" class="lmd-app-feedback lmd-app-feedback--info" hidden>
+            <p></p>
+        </div>
+
+        <div class="lmd-seo-batch-progress">
+            <div class="lmd-seo-batch-track"><span id="lmd-seo-batch-fill"></span></div>
+            <div class="lmd-seo-batch-progress-meta">
+                <strong data-batch-text="status_label"><?php esc_html_e("Inactif", "lmd-apps-ia"); ?></strong>
+                <span data-batch-text="progress_label">0 / 0</span>
+            </div>
+        </div>
+
+        <div class="lmd-seo-overview-grid lmd-seo-batch-stats">
+            <div class="lmd-seo-overview-card">
+                <span class="lmd-seo-card-kicker"><?php esc_html_e("Lots scannes", "lmd-apps-ia"); ?></span>
+                <div class="lmd-seo-card-title" data-batch-number="scanned">0</div>
+            </div>
+            <div class="lmd-seo-overview-card">
+                <span class="lmd-seo-card-kicker"><?php esc_html_e("En attente", "lmd-apps-ia"); ?></span>
+                <div class="lmd-seo-card-title" data-batch-number="remaining">0</div>
+            </div>
+            <div class="lmd-seo-overview-card">
+                <span class="lmd-seo-card-kicker"><?php esc_html_e("Traites", "lmd-apps-ia"); ?></span>
+                <div class="lmd-seo-card-title" data-batch-number="processed">0</div>
+            </div>
+            <div class="lmd-seo-overview-card">
+                <span class="lmd-seo-card-kicker"><?php esc_html_e("Succes", "lmd-apps-ia"); ?></span>
+                <div class="lmd-seo-card-title" data-batch-number="success">0</div>
+            </div>
+            <div class="lmd-seo-overview-card">
+                <span class="lmd-seo-card-kicker"><?php esc_html_e("Erreurs", "lmd-apps-ia"); ?></span>
+                <div class="lmd-seo-card-title" data-batch-number="errors">0</div>
+            </div>
+            <div class="lmd-seo-overview-card">
+                <span class="lmd-seo-card-kicker"><?php esc_html_e("Deja a jour", "lmd-apps-ia"); ?></span>
+                <div class="lmd-seo-card-title" data-batch-number="up_to_date">0</div>
+            </div>
+            <div class="lmd-seo-overview-card">
+                <span class="lmd-seo-card-kicker"><?php esc_html_e("Non eligibles", "lmd-apps-ia"); ?></span>
+                <div class="lmd-seo-card-title" data-batch-number="ineligible">0</div>
+            </div>
+        </div>
+
+        <p class="description lmd-seo-batch-last" data-batch-text="last_message"><?php esc_html_e("Aucune file preparee pour le moment.", "lmd-apps-ia"); ?></p>
+    </div>
+
     <div class="lmd-ui-panel">
         <h2 class="lmd-ui-section-title"><?php esc_html_e("Tester sur un lot", "lmd-apps-ia"); ?></h2>
         <p class="lmd-ui-prose">
@@ -332,6 +397,292 @@ $run_schema_json = !empty($run_stored["schema_payload"])
     </div>
     <?php endif; ?>
 </div>
+
+<script>
+jQuery(function ($) {
+    const batchRoot = $("#lmd-seo-batch-app");
+    if (!batchRoot.length) {
+        return;
+    }
+
+    const statusLabels = {
+        idle: "Inactif",
+        ready: "Prêt",
+        running: "En cours",
+        paused: "En pause",
+        completed: "Terminé"
+    };
+
+    const defaults = {
+        status: "idle",
+        total: 0,
+        processed: 0,
+        success: 0,
+        errors: 0,
+        skipped: 0,
+        cached: 0,
+        scanned: 0,
+        eligible: 0,
+        ineligible: 0,
+        up_to_date: 0,
+        last_message: "",
+        queue: []
+    };
+
+    let state = $.extend({}, defaults, <?php echo wp_json_encode($lmd_seo_batch_state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?> || {});
+    let loopTimer = null;
+    let inFlight = false;
+    let pendingPause = false;
+
+    function normalizeState(nextState) {
+        const merged = $.extend({}, defaults, nextState || {});
+        ["total", "processed", "success", "errors", "skipped", "cached", "scanned", "eligible", "ineligible", "up_to_date"].forEach(function (key) {
+            merged[key] = parseInt(merged[key] || 0, 10);
+        });
+        return merged;
+    }
+
+    function showFeedback(message, type) {
+        const feedback = $("#lmd-seo-batch-feedback");
+        if (!message) {
+            feedback.attr("hidden", true).removeClass("lmd-app-feedback--success lmd-app-feedback--warning lmd-app-feedback--error lmd-app-feedback--info");
+            return;
+        }
+        feedback.removeAttr("hidden");
+        feedback.removeClass("lmd-app-feedback--success lmd-app-feedback--warning lmd-app-feedback--error lmd-app-feedback--info");
+        feedback.addClass("lmd-app-feedback--" + (type || "info"));
+        feedback.find("p").text(message);
+    }
+
+    function setButtonState(selector, enabled, label) {
+        const button = batchRoot.find(selector);
+        button.prop("disabled", !enabled);
+        if (label) {
+            button.text(label);
+        }
+    }
+
+    function renderState() {
+        state = normalizeState(state);
+        const total = state.total;
+        const processed = state.processed;
+        const remaining = Math.max(total - processed, 0);
+        const percent = total > 0 ? Math.max(0, Math.min(100, Math.round((processed / total) * 100))) : 0;
+
+        $("#lmd-seo-batch-fill").css("width", percent + "%");
+        batchRoot.find('[data-batch-text="status_label"]').text(statusLabels[state.status] || state.status || "Inactif");
+        batchRoot.find('[data-batch-text="progress_label"]').text(total > 0 ? processed + " / " + total + " lot(s)" : "0 / 0 lot");
+        batchRoot.find('[data-batch-text="last_message"]').text(state.last_message || "Aucune file preparee pour le moment.");
+        batchRoot.find('[data-batch-number="scanned"]').text(state.scanned);
+        batchRoot.find('[data-batch-number="remaining"]').text(remaining);
+        batchRoot.find('[data-batch-number="processed"]').text(processed);
+        batchRoot.find('[data-batch-number="success"]').text(state.success);
+        batchRoot.find('[data-batch-number="errors"]').text(state.errors);
+        batchRoot.find('[data-batch-number="up_to_date"]').text(state.up_to_date + state.cached);
+        batchRoot.find('[data-batch-number="ineligible"]').text(state.ineligible);
+
+        setButtonState('[data-batch-action="prepare"]', state.status !== "running");
+        setButtonState('[data-batch-action="resume"]', total > 0 && state.status !== "running" && !(state.status === "completed" && remaining === 0), state.status === "paused" ? "Reprendre le batch" : "Lancer le batch");
+        setButtonState('[data-batch-action="pause"]', state.status === "running");
+        setButtonState('[data-batch-action="refresh"]', !inFlight);
+    }
+
+    function stopLoop() {
+        if (loopTimer) {
+            clearTimeout(loopTimer);
+            loopTimer = null;
+        }
+    }
+
+    function scheduleNext(delay) {
+        stopLoop();
+        if (state.status === "running") {
+            loopTimer = setTimeout(processChunk, delay || 600);
+        }
+    }
+
+    function request(action) {
+        return $.post(lmdAdmin.ajaxurl, {
+            action: action,
+            nonce: lmdAdmin.nonce
+        });
+    }
+
+    function getAjaxErrorMessage(xhr, fallback) {
+        let message = fallback;
+
+        if (xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+            message = xhr.responseJSON.data.message;
+        } else if (xhr && xhr.responseText) {
+            const raw = String(xhr.responseText)
+                .replace(/<[^>]*>/g, " ")
+                .replace(/\s+/g, " ")
+                .trim();
+            if (raw) {
+                message = raw.length > 220 ? raw.substring(0, 220) + "…" : raw;
+            }
+        }
+
+        if (xhr && xhr.status) {
+            message += " (HTTP " + xhr.status + ")";
+        }
+
+        return message;
+    }
+
+    function pauseBatchRequest() {
+        stopLoop();
+        inFlight = true;
+        request("lmd_seo_pause_batch")
+            .done(function (response) {
+                handleResponse(response, "warning");
+            })
+            .fail(function (xhr) {
+                showFeedback(getAjaxErrorMessage(xhr, "Impossible de mettre le batch SEO en pause."), "error");
+            })
+            .always(function () {
+                inFlight = false;
+                renderState();
+            });
+    }
+
+    function handleResponse(response, fallbackType) {
+        if (!response || !response.success || !response.data) {
+            showFeedback("Réponse AJAX invalide.", "error");
+            return null;
+        }
+
+        const payload = response.data;
+        if (payload.state) {
+            state = normalizeState(payload.state);
+            renderState();
+        }
+
+        const type = payload.success === false
+            ? (payload.warning ? "warning" : "error")
+            : (fallbackType || (payload.warning ? "warning" : "success"));
+
+        if (payload.message) {
+            showFeedback(payload.message, type);
+        }
+
+        return payload;
+    }
+
+    function processChunk() {
+        if (inFlight || state.status !== "running") {
+            return;
+        }
+        inFlight = true;
+        request("lmd_seo_process_batch")
+            .done(function (response) {
+                const payload = handleResponse(response, state.status === "running" ? "info" : "success");
+                if (payload && payload.state && payload.state.status === "running") {
+                    scheduleNext(600);
+                }
+            })
+            .fail(function (xhr) {
+                showFeedback(getAjaxErrorMessage(xhr, "Le traitement batch SEO a échoué côté AJAX."), "error");
+                stopLoop();
+            })
+            .always(function () {
+                inFlight = false;
+                renderState();
+                if (pendingPause) {
+                    pendingPause = false;
+                    if (state.status === "running") {
+                        pauseBatchRequest();
+                    }
+                }
+            });
+    }
+
+    batchRoot.on("click", "[data-batch-action]", function () {
+        const action = $(this).data("batch-action");
+        if (!action) {
+            return;
+        }
+
+        if (inFlight) {
+            if (action === "pause") {
+                pendingPause = true;
+                showFeedback("Pause demandée. Le batch se mettra en pause à la fin du lot en cours.", "warning");
+            } else if (action === "refresh") {
+                showFeedback("Un lot est déjà en cours de traitement. L'état sera mis à jour à la fin de cette tranche.", "info");
+            }
+            return;
+        }
+
+        if (action === "prepare") {
+            inFlight = true;
+            request("lmd_seo_prepare_batch")
+                .done(function (response) {
+                    handleResponse(response, "success");
+                })
+                .fail(function () {
+                    showFeedback("Impossible de préparer la file SEO.", "error");
+                })
+                .always(function () {
+                    inFlight = false;
+                    renderState();
+                });
+            return;
+        }
+
+        if (action === "resume") {
+            inFlight = true;
+            request("lmd_seo_resume_batch")
+                .done(function (response) {
+                    const payload = handleResponse(response, "info");
+                    if (payload && payload.state && payload.state.status === "running") {
+                        scheduleNext(150);
+                    }
+                })
+                .fail(function (xhr) {
+                    showFeedback(getAjaxErrorMessage(xhr, "Impossible de lancer le batch SEO."), "error");
+                })
+                .always(function () {
+                    inFlight = false;
+                    renderState();
+                });
+            return;
+        }
+
+        if (action === "pause") {
+            pendingPause = false;
+            pauseBatchRequest();
+            return;
+        }
+
+        if (action === "refresh") {
+            inFlight = true;
+            request("lmd_seo_get_batch_state")
+                .done(function (response) {
+                    handleResponse(response, "info");
+                })
+                .fail(function (xhr) {
+                    showFeedback(getAjaxErrorMessage(xhr, "Impossible de rafraîchir l'état du batch SEO."), "error");
+                })
+                .always(function () {
+                    inFlight = false;
+                    renderState();
+                });
+        }
+    });
+
+    renderState();
+    if (state.status === "running") {
+        showFeedback(state.last_message || "Traitement SEO en cours.", "info");
+        scheduleNext(150);
+    }
+});
+</script>
+
+
+
+
+
+
 
 
 
