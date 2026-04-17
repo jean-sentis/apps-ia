@@ -25,6 +25,7 @@ class LMD_Admin
         add_action("admin_menu", [$this, "remove_parent_only_menu_items"], 999);
         add_action("admin_enqueue_scripts", [$this, "enqueue_assets"]);
         add_action("admin_head", [$this, "menu_icon_scale"]);
+        add_action("admin_head", [$this, "hide_estimation_detail_submenu_item"]);
         add_action("admin_head", [$this, "hide_global_notices_on_lmd_pages"]);
         add_filter("admin_body_class", [$this, "admin_body_class_lmd"]);
         add_filter(
@@ -314,7 +315,8 @@ class LMD_Admin
             [
                 "Client",
                 "Site ID",
-                "Analyses",
+                "Estimations",
+                "Lots SEO",
                 "SerpAPI (unités)",
                 'SerpAPI ($)',
                 "Firecrawl (unités)",
@@ -331,7 +333,8 @@ class LMD_Admin
             $row = [
                 $c["site_name"],
                 $c["site_id"],
-                $c["analyses_count"],
+                ($c["services"]["estimation"]["items_count"] ?? $c["analyses_count"]),
+                ($c["services"]["seo"]["items_count"] ?? 0),
                 $c["by_api"]["serpapi"]["units"],
                 $c["by_api"]["serpapi"]["cost_usd"],
                 $c["by_api"]["firecrawl"]["units"],
@@ -349,7 +352,8 @@ class LMD_Admin
             [
                 "TOTAL",
                 "",
-                $agg["analyses_count"],
+                ($agg["services"]["estimation"]["items_count"] ?? $agg["analyses_count"]),
+                ($agg["services"]["seo"]["items_count"] ?? 0),
                 $agg["by_api"]["serpapi"]["units"],
                 $agg["by_api"]["serpapi"]["cost_usd"],
                 $agg["by_api"]["firecrawl"]["units"],
@@ -680,24 +684,7 @@ class LMD_Admin
             "manage_options",
             "lmd-app-seo",
             [$this, "render_app_seo"],
-        );
-        add_submenu_page(
-            "lmd-apps-ia",
-            "Fidéliser client",
-            "Fidéliser client",
-            "manage_options",
-            "lmd-app-fideliser-client",
-            [$this, "render_app_fideliser_client_placeholder"],
-        );
-        add_submenu_page(
-            "lmd-apps-ia",
-            "Fidéliser super acheteur",
-            "Fidéliser super acheteur",
-            "manage_options",
-            "lmd-app-fideliser-super-acheteur",
-            [$this, "render_app_fideliser_super_acheteur_placeholder"],
-        );
-
+        );
 
         if ($is_parent) {
             add_submenu_page(
@@ -753,24 +740,7 @@ class LMD_Admin
                 "lmd-sandbox-tools",
                 [$this, "render_sandbox_tools"],
             );
-        }
-
-        add_submenu_page(
-            "lmd-apps-ia",
-            "Nouvelle demande",
-            $is_parent ? "Nouvelle demande" : null,
-            "manage_options",
-            "lmd-new-estimation",
-            [$this, "render_new_estimation"],
-        );
-        add_submenu_page(
-            "lmd-apps-ia",
-            "Mes estimations",
-            $is_parent ? "Mes estimations" : null,
-            "manage_options",
-            "lmd-estimations-list",
-            [$this, "render_estimations_list"],
-        );
+        }
         add_submenu_page(
             "lmd-apps-ia",
             "Détail estimation",
@@ -778,47 +748,7 @@ class LMD_Admin
             "manage_options",
             "lmd-estimation-detail",
             [$this, "render_estimation_detail"],
-        );
-        add_submenu_page(
-            "lmd-apps-ia",
-            "Planning ventes",
-            $is_parent ? "Planning ventes" : null,
-            "manage_options",
-            "lmd-ventes-list",
-            [$this, "render_ventes_list"],
-        );
-        add_submenu_page(
-            "lmd-apps-ia",
-            "Liste vendeurs",
-            $is_parent ? "Liste vendeurs" : null,
-            "manage_options",
-            "lmd-vendeurs-list",
-            [$this, "render_vendeurs_list"],
-        );
-        add_submenu_page(
-            "lmd-apps-ia",
-            "Réglage affichages et réponses vendeurs",
-            $is_parent ? "Préférences" : null,
-            "manage_options",
-            "lmd-preferences",
-            [$this, "render_preferences"],
-        );
-        add_submenu_page(
-            "lmd-apps-ia",
-            "Aide",
-            $is_parent ? "Aide" : null,
-            "manage_options",
-            "lmd-help",
-            [$this, "render_help"],
-        );
-        add_submenu_page(
-            "lmd-apps-ia",
-            "Activité",
-            $is_parent ? "Activité" : null,
-            "manage_options",
-            "lmd-activity",
-            [$this, "render_activity"],
-        );
+        );
     }
 
     /**
@@ -826,6 +756,7 @@ class LMD_Admin
      */
     public function remove_parent_only_menu_items()
     {
+
         if (!is_multisite() || get_current_blog_id() === 1) {
             return;
         }
@@ -852,6 +783,12 @@ class LMD_Admin
      * Masque les notices globales WordPress sur les écrans LMD pour éviter le bruit visuel.
      * On conserve les notices intégrées dans les vues du plugin (souvent rendues dans le wrapper `.wrap`).
      */
+    public function hide_estimation_detail_submenu_item()
+    {
+        echo '<style id="lmd-apps-ia-hide-estimation-detail-submenu">#adminmenu .wp-submenu a[href="admin.php?page=lmd-estimation-detail"]{display:none!important}</style>';
+        echo '<script id="lmd-apps-ia-hide-estimation-detail-submenu-js">document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll("#adminmenu .wp-submenu a[href=\"admin.php?page=lmd-estimation-detail\"]").forEach(function(link){var item=link.closest("li");if(item){item.style.display="none";}});});</script>';
+    }
+
     public function hide_global_notices_on_lmd_pages()
     {
         if (!is_admin()) {
@@ -1158,26 +1095,6 @@ class LMD_Admin
         ]);
     }
 
-    public function render_app_fideliser_client_placeholder()
-    {
-        $lmd_placeholder_title = __("Fidéliser client", "lmd-apps-ia");
-        $lmd_placeholder_lead = __(
-            "Espace dédié en préparation dans la roadmap suite.",
-            "lmd-apps-ia",
-        );
-        include LMD_PLUGIN_DIR . "admin/views/app-suite-placeholder.php";
-    }
-
-    public function render_app_fideliser_super_acheteur_placeholder()
-    {
-        $lmd_placeholder_title = __("Fidéliser super acheteur", "lmd-apps-ia");
-        $lmd_placeholder_lead = __(
-            "Espace dédié en préparation dans la roadmap suite.",
-            "lmd-apps-ia",
-        );
-        include LMD_PLUGIN_DIR . "admin/views/app-suite-placeholder.php";
-    }
-
     public function render_app_estimation()
     {
         $tab = isset($_GET["tab"])
@@ -1456,7 +1373,8 @@ class LMD_Admin
             [
                 "Mois",
                 "Produit",
-                "Analyses",
+                "Estimations",
+                "Lots SEO",
                 "CA HT (EUR)",
                 "Cout API (USD)",
                 "Cout API (EUR)",
@@ -1677,6 +1595,17 @@ class LMD_Admin
         exit();
     }
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -183,6 +183,10 @@ class LMD_Estimation_Processor
         $fmt = array_fill(0, count($up), "%s");
         $wpdb->update($table, $up, ["id" => $estimation_id], $fmt, ["%d"]);
 
+        if (class_exists("LMD_Api_Usage")) {
+            $usage = new LMD_Api_Usage();
+            $usage->log_service("estimation", (int) $estimation_id);
+        }
         if (function_exists("lmd_update_consumption_summary")) {
             lmd_update_consumption_summary();
         }
@@ -1222,3 +1226,4 @@ class LMD_Estimation_Processor
         return $out;
     }
 }
+

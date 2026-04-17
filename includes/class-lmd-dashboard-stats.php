@@ -337,11 +337,9 @@ class LMD_Dashboard_Stats {
      */
     public function get_top_vendeurs($limit = 10, $month = null) {
         $e = $this->prefix . 'estimations';
-        $et = $this->prefix . 'estimation_tags';
-        $t = $this->prefix . 'tags';
 
-        $where = "WHERE e.site_id = %d AND t.type = 'vendeur' AND t.site_id = %d";
-        $params = [$this->site_id, $this->site_id];
+        $where = "WHERE e.site_id = %d";
+        $params = [$this->site_id];
 
         if ($month) {
             $where .= " AND e.created_at >= %s AND e.created_at < %s";
@@ -349,21 +347,64 @@ class LMD_Dashboard_Stats {
             $params[] = date('Y-m-d', strtotime($month . '-01 +1 month')) . ' 00:00:00';
         }
 
-        $params[] = $limit;
+        $rows = $this->wpdb->get_results(
+            $this->wpdb->prepare(
+                "SELECT e.id, e.client_first_name, e.client_name, e.client_email, e.created_at
+                FROM $e e
+                $where
+                ORDER BY e.created_at DESC, e.id DESC",
+                ...$params
+            ),
+            ARRAY_A
+        );
 
-        $rows = $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT t.slug, t.name, COUNT(*) as cnt, MAX(e.created_at) as last_at
-            FROM $e e
-            INNER JOIN $et et ON et.estimation_id = e.id
-            INNER JOIN $t t ON t.id = et.tag_id
-            $where
-            GROUP BY t.slug, t.name
-            ORDER BY cnt DESC
-            LIMIT %d",
-            ...$params
-        ), ARRAY_A);
+        if (empty($rows)) {
+            return [];
+        }
 
-        return $rows ?: [];
+        $vendeurs = [];
+        foreach ($rows as $row) {
+            $email = strtolower(trim((string) ($row['client_email'] ?? '')));
+            $first_name = trim((string) ($row['client_first_name'] ?? ''));
+            $last_name = trim((string) ($row['client_name'] ?? ''));
+            $full_name = trim($first_name . ' ' . $last_name);
+            if ($full_name === '') {
+                $full_name = $last_name !== '' ? $last_name : $first_name;
+            }
+
+            $key = $email !== ''
+                ? 'email:' . $email
+                : 'name:' . sanitize_title($full_name ?: ('vendeur-' . (int) ($row['id'] ?? 0)));
+
+            if (!isset($vendeurs[$key])) {
+                $vendeurs[$key] = [
+                    'slug' => $email !== '' ? $email : sanitize_title($full_name ?: ('vendeur-' . (int) ($row['id'] ?? 0))),
+                    'name' => $full_name !== '' ? $full_name : ($email !== '' ? $email : __('Vendeur sans email', 'lmd-apps-ia')),
+                    'cnt' => 0,
+                    'last_at' => $row['created_at'] ?? null,
+                ];
+            }
+
+            $vendeurs[$key]['cnt']++;
+        }
+
+        $vendeurs = array_values($vendeurs);
+        usort($vendeurs, function ($a, $b) {
+            $countCompare = (int) ($b['cnt'] ?? 0) <=> (int) ($a['cnt'] ?? 0);
+            if ($countCompare !== 0) {
+                return $countCompare;
+            }
+
+            $dateA = !empty($a['last_at']) ? strtotime((string) $a['last_at']) : 0;
+            $dateB = !empty($b['last_at']) ? strtotime((string) $b['last_at']) : 0;
+            if ($dateB !== $dateA) {
+                return $dateB <=> $dateA;
+            }
+
+            return strcasecmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? ''));
+        });
+
+        return array_slice($vendeurs, 0, max(1, (int) $limit));
     }
 
     /**
@@ -417,3 +458,4 @@ class LMD_Dashboard_Stats {
         return '';
     }
 }
+

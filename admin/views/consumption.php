@@ -18,6 +18,7 @@ $all_clients = !is_multisite() || get_current_blog_id() === 1;
 $clients = $usage ? $usage->get_all_clients_consumption($month, $all_clients) : [];
 $agg = $usage ? $usage->get_aggregate_consumption($month, $all_clients) : ['by_api' => [], 'total_usd' => 0, 'analyses_count' => 0, 'clients_count' => 0];
 $labels = $usage ? LMD_Api_Usage::get_api_labels() : [];
+$service_labels = $usage ? LMD_Api_Usage::get_service_labels() : [];
 $export_url = wp_nonce_url(admin_url('admin-post.php?action=lmd_export_consumption&month=' . $month), 'lmd_export_consumption');
 
 $read_site = is_multisite() ? 1 : get_current_blog_id();
@@ -83,7 +84,8 @@ $monthly_form_action = $lmd_suite_embed ? admin_url('admin.php?page=lmd-apps-ia&
             <tr>
                 <th>Client</th>
                 <th>Site</th>
-                <th>Analyses</th>
+                <th>Estimations</th>
+                <th>Lots SEO</th>
                 <?php foreach ($labels as $api => $label) : ?>
                 <th><?php echo esc_html($label); ?> (unités)</th>
                 <th><?php echo esc_html($label); ?> ($)</th>
@@ -96,7 +98,8 @@ $monthly_form_action = $lmd_suite_embed ? admin_url('admin.php?page=lmd-apps-ia&
             <tr>
                 <td><?php echo esc_html($c['site_name']); ?></td>
                 <td><?php echo (int) $c['site_id']; ?></td>
-                <td><?php echo (int) $c['analyses_count']; ?></td>
+                <td><?php echo (int) ($c['services']['estimation']['items_count'] ?? $c['analyses_count']); ?></td>
+                <td><?php echo (int) ($c['services']['seo']['items_count'] ?? 0); ?></td>
                 <?php foreach (['serpapi', 'firecrawl', 'imgbb', 'gemini'] as $api) : ?>
                 <td><?php echo (int) ($c['by_api'][$api]['units'] ?? 0); ?></td>
                 <td><?php echo number_format($c['by_api'][$api]['cost_usd'] ?? 0, 4); ?></td>
@@ -109,7 +112,8 @@ $monthly_form_action = $lmd_suite_embed ? admin_url('admin.php?page=lmd-apps-ia&
             <tr>
                 <td>TOTAL</td>
                 <td></td>
-                <td><?php echo (int) $agg['analyses_count']; ?></td>
+                <td><?php echo (int) ($agg['services']['estimation']['items_count'] ?? $agg['analyses_count']); ?></td>
+                <td><?php echo (int) ($agg['services']['seo']['items_count'] ?? 0); ?></td>
                 <?php foreach (['serpapi', 'firecrawl', 'imgbb', 'gemini'] as $api) : ?>
                 <td><?php echo (int) ($agg['by_api'][$api]['units'] ?? 0); ?></td>
                 <td><?php echo number_format($agg['by_api'][$api]['cost_usd'] ?? 0, 4); ?></td>
@@ -122,7 +126,7 @@ $monthly_form_action = $lmd_suite_embed ? admin_url('admin.php?page=lmd-apps-ia&
 
     <h2 class="lmd-ui-section-title">Tous les clients — agrégat</h2>
     <div class="lmd-ui-panel">
-    <p style="margin:0;"><strong><?php echo (int) $agg['clients_count']; ?></strong> client(s) · <strong><?php echo (int) $agg['analyses_count']; ?></strong> analyse(s) · <strong><?php echo number_format($agg['total_usd'], 4); ?> $</strong> dépenses totales</p>
+    <p style="margin:0;"><strong><?php echo (int) $agg['clients_count']; ?></strong> client(s) · <strong><?php echo (int) ($agg['services']['estimation']['items_count'] ?? $agg['analyses_count']); ?></strong> estimation(s) · <strong><?php echo (int) ($agg['services']['seo']['items_count'] ?? 0); ?></strong> lot(s) SEO · <strong><?php echo number_format($agg['total_usd'], 4); ?> $</strong> dépenses API totales</p>
     </div>
     <?php endif; ?>
 
@@ -156,3 +160,4 @@ $monthly_form_action = $lmd_suite_embed ? admin_url('admin.php?page=lmd-apps-ia&
     });
 })();
 </script>
+

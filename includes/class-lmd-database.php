@@ -134,6 +134,19 @@ class LMD_Database
         ) $this->charset_collate;";
         dbDelta($sql_api_usage);
 
+        $sql_service_usage = "CREATE TABLE {$this->prefix}service_usage (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            site_id bigint(20) NOT NULL DEFAULT 0,
+            service varchar(30) NOT NULL,
+            item_id bigint(20) unsigned NOT NULL,
+            month_ym char(7) NOT NULL,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY site_service_item_month (site_id, service, item_id, month_ym),
+            KEY site_service_month (site_id, service, month_ym)
+        ) $this->charset_collate;";
+        dbDelta($sql_service_usage);
+
         $sql_ai_errors = "CREATE TABLE {$this->prefix}ai_error_reports (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             site_id bigint(20) NOT NULL DEFAULT 0,
@@ -988,4 +1001,5 @@ class LMD_Database
         );
     }
 }
+
 

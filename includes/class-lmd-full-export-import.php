@@ -483,7 +483,7 @@ class LMD_Full_Export_Import
             }
         }
 
-        foreach (["api_usage", "ai_error_reports", "activity_log"] as $t) {
+        foreach (["api_usage", "service_usage", "ai_error_reports", "activity_log"] as $t) {
             if (empty($data["tables"][$t])) {
                 continue;
             }
@@ -558,3 +558,4 @@ class LMD_Full_Export_Import
         return $sites;
     }
 }
+

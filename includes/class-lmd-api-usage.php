@@ -66,6 +66,15 @@ class LMD_Api_Usage
     }
 
     /**
+     * Nom de table de suivi des services pour le blog courant.
+     */
+    private function get_service_usage_table()
+    {
+        $this->sync_context();
+        return $this->prefix . "service_usage";
+    }
+
+    /**
      * Exécute une lecture/écriture dans le contexte d'un site donné.
      *
      * @param int|null $site_id
@@ -100,9 +109,6 @@ class LMD_Api_Usage
     public function ensure_table_exists()
     {
         $table = $this->get_api_usage_table();
-        if ($this->wpdb->get_var("SHOW TABLES LIKE '$table'") === $table) {
-            return;
-        }
         require_once ABSPATH . "wp-admin/includes/upgrade.php";
         $charset = $this->wpdb->get_charset_collate();
         $sql = "CREATE TABLE $table (
@@ -116,6 +122,26 @@ class LMD_Api_Usage
             PRIMARY KEY (id),
             KEY site_api_month (site_id, api_name, created_at),
             KEY estimation_id (estimation_id)
+        ) $charset;";
+        dbDelta($sql);
+        $this->ensure_service_usage_table_exists();
+    }
+
+    public function ensure_service_usage_table_exists()
+    {
+        $table = $this->get_service_usage_table();
+        require_once ABSPATH . "wp-admin/includes/upgrade.php";
+        $charset = $this->wpdb->get_charset_collate();
+        $sql = "CREATE TABLE $table (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            site_id bigint(20) NOT NULL DEFAULT 0,
+            service varchar(30) NOT NULL,
+            item_id bigint(20) unsigned NOT NULL,
+            month_ym char(7) NOT NULL,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY site_service_item_month (site_id, service, item_id, month_ym),
+            KEY site_service_month (site_id, service, month_ym)
         ) $charset;";
         dbDelta($sql);
     }
@@ -152,9 +178,45 @@ class LMD_Api_Usage
         );
     }
 
+    public function log_service($service, $item_id, $site_id = null, $month_ym = null)
+    {
+        $this->sync_context();
+        $this->ensure_service_usage_table_exists();
+
+        $service = $this->sanitize_service_name($service);
+        $item_id = absint($item_id);
+        if (!$service || !$item_id) {
+            return false;
+        }
+
+        $site_id = $site_id ? absint($site_id) : get_current_blog_id();
+        $month_ym = is_string($month_ym) && preg_match('/^\d{4}-\d{2}$/', $month_ym)
+            ? $month_ym
+            : current_time("Y-m");
+
+        $table = $this->get_service_usage_table();
+        $sql = $this->wpdb->prepare(
+            "INSERT IGNORE INTO $table (site_id, service, item_id, month_ym, created_at) VALUES (%d, %s, %d, %s, %s)",
+            $site_id,
+            $service,
+            $item_id,
+            $month_ym,
+            current_time("mysql"),
+        );
+
+        return false !== $this->wpdb->query($sql);
+    }
+
     private function sanitize_api_name($name)
     {
         $allowed = ["serpapi", "firecrawl", "imgbb", "gemini"];
+        $name = strtolower(trim((string) $name));
+        return in_array($name, $allowed, true) ? $name : "";
+    }
+
+    private function sanitize_service_name($name)
+    {
+        $allowed = ["estimation", "seo"];
         $name = strtolower(trim((string) $name));
         return in_array($name, $allowed, true) ? $name : "";
     }
@@ -438,6 +500,92 @@ class LMD_Api_Usage
      * @param bool $all_clients En multisite, false = uniquement le site actuel
      * @return array [['site_id' => int, 'site_name' => string, 'by_api' => [...], 'total_usd' => float, 'analyses_count' => int], ...]
      */
+
+    public function get_service_consumption_for_period($site_id, $month_ym)
+    {
+        if (!preg_match('/^\d{4}-\d{2}$/', (string) $month_ym)) {
+            $month_ym = gmdate("Y-m");
+        }
+
+        return $this->with_site_context($site_id, function ($resolved_site_id) use ($month_ym) {
+            $this->ensure_service_usage_table_exists();
+            $table = $this->get_service_usage_table();
+
+            $rows = $this->wpdb->get_results(
+                $this->wpdb->prepare(
+                    "SELECT service, COUNT(*) as items_count FROM $table WHERE site_id = %d AND month_ym = %s GROUP BY service",
+                    $resolved_site_id,
+                    $month_ym
+                ),
+                OBJECT_K
+            );
+
+            $out = [];
+            foreach (["estimation", "seo"] as $service) {
+                $r = $rows[$service] ?? null;
+                $out[$service] = [
+                    "items_count" => (int) ($r->items_count ?? 0),
+                ];
+            }
+
+            $seo_fallback = $this->get_fallback_seo_count_for_month($month_ym);
+            if ($seo_fallback > ($out["seo"]["items_count"] ?? 0)) {
+                $out["seo"]["items_count"] = $seo_fallback;
+            }
+
+            return $out;
+        });
+    }
+
+
+    private function get_fallback_seo_count_for_month($month_ym)
+    {
+        if (!preg_match('/^\d{4}-\d{2}$/', (string) $month_ym)) {
+            return 0;
+        }
+
+        $meta_keys = class_exists("LMD_Seo_Enricher")
+            ? LMD_Seo_Enricher::get_meta_keys()
+            : [
+                "status" => "_lmd_seo_status",
+                "enriched_at" => "_lmd_seo_enriched_at",
+            ];
+
+        $posts_table = $this->wpdb->posts;
+        $postmeta_table = $this->wpdb->postmeta;
+        $month_start = $month_ym . "-01 00:00:00";
+        $month_end = date("Y-m-t 23:59:59", strtotime($month_ym . "-01"));
+
+        return (int) $this->wpdb->get_var(
+            $this->wpdb->prepare(
+                "SELECT COUNT(DISTINCT p.ID)
+                 FROM $posts_table p
+                 INNER JOIN $postmeta_table status_meta
+                    ON status_meta.post_id = p.ID
+                   AND status_meta.meta_key = %s
+                   AND status_meta.meta_value = %s
+                 INNER JOIN $postmeta_table date_meta
+                    ON date_meta.post_id = p.ID
+                   AND date_meta.meta_key = %s
+                   AND date_meta.meta_value >= %s
+                   AND date_meta.meta_value <= %s
+                 WHERE p.post_type = %s",
+                $meta_keys["status"],
+                "done",
+                $meta_keys["enriched_at"],
+                $month_start,
+                $month_end,
+                "lot"
+            )
+        );
+    }
+    public static function get_service_labels()
+    {
+        return [
+            "estimation" => "Aide a l'estimation",
+            "seo" => "Enrichissement SEO",
+        ];
+    }
     public function get_all_clients_consumption($month, $all_clients = true)
     {
         $month_start = $month . "-01 00:00:00";
@@ -457,6 +605,7 @@ class LMD_Api_Usage
                     $month_start,
                     $month_end,
                 );
+                $data["services"] = $this->get_service_consumption_for_period($site_id, $month);
                 $site_name =
                     get_blog_option($site_id, "blogname", "Site " . $site_id) ?:
                     "Site " . $site_id;
@@ -472,6 +621,7 @@ class LMD_Api_Usage
                 $month_start,
                 $month_end,
             );
+            $data["services"] = $this->get_service_consumption_for_period($site_id, $month);
             $out[] = array_merge(
                 [
                     "site_id" => $site_id,
@@ -501,16 +651,24 @@ class LMD_Api_Usage
         ];
         $total_usd = 0;
         $analyses_count = 0;
+        $services = [
+            "estimation" => ["items_count" => 0],
+            "seo" => ["items_count" => 0],
+        ];
         foreach ($clients as $c) {
             foreach ($c["by_api"] as $api => $d) {
                 $by_api[$api]["units"] += $d["units"];
                 $by_api[$api]["cost_usd"] += $d["cost_usd"];
+            }
+            foreach (["estimation", "seo"] as $service) {
+                $services[$service]["items_count"] += (int) ($c["services"][$service]["items_count"] ?? 0);
             }
             $total_usd += $c["total_usd"];
             $analyses_count += $c["analyses_count"];
         }
         return [
             "by_api" => $by_api,
+            "services" => $services,
             "total_usd" => round($total_usd, 4),
             "analyses_count" => $analyses_count,
             "clients_count" => count($clients),
@@ -845,3 +1003,11 @@ function lmd_get_consumption_summary($site_id = null)
     $u = new LMD_Api_Usage();
     return $u->get_consumption_billing_summary($site_id);
 }
+
+
+
+
+
+
+
+
