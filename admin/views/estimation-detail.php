@@ -256,7 +256,7 @@ $ai_summary_rest =
 .lmd-estimation-detail .ed-tag-btn .ed-tag-label { flex: 1 !important; min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
 .lmd-estimation-detail .ed-tag-btn .ed-tag-arrow { font-size: 10px !important; color: #9ca3af !important; flex-shrink: 0 !important; }
 .lmd-estimation-detail .ed-tag-wrapper.open .ed-tag-arrow { transform: rotate(180deg) !important; }
-.lmd-estimation-detail .ed-tag-dd { position: fixed !important; min-width: 200px !important; max-height: 280px !important; overflow-y: auto !important; padding: 8px !important; background: #fff !important; border: 2px solid #e5e7eb !important; border-radius: 8px !important; box-shadow: 0 8px 24px rgba(0,0,0,0.18) !important; z-index: 1000000 !important; display: none !important; }
+.lmd-estimation-detail .ed-tag-dd { position: absolute !important; top: calc(100% + 4px); left: 0; min-width: 200px; max-height: 280px !important; overflow-y: auto !important; padding: 8px !important; background: #fff !important; border: 2px solid #e5e7eb !important; border-radius: 8px !important; box-shadow: 0 8px 24px rgba(0,0,0,0.18) !important; z-index: 1000000 !important; display: none !important; }
 .lmd-estimation-detail .ed-tag-dd-vente { max-height: none !important; overflow-y: visible !important; }
 .lmd-estimation-detail .ed-tag-wrapper.open .ed-tag-dd { display: block !important; }
 .lmd-estimation-detail .ed-tag-dd-item { padding: 8px 12px !important; cursor: pointer !important; font-size: 13px !important; border-radius: 6px !important; filter: saturate(0.67) !important; }
@@ -416,6 +416,7 @@ $ai_summary_rest =
 .lmd-estimation-detail .ed-actions-send-row .ed-send-btn { padding: 10px 20px !important; font-weight: 600 !important; border-radius: 8px !important; cursor: pointer !important; font-size: 13px !important; }
 .lmd-estimation-detail .ed-actions-send-row .ed-send-btn-left { background: #3b82f6 !important; color: #fff !important; border: none !important; }
 .lmd-estimation-detail .ed-actions-send-row .ed-send-btn-right { background: #8b5cf6 !important; color: #fff !important; border: none !important; }
+.lmd-estimation-detail .ed-actions-send-row .lmd-send-reponse { margin-left: auto; }
 .lmd-estimation-detail .ed-fq-zone { flex-shrink: 0 !important; }
 .lmd-estimation-detail .ed-fq-zone:not(.ed-fq-expanded) .ed-fq-cartouche { display: none !important; }
 .lmd-estimation-detail .ed-fq-zone.ed-fq-expanded .ed-actions-send-row { display: none !important; }
@@ -2156,8 +2157,8 @@ var lmdEdMailto = <?php echo wp_json_encode([
     function positionTagPanel($wrapper) {
         var $btn = $wrapper.find('.ed-tag-btn'), $dd = $wrapper.find('.ed-tag-dd');
         if (!$btn.length || !$dd.length) return;
-        var r = $btn[0].getBoundingClientRect();
-        $dd.css({ top: (r.bottom + 4) + 'px', left: r.left + 'px', minWidth: Math.max(r.width, 200) + 'px' });
+        var btnWidth = $btn.outerWidth();
+        $dd.css({ top: 'calc(100% + 4px)', left: '0px', minWidth: Math.max(btnWidth, 200) + 'px' });
     }
     $('#ed-tags-bar').on('click', '.ed-tag-btn', function(e){
         e.stopPropagation();
@@ -3052,5 +3053,9 @@ var lmdEdMailto = <?php echo wp_json_encode([
     });
 })(jQuery);
 </script>
+
+
+
+
 
 
