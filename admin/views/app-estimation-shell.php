@@ -30,7 +30,9 @@ $tab_in_primary = in_array($current, $tabs_primary, true);
 ?>
 <div class="wrap lmd-app-shell lmd-app-shell--estimation lmd-page">
     <?php require LMD_PLUGIN_DIR . 'admin/views/partials/lmd-suite-banner.php'; ?>
+    <?php if (current_user_can('manage_options')) : ?>
     <p class="lmd-app-shell-desc lmd-app-shell-desc--after-banner">Espace dédié à cette application — les réglages réseau et la conso globale sont dans <a href="<?php echo esc_url(admin_url('admin.php?page=lmd-apps-ia')); ?>">Vue d’ensemble</a>.</p>
+    <?php endif; ?>
 
     <div class="lmd-app-col lmd-app-col--estimation <?php echo $tab_in_primary ? 'lmd-app-col--primary-open' : ''; ?>">
         <div class="lmd-app-estimation-outline">
@@ -91,3 +93,8 @@ $tab_in_primary = in_array($current, $tabs_primary, true);
         </div>
     </div>
 </div>
+
+
+
+
+

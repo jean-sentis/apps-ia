@@ -41,6 +41,7 @@ $total_ce_mois = (int) $wpdb->get_var($wpdb->prepare(
     $month_end
 ));
 $is_parent = !is_multisite() || get_current_blog_id() === 1;
+$can_access_network_pilotage = $is_parent && current_user_can('manage_options');
 $lmd_inner_shell = !empty($lmd_inner_shell);
 $hub_url = admin_url('admin.php?page=lmd-apps-ia');
 
@@ -97,7 +98,7 @@ $lmd_dashboard_sub_url = static function ($sub) {
 if ($lmd_inner_shell) {
     $dash_sub = isset($_GET['dash_sub']) ? sanitize_key(wp_unslash($_GET['dash_sub'])) : 'prefs';
     $dash_allowed = ['prefs', 'stats'];
-    if ($is_parent) {
+    if ($can_access_network_pilotage) {
         $dash_allowed[] = 'pilotage';
     }
     if (!in_array($dash_sub, $dash_allowed, true)) {
@@ -140,7 +141,7 @@ if (
 
 $lmd_help_url_standalone = function_exists('lmd_app_estimation_admin_url')
     ? lmd_app_estimation_admin_url('help')
-    : admin_url('admin.php?page=lmd-help');
+    : admin_url('admin.php?page=lmd-app-estimation&tab=help');
 ?>
 <?php if (!$lmd_inner_shell) : ?>
 <div class="wrap lmd-dashboard lmd-page">
@@ -170,10 +171,10 @@ $lmd_help_url_standalone = function_exists('lmd_app_estimation_admin_url')
         <?php if ($is_parent) : ?><a href="#consumption"><?php esc_html_e('Consommation IA', 'lmd-apps-ia'); ?></a><?php endif; ?>
         <?php if ($is_parent && !is_multisite()) : ?><a href="#bac-a-sable"><?php esc_html_e('Bac à sable', 'lmd-apps-ia'); ?></a><?php endif; ?>
         <?php if ($promotion) : ?><a href="#promotion"><?php esc_html_e('Offre', 'lmd-apps-ia'); ?></a><?php endif; ?>
-        <a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('new') : admin_url('admin.php?page=lmd-new-estimation')); ?>"><?php esc_html_e('Nouvelle demande', 'lmd-apps-ia'); ?></a>
-        <a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('list') : admin_url('admin.php?page=lmd-estimations-list')); ?>"><?php esc_html_e('Mes estimations', 'lmd-apps-ia'); ?></a>
-        <a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('ventes') : admin_url('admin.php?page=lmd-ventes-list')); ?>"><?php esc_html_e('Planning ventes', 'lmd-apps-ia'); ?></a>
-        <a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('vendeurs') : admin_url('admin.php?page=lmd-vendeurs-list')); ?>"><?php esc_html_e('Liste vendeurs', 'lmd-apps-ia'); ?></a>
+        <a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('new') : admin_url('admin.php?page=lmd-app-estimation&tab=new')); ?>"><?php esc_html_e('Nouvelle demande', 'lmd-apps-ia'); ?></a>
+        <a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('list') : admin_url('admin.php?page=lmd-app-estimation&tab=list')); ?>"><?php esc_html_e('Mes estimations', 'lmd-apps-ia'); ?></a>
+        <a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('ventes') : admin_url('admin.php?page=lmd-app-estimation&tab=ventes')); ?>"><?php esc_html_e('Planning ventes', 'lmd-apps-ia'); ?></a>
+        <a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('vendeurs') : admin_url('admin.php?page=lmd-app-estimation&tab=vendeurs')); ?>"><?php esc_html_e('Liste vendeurs', 'lmd-apps-ia'); ?></a>
         <a href="<?php echo esc_url($lmd_help_url_standalone); ?>"><?php esc_html_e('Aide', 'lmd-apps-ia'); ?></a>
     </nav>
 
@@ -181,10 +182,10 @@ $lmd_help_url_standalone = function_exists('lmd_app_estimation_admin_url')
         <div class="lmd-dashboard-card lmd-card-actions">
             <h3><?php esc_html_e('Accès rapide', 'lmd-apps-ia'); ?></h3>
             <div class="lmd-card-links">
-                <a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('new') : admin_url('admin.php?page=lmd-new-estimation')); ?>" class="button button-primary"><?php esc_html_e('Nouvelle demande', 'lmd-apps-ia'); ?></a>
-                <a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('list') : admin_url('admin.php?page=lmd-estimations-list')); ?>" class="button"><?php esc_html_e('Mes estimations', 'lmd-apps-ia'); ?></a>
-                <a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('ventes') : admin_url('admin.php?page=lmd-ventes-list')); ?>" class="button"><?php esc_html_e('Planning ventes', 'lmd-apps-ia'); ?></a>
-                <a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('vendeurs') : admin_url('admin.php?page=lmd-vendeurs-list')); ?>" class="button"><?php esc_html_e('Liste vendeurs', 'lmd-apps-ia'); ?></a>
+                <a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('new') : admin_url('admin.php?page=lmd-app-estimation&tab=new')); ?>" class="button button-primary"><?php esc_html_e('Nouvelle demande', 'lmd-apps-ia'); ?></a>
+                <a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('list') : admin_url('admin.php?page=lmd-app-estimation&tab=list')); ?>" class="button"><?php esc_html_e('Mes estimations', 'lmd-apps-ia'); ?></a>
+                <a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('ventes') : admin_url('admin.php?page=lmd-app-estimation&tab=ventes')); ?>" class="button"><?php esc_html_e('Planning ventes', 'lmd-apps-ia'); ?></a>
+                <a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('vendeurs') : admin_url('admin.php?page=lmd-app-estimation&tab=vendeurs')); ?>" class="button"><?php esc_html_e('Liste vendeurs', 'lmd-apps-ia'); ?></a>
                 <?php if ($is_parent) : ?>
                 <a href="<?php echo esc_url(admin_url('admin.php?page=lmd-consumption')); ?>" class="button"><?php esc_html_e('Consommation IA', 'lmd-apps-ia'); ?></a>
                 <a href="<?php echo esc_url(admin_url('admin.php?page=lmd-product-margin')); ?>" class="button"><?php esc_html_e('Marge par produit', 'lmd-apps-ia'); ?></a>
@@ -252,10 +253,10 @@ $lmd_help_url_standalone = function_exists('lmd_app_estimation_admin_url')
             <h3><?php echo esc_html(sprintf(__('Gros vendeurs (%s)', 'lmd-apps-ia'), wp_date('F Y', strtotime($month . '-01')))); ?></h3>
             <ul class="lmd-card-list">
             <?php foreach (array_slice($top_vendeurs, 0, 5) as $v) : ?>
-                <li><a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? add_query_arg(['filter_vendeur' => [$v['slug']]], lmd_app_estimation_admin_url('list')) : admin_url('admin.php?page=lmd-estimations-list&filter_vendeur[]=' . urlencode($v['slug']))); ?>"><?php echo esc_html($v['name']); ?></a> <span><?php echo (int) $v['cnt']; ?></span></li>
+                <li><a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? add_query_arg(['filter_vendeur' => [$v['slug']]], lmd_app_estimation_admin_url('list')) : admin_url('admin.php?page=lmd-app-estimation&tab=list&filter_vendeur[]=' . urlencode($v['slug']))); ?>"><?php echo esc_html($v['name']); ?></a> <span><?php echo (int) $v['cnt']; ?></span></li>
             <?php endforeach; ?>
             </ul>
-            <p><a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('vendeurs') : admin_url('admin.php?page=lmd-vendeurs-list')); ?>"><?php esc_html_e('Voir tous', 'lmd-apps-ia'); ?></a></p>
+            <p><a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('vendeurs') : admin_url('admin.php?page=lmd-app-estimation&tab=vendeurs')); ?>"><?php esc_html_e('Voir tous', 'lmd-apps-ia'); ?></a></p>
         </div>
         <?php endif; ?>
     </div>
@@ -265,9 +266,9 @@ $lmd_help_url_standalone = function_exists('lmd_app_estimation_admin_url')
     <nav class="lmd-dashboard-subtabs" id="lmd-dashboard-subtabs" aria-label="<?php esc_attr_e('Sections du tableau de bord', 'lmd-apps-ia'); ?>">
         <a class="lmd-dashboard-subtab <?php echo $dash_sub === 'prefs' ? 'is-active' : ''; ?>" href="<?php echo esc_url($lmd_dashboard_sub_url('prefs')); ?>"><?php esc_html_e('Réglage affichages et réponses vendeurs', 'lmd-apps-ia'); ?></a>
         <a class="lmd-dashboard-subtab <?php echo $dash_sub === 'stats' ? 'is-active' : ''; ?>" href="<?php echo esc_url($lmd_dashboard_sub_url('stats')); ?>"><?php esc_html_e('Statistiques', 'lmd-apps-ia'); ?></a>
-        <?php if ($is_parent) : ?>
+        <?php if ($can_access_network_pilotage) : ?>
         <a class="lmd-dashboard-subtab <?php echo $dash_sub === 'pilotage' ? 'is-active' : ''; ?>" href="<?php echo esc_url($lmd_dashboard_sub_url('pilotage')); ?>"><?php esc_html_e('Pilotage réseau', 'lmd-apps-ia'); ?></a>
-        <?php endif; ?>
+          <?php endif; ?>
     </nav>
 
     <div class="lmd-dashboard-dash-gutter">
@@ -525,7 +526,7 @@ $lmd_help_url_standalone = function_exists('lmd_app_estimation_admin_url')
     </section>
     <?php endif; ?>
 
-    <?php elseif ($dash_sub === 'pilotage' && $is_parent) : ?>
+    <?php elseif ($dash_sub === 'pilotage' && $can_access_network_pilotage) : ?>
         <div class="lmd-dashboard-grid lmd-dashboard-grid--pilotage">
             <div class="lmd-dashboard-card lmd-card-consumption" id="consumption-inner">
                 <h3><?php esc_html_e('Consommation IA', 'lmd-apps-ia'); ?></h3>
@@ -853,3 +854,6 @@ $lmd_help_url_standalone = function_exists('lmd_app_estimation_admin_url')
     }
 })();
 </script>
+
+
+

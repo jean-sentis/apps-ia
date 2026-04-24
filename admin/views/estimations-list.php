@@ -13,9 +13,9 @@ $estimations = $db->get_estimations(['status' => $status, 'limit' => 100]);
     <h1>Mes estimations</h1>
     <p class="lmd-ui-prose">Liste simple (vue de secours). La grille moderne est dans l’application <strong>Aide à l’estimation</strong> → onglet Mes estimations.</p>
     <ul class="subsubsub lmd-subsubsub">
-        <li><a href="<?php echo esc_url(admin_url('admin.php?page=lmd-estimations-list')); ?>" <?php echo $status === '' ? 'class="current"' : ''; ?>>Tous</a> |</li>
-        <li><a href="<?php echo esc_url(admin_url('admin.php?page=lmd-estimations-list&status=new')); ?>" <?php echo $status === 'new' ? 'class="current"' : ''; ?>>Non lus</a> |</li>
-        <li><a href="<?php echo esc_url(admin_url('admin.php?page=lmd-estimations-list&status=ai_analyzed')); ?>" <?php echo $status === 'ai_analyzed' ? 'class="current"' : ''; ?>>Analysés</a></li>
+        <li><a href="<?php echo esc_url(admin_url('admin.php?page=lmd-app-estimation&tab=list')); ?>" <?php echo $status === '' ? 'class="current"' : ''; ?>>Tous</a> |</li>
+        <li><a href="<?php echo esc_url(admin_url('admin.php?page=lmd-app-estimation&tab=list&status=new')); ?>" <?php echo $status === 'new' ? 'class="current"' : ''; ?>>Non lus</a> |</li>
+        <li><a href="<?php echo esc_url(admin_url('admin.php?page=lmd-app-estimation&tab=list&status=ai_analyzed')); ?>" <?php echo $status === 'ai_analyzed' ? 'class="current"' : ''; ?>>Analysés</a></li>
     </ul>
     <div class="lmd-ui-panel" style="padding:0;overflow:hidden;">
     <table class="widefat striped">
@@ -42,3 +42,4 @@ $estimations = $db->get_estimations(['status' => $status, 'limit' => 100]);
     </table>
     </div>
 </div>
+

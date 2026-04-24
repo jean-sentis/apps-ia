@@ -67,7 +67,7 @@ $lmd_activity_embed = !empty($lmd_activity_embed);
                 $total_min = $detail_min + $grid_min;
             ?>
             <tr>
-                <td><a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? add_query_arg(['month' => $m], lmd_app_estimation_admin_url('dashboard', ['dash_sub' => 'activity'])) : admin_url('admin.php?page=lmd-activity&month=' . rawurlencode($m))); ?>"><?php echo esc_html($m); ?></a></td>
+                <td><a href="<?php echo esc_url(function_exists('lmd_app_estimation_admin_url') ? add_query_arg(['month' => $m], lmd_app_estimation_admin_url('dashboard', ['dash_sub' => 'activity'])) : admin_url('admin.php?page=lmd-app-estimation&tab=dashboard&dash_sub=activity&month=' . rawurlencode($m))); ?>"><?php echo esc_html($m); ?></a></td>
                 <td><?php echo (int) ($d['estimations'] ?? 0); ?></td>
                 <td><?php echo $detail_min > 0 ? number_format($detail_min, 1) : '-'; ?></td>
                 <td><?php echo $grid_min > 0 ? number_format($grid_min, 1) : '-'; ?></td>
@@ -200,6 +200,7 @@ $lmd_activity_embed = !empty($lmd_activity_embed);
 <script>
 document.getElementById('lmd-activity-month').addEventListener('change', function() {
     var m = this.value;
-    if (m) window.location.href = '<?php echo esc_js(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('dashboard', ['dash_sub' => 'activity']) : admin_url('admin.php?page=lmd-activity')); ?>' + '&month=' + encodeURIComponent(m);
+    if (m) window.location.href = '<?php echo esc_js(function_exists('lmd_app_estimation_admin_url') ? lmd_app_estimation_admin_url('dashboard', ['dash_sub' => 'activity']) : admin_url('admin.php?page=lmd-app-estimation&tab=dashboard&dash_sub=activity')); ?>' + '&month=' + encodeURIComponent(m);
 });
 </script>
+

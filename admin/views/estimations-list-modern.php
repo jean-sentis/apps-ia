@@ -106,7 +106,7 @@ $opts_vendeur = $db->get_tag_options_for_type("vendeur");
 
 function lmd_filter_clear_url($exclude_name)
 {
-    $params = ["page" => "lmd-estimations-list"];
+    $params = ["page" => "lmd-app-estimation", "tab" => "list"];
     $names = [
         "filter_message",
         "filter_interet",
@@ -155,7 +155,7 @@ function lmd_filter_clear_url($exclude_name)
 
 function lmd_grid_cols_url($cols)
 {
-    $params = ["page" => "lmd-estimations-list", "cols" => $cols];
+    $params = ["page" => "lmd-app-estimation", "tab" => "list", "cols" => $cols];
     $names = [
         "filter_message",
         "filter_interet",
@@ -191,7 +191,7 @@ function lmd_grid_cols_url($cols)
 
 function lmd_filter_remove_one_url($name, $slug)
 {
-    $params = ["page" => "lmd-estimations-list"];
+    $params = ["page" => "lmd-app-estimation", "tab" => "list"];
     $names = [
         "filter_message",
         "filter_interet",
@@ -511,7 +511,8 @@ function lmd_list_photo_url($estimation)
 </style>
 
 <form method="get" action="" class="lmd-filter-form" id="lmd-filter-form">
-    <input type="hidden" name="page" value="lmd-estimations-list" />
+    <input type="hidden" name="page" value="lmd-app-estimation" />
+    <input type="hidden" name="tab" value="list" />
     <?php if (
         $status
     ): ?><input type="hidden" name="status" value="<?php echo esc_attr(
@@ -532,7 +533,8 @@ function lmd_list_photo_url($estimation)
         <div class="lmd-filter-bar-group lmd-filter-bar-group-tous">
             <?php
             $tous_params = [
-                "page" => "lmd-estimations-list",
+                "page" => "lmd-app-estimation",
+                "tab" => "list",
                 "cols" => $grid_cols,
             ];
             if ($status) {
@@ -642,14 +644,6 @@ function lmd_list_photo_url($estimation)
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="lmd-filter-bar-group">
-            <a href="<?php echo esc_url(
-                admin_url("admin.php?page=lmd-ventes-list"),
-            ); ?>" class="lmd-filter-reset">Vente</a>
-            <a href="<?php echo esc_url(
-                admin_url("admin.php?page=lmd-vendeurs-list"),
-            ); ?>" class="lmd-filter-reset">Vendeur</a>
         </div>
         <div class="lmd-grid-cols-selector" role="group" aria-label="Nombre de vignettes par ligne" style="margin-left:auto;">
             <span class="lmd-grid-cols-label">Vignettes — Choix</span>
@@ -1609,3 +1603,6 @@ function lmd_list_photo_url($estimation)
     <button type="button" class="lmd-bulk-btn lmd-bulk-btn-analyze" id="lmd-bulk-analyze">Lancer analyses IA</button>
 </div>
 </div>
+
+
+

@@ -146,7 +146,7 @@ class LMD_Admin
         ) {
             wp_die("Non autorisé");
         }
-        if (!current_user_can("manage_options")) {
+        if (!function_exists("lmd_user_can_access_estimation_app") || !lmd_user_can_access_estimation_app()) {
             wp_die("Non autorisé");
         }
         global $wpdb;
@@ -163,7 +163,8 @@ class LMD_Admin
     public function handle_bulk_delete_estimations()
     {
         if (
-            !current_user_can("manage_options") ||
+            !function_exists("lmd_user_can_access_estimation_app") ||
+            !lmd_user_can_access_estimation_app() ||
             !wp_verify_nonce($_POST["_wpnonce"] ?? "", "lmd_bulk_delete")
         ) {
             wp_die("Non autorisé");
@@ -522,7 +523,8 @@ class LMD_Admin
     public function handle_new_estimation()
     {
         if (
-            !current_user_can("manage_options") ||
+            !function_exists("lmd_user_can_access_estimation_app") ||
+            !lmd_user_can_access_estimation_app() ||
             !wp_verify_nonce($_POST["_wpnonce"] ?? "", "lmd_new_estimation")
         ) {
             wp_die("Non autorisé");
@@ -665,7 +667,7 @@ class LMD_Admin
             "lmd-apps-ia",
             'Vue d\'ensemble',
             'Vue d\'ensemble',
-            "manage_options",
+            "edit_posts",
             "lmd-apps-ia",
             [$this, "render_hub"],
         );
@@ -674,7 +676,7 @@ class LMD_Admin
             "lmd-apps-ia",
             'Aide à l\'estimation',
             'Aide à l\'estimation',
-            "manage_options",
+            "edit_posts",
             "lmd-app-estimation",
             [$this, "render_app_estimation"],
         );
@@ -746,7 +748,7 @@ class LMD_Admin
             "lmd-apps-ia",
             "Détail estimation",
             null,
-            "manage_options",
+            "edit_posts",
             "lmd-estimation-detail",
             [$this, "render_estimation_detail"],
         );
@@ -932,10 +934,9 @@ class LMD_Admin
     {
         if (
             !current_user_can("manage_options") &&
-            $this->current_user_can_access_seo_app()
+            !$this->current_user_can_access_seo_app()
         ) {
-            wp_safe_redirect(admin_url("admin.php?page=lmd-app-seo"));
-            exit();
+            wp_die(esc_html__("Non autorisé.", "lmd-apps-ia"));
         }
 
         $view = LMD_PLUGIN_DIR . "admin/views/hub.php";
@@ -1381,6 +1382,9 @@ class LMD_Admin
     }
     public function render_app_estimation()
     {
+        if (!function_exists("lmd_user_can_access_estimation_app") || !lmd_user_can_access_estimation_app()) {
+            wp_die(esc_html__("Non autorisé.", "lmd-apps-ia"));
+        }
         $tab = isset($_GET["tab"])
             ? sanitize_key(wp_unslash($_GET["tab"]))
             : "list";
@@ -1468,6 +1472,9 @@ class LMD_Admin
 
     public function render_estimation_detail()
     {
+        if (!function_exists("lmd_user_can_access_estimation_app") || !lmd_user_can_access_estimation_app()) {
+            wp_die(esc_html__("Non autorisé.", "lmd-apps-ia"));
+        }
         $view = LMD_PLUGIN_DIR . "admin/views/estimation-detail.php";
         if (file_exists($view)) {
             include $view;
@@ -1879,6 +1886,10 @@ class LMD_Admin
         exit();
     }
 }
+
+
+
+
 
 
 

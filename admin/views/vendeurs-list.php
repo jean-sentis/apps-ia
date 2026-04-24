@@ -106,7 +106,7 @@ usort($vendeurs, function ($a, $b) {
         </thead>
         <tbody>
             <?php foreach ($vendeurs as $v) :
-                $filter_url = admin_url('admin.php?page=lmd-estimations-list&filter_vendeur[]=' . urlencode($v->slug));
+                $filter_url = admin_url('admin.php?page=lmd-app-estimation&tab=list&filter_vendeur[]=' . urlencode($v->slug));
             ?>
             <tr>
                 <td><a href="<?php echo esc_url($filter_url); ?>"><?php echo esc_html($v->name); ?></a></td>
@@ -122,3 +122,4 @@ usort($vendeurs, function ($a, $b) {
     </div>
     <?php endif; ?>
 </div>
+

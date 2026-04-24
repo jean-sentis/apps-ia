@@ -29,6 +29,18 @@ function lmd_safe_require($file)
     return false;
 }
 
+function lmd_user_can_access_estimation_app()
+{
+    if (current_user_can("manage_options")) {
+        return true;
+    }
+    $user = wp_get_current_user();
+    $roles = is_object($user) && isset($user->roles) ? (array) $user->roles : [];
+
+    return in_array("lmd_client", $roles, true) ||
+        (in_array("editor", $roles, true) && !current_user_can("manage_options"));
+}
+
 $files_to_load = [
     "includes/class-lmd-database.php",
     "includes/class-lmd-calendar-sync.php",
@@ -315,6 +327,7 @@ function lmd_send_monthly_consumption_report()
         }
     }
 }
+
 
 
 

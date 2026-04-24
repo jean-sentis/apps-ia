@@ -6,7 +6,10 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+
 $is_parent = !is_multisite() || get_current_blog_id() === 1;
+$lmd_hub_is_admin = current_user_can('manage_options');
+$lmd_hub_apps_only = !$lmd_hub_is_admin;
 
 $hub_tab = isset($_GET['hub_tab']) ? sanitize_key(wp_unslash($_GET['hub_tab'])) : '';
 $hub_tabs_tools = ['apis', 'consumption', 'margin'];
@@ -21,15 +24,14 @@ $lmd_suite_banner_subtitle = 'Le Marteau Digital — LMD Apps IA';
 $hub_url = admin_url('admin.php?page=lmd-apps-ia');
 
 $hub_feature_usage = null;
-if ($is_parent && class_exists('LMD_Activity_Analytics')) {
+if ($lmd_hub_is_admin && $is_parent && class_exists('LMD_Activity_Analytics')) {
     $hub_act = new LMD_Activity_Analytics();
     $hub_feature_usage = $hub_act->get_feature_usage(date('Y-m'), is_multisite() && get_current_blog_id() === 1);
 }
 ?>
 <div class="wrap lmd-suite-hub lmd-page lmd-suite-hub-page">
-    <?php
-    require LMD_PLUGIN_DIR . 'admin/views/partials/lmd-suite-banner.php';
-    ?>
+    <?php if (!$lmd_hub_apps_only) : ?>
+    <?php require LMD_PLUGIN_DIR . 'admin/views/partials/lmd-suite-banner.php'; ?>
 
     <?php if ($is_parent) : ?>
     <?php /* Même principe que l’admin raisonnée (lmd-ic-tabs + lmd-ic-tab-cartouche) : le liseré englobe la cartouche ; seul l’onglet actif s’y raccorde (masque le trait du haut sur sa largeur). */ ?>
@@ -66,6 +68,7 @@ if ($is_parent && class_exists('LMD_Activity_Analytics')) {
         <p class="lmd-ui-prose" style="margin:0;">Sur ce site, la configuration des APIs et les agrégats réseau sont gérés sur le <strong>site parent</strong>. Utilisez les applications ci-dessous.</p>
     </div>
     <?php endif; ?>
+    <?php endif; ?>
 
     <section class="lmd-suite-hub-section" aria-labelledby="lmd-hub-apps">
         <h2 id="lmd-hub-apps" class="lmd-suite-hub-h2">Applications</h2>
@@ -85,7 +88,7 @@ if ($is_parent && class_exists('LMD_Activity_Analytics')) {
         </div>
     </section>
 
-    <?php if ($is_parent && !empty($hub_feature_usage)) : ?>
+    <?php if (!$lmd_hub_apps_only && $is_parent && !empty($hub_feature_usage)) : ?>
     <section class="lmd-suite-hub-section" aria-labelledby="lmd-hub-usage-features">
         <h2 id="lmd-hub-usage-features" class="lmd-suite-hub-h2"><?php esc_html_e('Usage des fonctionnalités (mois en cours, réseau)', 'lmd-apps-ia'); ?></h2>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:960px;">
@@ -115,7 +118,7 @@ if ($is_parent && class_exists('LMD_Activity_Analytics')) {
     </section>
     <?php endif; ?>
 
-    <?php if ($is_parent && !is_multisite()) : ?>
+    <?php if (!$lmd_hub_apps_only && $is_parent && !is_multisite()) : ?>
     <section class="lmd-suite-hub-section" aria-label="<?php esc_attr_e('Outils direction', 'lmd-apps-ia'); ?>">
         <h2 class="lmd-suite-hub-h2"><?php esc_html_e('Direction (monosite)', 'lmd-apps-ia'); ?></h2>
         <div class="lmd-ui-panel" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">

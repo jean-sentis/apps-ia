@@ -633,7 +633,7 @@ $title_html = implode(" — ", $title_parts);
     <a href="<?php echo esc_url(
         function_exists("lmd_app_estimation_admin_url")
             ? lmd_app_estimation_admin_url("list")
-            : admin_url("admin.php?page=lmd-estimations-list"),
+            : admin_url("admin.php?page=lmd-app-estimation&tab=list"),
     ); ?>" class="ed-back-a">&larr; Retour</a>
     <h1 class="ed-header-title"><?php echo $title_html; ?></h1>
 </div>
@@ -3053,6 +3053,7 @@ var lmdEdMailto = <?php echo wp_json_encode([
     });
 })(jQuery);
 </script>
+
 
 
 

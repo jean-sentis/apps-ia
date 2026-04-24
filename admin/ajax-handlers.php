@@ -44,7 +44,7 @@ add_action("wp_ajax_lmd_save_lot_number", "lmd_ajax_save_lot_number");
 function lmd_ajax_save_lot_number()
 {
     check_ajax_referer("lmd_admin", "nonce");
-    if (!current_user_can("manage_options")) {
+    if (!function_exists("lmd_user_can_access_estimation_app") || !lmd_user_can_access_estimation_app()) {
         wp_send_json_error(["message" => "Non autorisé"]);
     }
     $id = isset($_POST["estimation_id"]) ? absint($_POST["estimation_id"]) : 0;
@@ -82,7 +82,7 @@ function lmd_ajax_save_lot_number()
 function lmd_ajax_launch_analysis()
 {
     check_ajax_referer("lmd_admin", "nonce");
-    if (!current_user_can("manage_options")) {
+    if (!function_exists("lmd_user_can_access_estimation_app") || !lmd_user_can_access_estimation_app()) {
         wp_send_json_error(["message" => "Non autorisé"]);
     }
     $id = isset($_POST["id"]) ? absint($_POST["id"]) : 0;
@@ -234,7 +234,7 @@ function lmd_ajax_run_analysis_background()
 function lmd_ajax_save_avis1_estimates()
 {
     check_ajax_referer("lmd_admin", "nonce");
-    if (!current_user_can("manage_options")) {
+    if (!function_exists("lmd_user_can_access_estimation_app") || !lmd_user_can_access_estimation_app()) {
         wp_send_json_error(["message" => "Non autorisé"]);
     }
     $id = isset($_POST["id"]) ? absint($_POST["id"]) : 0;
@@ -302,7 +302,7 @@ function lmd_ajax_save_avis1_estimates()
 function lmd_ajax_save_avis2_estimates()
 {
     check_ajax_referer("lmd_admin", "nonce");
-    if (!current_user_can("manage_options")) {
+    if (!function_exists("lmd_user_can_access_estimation_app") || !lmd_user_can_access_estimation_app()) {
         wp_send_json_error(["message" => "Non autorisé"]);
     }
     $id = isset($_POST["id"]) ? absint($_POST["id"]) : 0;
@@ -426,7 +426,7 @@ function lmd_ajax_get_estimation_tag_display($id, $opinion)
 function lmd_ajax_check_analysis_status()
 {
     check_ajax_referer("lmd_admin", "nonce");
-    if (!current_user_can("manage_options")) {
+    if (!function_exists("lmd_user_can_access_estimation_app") || !lmd_user_can_access_estimation_app()) {
         wp_send_json_error(["message" => "Non autorisé"]);
     }
     $id = isset($_POST["id"]) ? absint($_POST["id"]) : 0;
@@ -473,7 +473,7 @@ function lmd_ajax_check_analysis_status()
 function lmd_ajax_check_analysis_status_batch()
 {
     check_ajax_referer("lmd_admin", "nonce");
-    if (!current_user_can("manage_options")) {
+    if (!function_exists("lmd_user_can_access_estimation_app") || !lmd_user_can_access_estimation_app()) {
         wp_send_json_error(["message" => "Non autorisé"]);
     }
     $ids = isset($_POST["ids"])
@@ -506,7 +506,7 @@ function lmd_ajax_check_analysis_status_batch()
 function lmd_ajax_create_vente()
 {
     check_ajax_referer("lmd_admin", "nonce");
-    if (!current_user_can("manage_options")) {
+    if (!function_exists("lmd_user_can_access_estimation_app") || !lmd_user_can_access_estimation_app()) {
         wp_send_json_error(["message" => "Non autorisé"]);
     }
     $name = isset($_POST["name"]) ? sanitize_text_field($_POST["name"]) : "";
@@ -566,7 +566,7 @@ function lmd_ajax_create_vente()
 function lmd_ajax_update_vente()
 {
     check_ajax_referer("lmd_admin", "nonce");
-    if (!current_user_can("manage_options")) {
+    if (!function_exists("lmd_user_can_access_estimation_app") || !lmd_user_can_access_estimation_app()) {
         wp_send_json_error(["message" => "Non autorisé"]);
     }
     $tag_id = isset($_POST["tag_id"]) ? absint($_POST["tag_id"]) : 0;
@@ -631,7 +631,7 @@ function lmd_ajax_update_vente()
 function lmd_ajax_list_ventes()
 {
     check_ajax_referer("lmd_admin", "nonce");
-    if (!current_user_can("manage_options")) {
+    if (!function_exists("lmd_user_can_access_estimation_app") || !lmd_user_can_access_estimation_app()) {
         wp_send_json_error(["message" => "Non autorisé"]);
     }
     if (class_exists("LMD_Calendar_Sync")) {
@@ -685,7 +685,7 @@ function lmd_ajax_list_ventes()
 function lmd_ajax_hotel_vente_add()
 {
     check_ajax_referer("lmd_admin", "nonce");
-    if (!current_user_can("manage_options")) {
+    if (!function_exists("lmd_user_can_access_estimation_app") || !lmd_user_can_access_estimation_app()) {
         wp_send_json_error(["message" => "Non autorisé"]);
     }
     $date = isset($_POST["sale_date"])
@@ -717,7 +717,7 @@ function lmd_ajax_hotel_vente_add()
 function lmd_ajax_hotel_vente_delete()
 {
     check_ajax_referer("lmd_admin", "nonce");
-    if (!current_user_can("manage_options")) {
+    if (!function_exists("lmd_user_can_access_estimation_app") || !lmd_user_can_access_estimation_app()) {
         wp_send_json_error(["message" => "Non autorisé"]);
     }
     $id = isset($_POST["id"]) ? absint($_POST["id"]) : 0;
@@ -944,7 +944,7 @@ function lmd_ajax_save_analysis_pricing()
 function lmd_ajax_log_activity()
 {
     check_ajax_referer("lmd_admin", "nonce");
-    if (!current_user_can("manage_options")) {
+    if (!function_exists("lmd_user_can_access_estimation_app") || !lmd_user_can_access_estimation_app()) {
         wp_send_json_error(["message" => "Non autorisé"]);
     }
     $page_type = isset($_POST["page_type"])
@@ -980,3 +980,4 @@ function lmd_ajax_log_activity()
     );
     wp_send_json_success();
 }
+
