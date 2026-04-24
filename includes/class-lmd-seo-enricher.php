@@ -158,6 +158,132 @@ class LMD_Seo_Enricher
         return $state;
     }
 
+    public function get_month_stats($month = "")
+    {
+        $month = $this->normalize_stats_month($month);
+        $sale_ids = $this->get_sale_ids_for_month($month);
+        $stats = [
+            "month" => $month,
+            "label" => $this->get_stats_month_label($month),
+            "sales" => count($sale_ids),
+            "analysed" => 0,
+            "boosted" => 0,
+            "ignored" => 0,
+        ];
+
+        if (empty($sale_ids)) {
+            return $stats;
+        }
+
+        foreach ($sale_ids as $sale_id) {
+            foreach ($this->get_sale_lot_ids($sale_id) as $lot_id) {
+                $stats["analysed"]++;
+
+                $stored = $this->get_stored_output($lot_id);
+                if (($stored["status"] ?? "") === "done") {
+                    $stats["boosted"]++;
+                    continue;
+                }
+
+                $context = $this->collect_lot_context($lot_id);
+                if (!$context) {
+                    $stats["ignored"]++;
+                    continue;
+                }
+
+                $eligibility = $this->evaluate_lot_eligibility(
+                    $context,
+                    $this->settings,
+                );
+
+                if (empty($eligibility["eligible"])) {
+                    $stats["ignored"]++;
+                }
+            }
+        }
+
+        return $stats;
+    }
+
+    public function get_filter_sales_calendar_entries()
+    {
+        $sale_ids = get_posts([
+            "post_type" => "vente",
+            "post_status" => ["publish", "future", "draft", "pending", "private"],
+            "fields" => "ids",
+            "posts_per_page" => -1,
+            "no_found_rows" => true,
+            "meta_key" => "vente_date",
+            "orderby" => "meta_value",
+            "order" => "ASC",
+            "suppress_filters" => true,
+        ]);
+
+        if (empty($sale_ids)) {
+            return [];
+        }
+
+        $entries = [];
+        foreach ((array) $sale_ids as $sale_id) {
+            $sale_id = absint($sale_id);
+            if (!$sale_id) {
+                continue;
+            }
+
+            $sale = get_post($sale_id);
+            if (!$sale || $sale->post_type !== "vente") {
+                continue;
+            }
+
+            $sale_date = $this->normalize_sale_calendar_date(
+                get_post_meta($sale_id, "vente_date", true),
+            );
+            if ($sale_date === "") {
+                continue;
+            }
+
+            $sale_terms = taxonomy_exists("categorie_vente")
+                ? wp_get_post_terms($sale_id, "categorie_vente")
+                : [];
+            if (is_wp_error($sale_terms)) {
+                $sale_terms = [];
+            }
+
+            $entries[] = [
+                "id" => $sale_id,
+                "title" => $this->plain_text($sale->post_title),
+                "date" => $sale_date,
+                "type" => $this->plain_text(
+                    get_post_meta($sale_id, "vente_type", true),
+                ),
+                "categories" => array_values(
+                    array_filter(
+                        array_map(function ($term) {
+                            return isset($term->name)
+                                ? $this->plain_text($term->name)
+                                : "";
+                        }, (array) $sale_terms),
+                    ),
+                ),
+            ];
+        }
+
+        usort($entries, static function ($left, $right) {
+            $leftDate = (string) ($left["date"] ?? "");
+            $rightDate = (string) ($right["date"] ?? "");
+            if ($leftDate !== $rightDate) {
+                return strcmp($leftDate, $rightDate);
+            }
+
+            return strcasecmp(
+                (string) ($left["title"] ?? ""),
+                (string) ($right["title"] ?? ""),
+            );
+        });
+
+        return $entries;
+    }
+
     public function reset_batch_state()
     {
         delete_option(self::BATCH_OPTION);
@@ -929,7 +1055,7 @@ class LMD_Seo_Enricher
             "success" => true,
             "cached" => false,
             "message" => __(
-                "Enrichissement SEO genere pour ce lot.",
+                "Enrichissement SEO généré pour ce lot.",
                 "lmd-apps-ia",
             ),
             "lot_id" => $lot_id,
@@ -960,6 +1086,23 @@ class LMD_Seo_Enricher
                 "eligible" => false,
                 "message" => __(
                     "Aucun contenu SEO n'est active dans les reglages.",
+                    "lmd-apps-ia",
+                ),
+            ];
+        }
+
+                $excluded_sale_ids = array_values(
+            array_filter(
+                array_map("absint", (array) ($settings["excluded_sale_ids"] ?? [])),
+            ),
+        );
+        $sale_id = absint($context["sale"]["id"] ?? 0);
+        if ($sale_id > 0 && in_array($sale_id, $excluded_sale_ids, true)) {
+
+        return [
+                "eligible" => false,
+                "message" => __(
+                    "Cette vente est exclue de l'enrichissement SEO.",
                     "lmd-apps-ia",
                 ),
             ];
@@ -1633,6 +1776,92 @@ class LMD_Seo_Enricher
         }
     }
 
+    private function normalize_stats_month($month)
+    {
+        $month = $this->plain_text($month);
+        if (!preg_match("/^\d{4}-\d{2}$/", $month)) {
+            $month = function_exists("wp_date")
+                ? wp_date("Y-m", null, wp_timezone())
+                : date("Y-m");
+        }
+
+        return $month;
+    }
+
+    private function get_stats_month_label($month)
+    {
+        try {
+            $date = new DateTimeImmutable(
+                $month . "-01 00:00:00",
+                function_exists("wp_timezone")
+                    ? wp_timezone()
+                    : new DateTimeZone("UTC"),
+            );
+
+            return function_exists("wp_date")
+                ? wp_date("F Y", $date->getTimestamp(), $date->getTimezone())
+                : $date->format("F Y");
+        } catch (Exception $e) {
+            return $month;
+        }
+    }
+
+        private function normalize_sale_calendar_date($value)
+    {
+        $value = $this->plain_text($value);
+        if ($value === "") {
+            return "";
+        }
+
+        try {
+            $timezone = function_exists("wp_timezone")
+                ? wp_timezone()
+                : new DateTimeZone("UTC");
+            $date = date_create_immutable($value, $timezone);
+            if (!$date) {
+                $timestamp = strtotime($value);
+                if ($timestamp === false) {
+                    return "";
+                }
+                $date = (new DateTimeImmutable("@" . $timestamp))->setTimezone($timezone);
+            }
+
+            return $date->format("Y-m-d");
+        } catch (Exception $e) {
+            return "";
+        }
+    }
+
+    private function get_sale_ids_for_month($month)
+    {
+        $month_prefix = $this->normalize_stats_month($month) . "-";
+        $sale_ids = get_posts([
+            "post_type" => "vente",
+            "post_status" => ["publish", "future", "draft", "pending", "private"],
+            "fields" => "ids",
+            "posts_per_page" => -1,
+            "no_found_rows" => true,
+            "meta_key" => "vente_date",
+            "orderby" => "meta_value",
+            "order" => "DESC",
+            "suppress_filters" => true,
+        ]);
+
+        if (empty($sale_ids)) {
+            return [];
+        }
+
+        return array_values(
+            array_filter($sale_ids, function ($sale_id) use ($month_prefix) {
+                $value = $this->plain_text(
+                    get_post_meta((int) $sale_id, "vente_date", true),
+                );
+
+                return $value !== "" && strpos($value, $month_prefix) === 0;
+            }),
+        );
+    }
+
     private function get_candidate_lot_ids()
     {
         return get_posts([
@@ -2262,6 +2491,8 @@ class LMD_Seo_Enricher
             : substr($value, $start, $length);
     }
 }
+
+
 
 
 

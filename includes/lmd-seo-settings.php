@@ -21,6 +21,7 @@ function lmd_get_seo_settings_defaults() {
             'volontaire' => true,
             'judiciaire' => true,
         ],
+        'excluded_sale_ids' => [],
         'limit_categories' => false,
         'allowed_categories' => [],
         'outputs' => [
@@ -85,6 +86,10 @@ function lmd_get_seo_settings() {
         'sanitize_key',
         is_array($settings['allowed_categories'] ?? null) ? $settings['allowed_categories'] : []
     ))));
+    $settings['excluded_sale_ids'] = array_values(array_unique(array_filter(array_map(
+        'absint',
+        is_array($settings['excluded_sale_ids'] ?? null) ? $settings['excluded_sale_ids'] : []
+    ))));
     $settings['enabled'] = !empty($settings['enabled']);
     $settings['limit_categories'] = !empty($settings['limit_categories']);
 
@@ -125,8 +130,13 @@ function lmd_save_seo_settings($raw) {
 
     $selected_categories = is_array($raw['allowed_categories'] ?? null) ? $raw['allowed_categories'] : [];
     $selected_categories = array_values(array_unique(array_filter(array_map('sanitize_key', $selected_categories))));
+    $excluded_sale_ids = is_array($raw['excluded_sales'] ?? null) ? $raw['excluded_sales'] : [];
+    $excluded_sale_ids = array_values(array_unique(array_filter(array_map('absint', $excluded_sale_ids))));
     if (!empty($allowed_category_slugs)) {
         $selected_categories = array_values(array_intersect($selected_categories, $allowed_category_slugs));
+        if (empty($selected_categories)) {
+            $selected_categories = array_values($allowed_category_slugs);
+        }
     }
 
     $settings = [
@@ -140,6 +150,7 @@ function lmd_save_seo_settings($raw) {
             'volontaire' => !empty($raw['sale_types']['volontaire']),
             'judiciaire' => !empty($raw['sale_types']['judiciaire']),
         ],
+        'excluded_sale_ids' => $excluded_sale_ids,
         'limit_categories' => !empty($raw['limit_categories']),
         'allowed_categories' => $selected_categories,
         'outputs' => [
@@ -158,3 +169,4 @@ function lmd_save_seo_settings($raw) {
 
     return wp_parse_args($settings, $defaults);
 }
+
