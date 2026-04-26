@@ -30,8 +30,9 @@ if ($lmd_hub_is_admin && $is_parent && class_exists('LMD_Activity_Analytics')) {
 }
 ?>
 <div class="wrap lmd-suite-hub lmd-page lmd-suite-hub-page">
-    <?php if (!$lmd_hub_apps_only) : ?>
     <?php require LMD_PLUGIN_DIR . 'admin/views/partials/lmd-suite-banner.php'; ?>
+
+    <?php if (!$lmd_hub_apps_only) : ?>
 
     <?php if ($is_parent) : ?>
     <?php /* Même principe que l’admin raisonnée (lmd-ic-tabs + lmd-ic-tab-cartouche) : le liseré englobe la cartouche ; seul l’onglet actif s’y raccorde (masque le trait du haut sur sa largeur). */ ?>
@@ -130,3 +131,4 @@ if ($lmd_hub_is_admin && $is_parent && class_exists('LMD_Activity_Analytics')) {
     </section>
     <?php endif; ?>
 </div>
+
