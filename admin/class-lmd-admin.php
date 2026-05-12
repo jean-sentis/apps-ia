@@ -93,6 +93,8 @@ class LMD_Admin
         add_action("wp_ajax_lmd_seo_process_batch", [$this, "ajax_seo_process_batch"]);
         add_action("wp_ajax_lmd_seo_get_batch_state", [$this, "ajax_seo_get_batch_state"]);
         add_action("wp_ajax_lmd_seo_lookup_sale_lot", [$this, "ajax_seo_lookup_sale_lot"]);
+        add_action("wp_ajax_lmd_seo_list_sale_lots", [$this, "ajax_seo_list_sale_lots"]);
+        add_action("wp_ajax_lmd_seo_force_lot", [$this, "ajax_seo_force_lot"]);
     }
 
     /**
@@ -978,17 +980,40 @@ class LMD_Admin
                     wp_die(esc_html__("Non autorisé.", "lmd-apps-ia"));
                 }
 
-                $lmd_seo_test_lot_id = isset($_POST["lmd_seo_test_lot_id"])
-                    ? absint(wp_unslash($_POST["lmd_seo_test_lot_id"]))
+                $submitted_lot_ids = [];
+                if (isset($_POST["lmd_seo_test_lot_ids"]) && is_array($_POST["lmd_seo_test_lot_ids"])) {
+                    $submitted_lot_ids = array_map(
+                        "absint",
+                        wp_unslash($_POST["lmd_seo_test_lot_ids"]),
+                    );
+                }
+                if (isset($_POST["lmd_seo_test_lot_id"])) {
+                    $submitted_lot_ids[] = absint(wp_unslash($_POST["lmd_seo_test_lot_id"]));
+                }
+                $submitted_lot_ids = array_values(array_unique(array_filter($submitted_lot_ids)));
+                $lmd_seo_test_lot_id = isset($submitted_lot_ids[0])
+                    ? absint($submitted_lot_ids[0])
                     : 0;
                 $force = !empty($_POST["lmd_seo_test_force"]);
 
                 if (class_exists("LMD_Seo_Enricher")) {
                     $enricher = new LMD_Seo_Enricher();
-                    $lmd_seo_run_result = $enricher->enrich_lot(
-                        $lmd_seo_test_lot_id,
-                        ["force" => $force],
-                    );
+                    if (count($submitted_lot_ids) <= 1) {
+                        $lmd_seo_run_result = $enricher->enrich_lot(
+                            $lmd_seo_test_lot_id,
+                            ["force" => $force],
+                        );
+                    } else {
+                        $lmd_seo_run_result = [
+                            "success" => false,
+                            "warning" => true,
+                            "message" => __(
+                                "Le traitement multi-lots doit être lancé depuis l'interface AJAX pour éviter les expirations de requête.",
+                                "lmd-apps-ia",
+                            ),
+                            "lot_id" => $lmd_seo_test_lot_id,
+                        ];
+                    }
                 } else {
                     $lmd_seo_run_result = [
                         "success" => false,
@@ -1308,6 +1333,151 @@ class LMD_Admin
             "lookup_value" => $parsed_lot_number["display"],
         ]);
     }
+    public function ajax_seo_list_sale_lots()
+    {
+        check_ajax_referer("lmd_admin", "nonce");
+        if (!$this->current_user_can_access_seo_app()) {
+            wp_send_json_error([
+                "success" => false,
+                "message" => esc_html__("Non autorisé.", "lmd-apps-ia"),
+            ], 403);
+        }
+
+        $sale_id = isset($_POST["sale_id"])
+            ? absint(wp_unslash($_POST["sale_id"]))
+            : 0;
+        if (!$sale_id || get_post_type($sale_id) !== "vente") {
+            wp_send_json_error([
+                "success" => false,
+                "message" => esc_html__(
+                    "Sélectionnez d'abord une vente valide.",
+                    "lmd-apps-ia",
+                ),
+            ], 400);
+        }
+        if (!class_exists("LMD_Seo_Enricher")) {
+            wp_send_json_error([
+                "success" => false,
+                "message" => esc_html__(
+                    "Le moteur SEO est indisponible.",
+                    "lmd-apps-ia",
+                ),
+            ], 500);
+        }
+
+        $page = isset($_POST["page"]) ? max(1, absint(wp_unslash($_POST["page"]))) : 1;
+        $per_page = 20;
+        $search = isset($_POST["search"])
+            ? sanitize_text_field(wp_unslash($_POST["search"]))
+            : "";
+        $normalized_search = $this->normalize_seo_force_search_text($search);
+        $enricher = new LMD_Seo_Enricher();
+        $lot_ids = get_posts([
+            "post_type" => "lot",
+            "post_parent" => $sale_id,
+            "post_status" => ["publish", "private", "draft", "pending", "future"],
+            "numberposts" => -1,
+            "fields" => "ids",
+            "orderby" => [
+                "menu_order" => "ASC",
+                "date" => "ASC",
+            ],
+        ]);
+        $items = [];
+        foreach ((array) $lot_ids as $lot_id) {
+            $payload = $this->build_seo_force_lot_payload(absint($lot_id), $sale_id, $enricher);
+            if (empty($payload) || !empty($payload["eligible"]) || !empty($payload["is_enriched"])) {
+                continue;
+            }
+            if ($normalized_search !== "") {
+                $haystack = $this->normalize_seo_force_search_text(implode(" ", [
+                    $payload["lot_number"] ?? "",
+                    $payload["lot_title"] ?? "",
+                    $payload["description_excerpt"] ?? "",
+                    $payload["estimate_low"] ?? "",
+                    $payload["estimate_high"] ?? "",
+                ]));
+                if (strpos($haystack, $normalized_search) === false) {
+                    continue;
+                }
+            }
+            $items[] = $payload;
+        }
+
+        $total = count($items);
+        $total_pages = max(1, (int) ceil($total / $per_page));
+        $page = min($page, $total_pages);
+        $offset = ($page - 1) * $per_page;
+
+        wp_send_json_success([
+            "success" => true,
+            "sale_id" => $sale_id,
+            "sale_label" => $this->format_seo_sale_lookup_label($sale_id),
+            "items" => array_slice($items, $offset, $per_page),
+            "page" => $page,
+            "per_page" => $per_page,
+            "total" => $total,
+            "total_pages" => $total_pages,
+        ]);
+    }
+    public function ajax_seo_force_lot()
+    {
+        check_ajax_referer("lmd_admin", "nonce");
+        if (!$this->current_user_can_access_seo_app()) {
+            wp_send_json_error([
+                "success" => false,
+                "message" => esc_html__("Non autorisé.", "lmd-apps-ia"),
+            ], 403);
+        }
+        if (!class_exists("LMD_Seo_Enricher")) {
+            wp_send_json_error([
+                "success" => false,
+                "message" => esc_html__(
+                    "Le moteur SEO est indisponible.",
+                    "lmd-apps-ia",
+                ),
+            ], 500);
+        }
+
+        $lot_id = isset($_POST["lot_id"])
+            ? absint(wp_unslash($_POST["lot_id"]))
+            : 0;
+        if (!$lot_id || get_post_type($lot_id) !== "lot") {
+            wp_send_json_error([
+                "success" => false,
+                "message" => esc_html__(
+                    "Le lot sélectionné est introuvable.",
+                    "lmd-apps-ia",
+                ),
+            ], 400);
+        }
+
+        $sale_id = isset($_POST["sale_id"])
+            ? absint(wp_unslash($_POST["sale_id"]))
+            : 0;
+        if ($sale_id && (int) wp_get_post_parent_id($lot_id) !== $sale_id) {
+            wp_send_json_error([
+                "success" => false,
+                "message" => esc_html__(
+                    "Ce lot n'appartient pas à la vente sélectionnée.",
+                    "lmd-apps-ia",
+                ),
+            ], 400);
+        }
+
+        $enricher = new LMD_Seo_Enricher();
+        $result = $enricher->enrich_lot($lot_id, ["force" => true]);
+        $payload = [
+            "success" => !empty($result["success"]),
+            "lot_id" => $lot_id,
+            "lot_number" => $this->format_seo_lot_display_number($lot_id),
+            "message" => (string) ($result["message"] ?? ""),
+        ];
+        if (!empty($payload["success"])) {
+            wp_send_json_success($payload);
+        }
+        wp_send_json_error($payload);
+    }
     private function parse_seo_lot_lookup_number($raw_value)
     {
         $raw_value = sanitize_text_field((string) $raw_value);
@@ -1379,6 +1549,83 @@ class LMD_Admin
             return (string) get_the_title($lot_id);
         }
         return trim($number . ($suffix !== "" ? " " . $suffix : ""));
+    }
+    private function build_seo_force_lot_payload($lot_id, $sale_id, $enricher)
+    {
+        $lot_id = absint($lot_id);
+        $sale_id = absint($sale_id);
+        $lot = get_post($lot_id);
+        if (!$lot || $lot->post_type !== "lot" || (int) $lot->post_parent !== $sale_id) {
+            return [];
+        }
+        $description_excerpt = wp_trim_words(
+            wp_strip_all_tags((string) $lot->post_content),
+            20,
+            "…",
+        );
+        if ($description_excerpt === "") {
+            $description_excerpt = esc_html__(
+                "Aucune description disponible pour ce lot.",
+                "lmd-apps-ia",
+            );
+        }
+
+        $eligibility = [
+            "eligible" => true,
+            "message" => esc_html__(
+                "Ce lot est déjà éligible avec les réglages SEO actuels.",
+                "lmd-apps-ia",
+            ),
+        ];
+        $context = [];
+        if (is_object($enricher) && method_exists($enricher, "get_lot_context")) {
+            $context = $enricher->get_lot_context($lot_id);
+            if (is_array($context)) {
+                $eligibility = $enricher->evaluate_lot_eligibility($context);
+            }
+        }
+        $stored_output = is_object($enricher) && method_exists($enricher, "get_stored_output")
+            ? $enricher->get_stored_output($lot_id)
+            : [];
+        $stored_status = (string) ($stored_output["status"] ?? "");
+        $stored_enriched_at = (string) ($stored_output["enriched_at"] ?? "");
+        $estimate_low = is_array($context)
+            ? ($context["estimates"]["low"] ?? null)
+            : null;
+        $estimate_high = is_array($context)
+            ? ($context["estimates"]["high"] ?? null)
+            : null;
+
+        return [
+            "lot_id" => $lot_id,
+            "lot_title" => wp_strip_all_tags((string) $lot->post_title),
+            "lot_number" => $this->format_seo_lot_display_number($lot_id),
+            "description_excerpt" => $description_excerpt,
+            "estimate_low" => $this->format_seo_lot_money_value($estimate_low),
+            "estimate_high" => $this->format_seo_lot_money_value($estimate_high),
+            "eligible" => !empty($eligibility["eligible"]),
+            "eligibility_message" => (string) ($eligibility["message"] ?? ""),
+            "is_enriched" => $stored_status === "done",
+            "enrichment_status" => $stored_status,
+            "enriched_at" => $stored_enriched_at,
+            "thumbnail_url" => (string) get_the_post_thumbnail_url($lot_id, "thumbnail"),
+        ];
+    }
+    private function format_seo_lot_money_value($value)
+    {
+        if (!is_numeric($value)) {
+            return esc_html__("Non renseignée", "lmd-apps-ia");
+        }
+        return sprintf(
+            esc_html__("%s €", "lmd-apps-ia"),
+            number_format_i18n((float) $value, 0),
+        );
+    }
+    private function normalize_seo_force_search_text($value)
+    {
+        $value = remove_accents(wp_strip_all_tags((string) $value));
+        $value = strtolower($value);
+        return trim(preg_replace('/\s+/', " ", $value));
     }
     public function render_app_estimation()
     {

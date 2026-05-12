@@ -98,12 +98,13 @@ $site_badge = !is_multisite()
     : (is_main_site()
         ? __("Réglages du site principal", "lmd-apps-ia")
         : __("Réglages du site enfant", "lmd-apps-ia"));
-$threshold_labels = [
-    "low" => __("Estimation basse", "lmd-apps-ia"),
-    "high" => __("Estimation haute", "lmd-apps-ia"),
-    "either" => __("L'une des deux estimations", "lmd-apps-ia"),
-];
-$selected_mode = $lmd_seo_settings["estimate_gate"]["mode"] ?? "either";
+$minimum_estimate_label = trim(
+    (string) ($lmd_seo_settings["estimate_gate"]["low_min"] ?? ""),
+);
+$minimum_estimate_badge =
+    $minimum_estimate_label !== ""
+        ? sprintf(__("Estimation > %s", "lmd-apps-ia"), $minimum_estimate_label)
+        : __("Estimation non filtrée", "lmd-apps-ia");
 $selected_categories = array_values(
     array_filter(
         array_map("strval", $lmd_seo_settings["allowed_categories"] ?? []),
@@ -176,6 +177,8 @@ $run_notice_class = "lmd-app-feedback lmd-app-feedback--info";
 if (!empty($lmd_seo_run_result)) {
     if (!empty($lmd_seo_run_result["success"])) {
         $run_notice_class = "lmd-app-feedback lmd-app-feedback--success";
+    } elseif (!empty($lmd_seo_run_result["warning"])) {
+        $run_notice_class = "lmd-app-feedback lmd-app-feedback--warning";
     } elseif (!empty($lmd_seo_run_result["skipped"])) {
         $run_notice_class = "lmd-app-feedback lmd-app-feedback--warning";
     } else {
@@ -233,8 +236,7 @@ $run_schema_json = !empty($run_stored["schema_payload"])
                 $site_badge,
             ); ?></span>
             <span class="lmd-seo-badge lmd-seo-badge--soft"><?php echo esc_html(
-                $threshold_labels[$selected_mode] ??
-                    $threshold_labels["either"],
+                $minimum_estimate_badge,
             ); ?></span>
             <span class="lmd-seo-badge lmd-seo-badge--soft"><?php echo esc_html(
                 !empty($lmd_seo_settings["limit_categories"])
@@ -451,7 +453,7 @@ $run_schema_json = !empty($run_stored["schema_payload"])
                 </div>
                 <div class="lmd-seo-overview-card">
                     <span class="lmd-seo-card-kicker"><?php esc_html_e(
-                        "Lots boostés en SEO",
+                        "Lots enrichis en SEO",
                         "lmd-apps-ia",
                     ); ?></span>
                     <div class="lmd-seo-card-title"><?php echo esc_html(
@@ -476,51 +478,28 @@ $run_schema_json = !empty($run_stored["schema_payload"])
 
         <div class="lmd-ui-panel">
             <h2 class="lmd-ui-section-title"><?php esc_html_e(
-                "Filtres et éligibilité des lots",
+                "D’abord définir les règles pour exclure des groupes de l’enrichissement
+                et ensuite choisir les exceptions qui échappent à ces règles.",
                 "lmd-apps-ia",
             ); ?></h2>
             <div class="lmd-seo-filter-columns">
                 <div class="lmd-seo-filter-column">
                     <div class="lmd-seo-sale-filter-head">
                         <h3 class="lmd-ui-subsection"><?php esc_html_e(
-                            "Définition des seuils et filtrage par type de vente",
+                            "Définition du seuil d'estimation minimum et filtrage des ventes judiciares",
                             "lmd-apps-ia",
                         ); ?></h3>
-                        <p class="description"><?php esc_html_e(
-                            "Définissez les lots qui doivent bénéficier d’un enrichissement SEO en fonction de vos estimations et du type de vente.",
-                            "lmd-apps-ia",
-                        ); ?></p>
+
+                    </div>
+                    <div>
+                        <h4>Y’a-t-il un plancher dans les estimations au dessous duquel il
+                        n’est pas interessant que les lots soient enrichis ?</h4>
                     </div>
                     <table class="form-table" role="presentation">
                         <tbody>
                             <tr>
                                 <th scope="row"><?php esc_html_e(
-                                    "Critère d'estimation",
-                                    "lmd-apps-ia",
-                                ); ?></th>
-                                <td>
-                                    <select name="estimate_gate[mode]">
-                                        <?php foreach (
-                                            $threshold_labels
-                                            as $mode => $label
-                                        ): ?>
-                                        <option value="<?php echo esc_attr(
-                                            $mode,
-                                        ); ?>" <?php selected(
-    $selected_mode,
-    $mode,
-); ?>><?php echo esc_html($label); ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                    <p class="description"><?php esc_html_e(
-                                        "Choisissez quelle estimation sert de base au filtre.",
-                                        "lmd-apps-ia",
-                                    ); ?></p>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row"><?php esc_html_e(
-                                    "Seuil mini estimation basse",
+                                    "Estimation minimum",
                                     "lmd-apps-ia",
                                 ); ?></th>
                                 <td>
@@ -530,24 +509,7 @@ $run_schema_json = !empty($run_stored["schema_payload"])
                                         ]["low_min"] ?? ""),
                                     ); ?>" />
                                     <p class="description"><?php esc_html_e(
-                                        "Laissez vide si vous ne souhaitez pas filtrer sur l'estimation basse.",
-                                        "lmd-apps-ia",
-                                    ); ?></p>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row"><?php esc_html_e(
-                                    "Seuil mini estimation haute",
-                                    "lmd-apps-ia",
-                                ); ?></th>
-                                <td>
-                                    <input type="text" class="regular-text" inputmode="decimal" name="estimate_gate[high_min]" value="<?php echo esc_attr(
-                                        (string) ($lmd_seo_settings[
-                                            "estimate_gate"
-                                        ]["high_min"] ?? ""),
-                                    ); ?>" />
-                                    <p class="description"><?php esc_html_e(
-                                        "Laissez vide si vous ne souhaitez pas filtrer sur l'estimation haute.",
+                                        "Laissez vide si vous ne souhaitez pas filtrer sur l'estimation minimum.",
                                         "lmd-apps-ia",
                                     ); ?></p>
                                 </td>
@@ -558,30 +520,40 @@ $run_schema_json = !empty($run_stored["schema_payload"])
                                     "lmd-apps-ia",
                                 ); ?></th>
                                 <td>
-                                    <div class="lmd-seo-inline-checks">
-                                        <label><input type="checkbox" name="sale_types[volontaire]" value="1" <?php checked(
-                                            !empty(
-                                                $lmd_seo_settings["sale_types"][
-                                                    "volontaire"
-                                                ]
-                                            ),
-                                        ); ?> /> <?php esc_html_e(
-     "Vente volontaire",
-     "lmd-apps-ia",
- ); ?></label>
-                                        <label><input type="checkbox" name="sale_types[judiciaire]" value="1" <?php checked(
+
+                                    <fieldset class="lmd-seo-inline-checks">
+                                        <legend class="screen-reader-text"><?php esc_html_e(
+                                            "Sauf exception, voulez-vous enrichir les ventes judiciaires ?",
+                                            "lmd-apps-ia",
+                                        ); ?></legend>
+                                        <span class="lmd-seo-radio-question"><?php esc_html_e(
+                                            "Sauf exception, voulez-vous enrichir les ventes judiciaires ?",
+                                            "lmd-apps-ia",
+                                        ); ?></span>
+                                        <p style="width:100%;">
+                                        <label><input type="radio" name="sale_types[judiciaire]" value="1" <?php checked(
                                             !empty(
                                                 $lmd_seo_settings["sale_types"][
                                                     "judiciaire"
                                                 ]
                                             ),
                                         ); ?> /> <?php esc_html_e(
-     "Vente judiciaire",
+     "Oui",
      "lmd-apps-ia",
- ); ?></label>
-                                    </div>
+ ); ?></label> <br>
+                                        <label><input type="radio" name="sale_types[judiciaire]" value="0" <?php checked(
+                                            empty(
+                                                $lmd_seo_settings["sale_types"][
+                                                    "judiciaire"
+                                                ]
+                                            ),
+                                        ); ?> /> <?php esc_html_e(
+     "Non",
+     "lmd-apps-ia",
+ ); ?></label></p>
+                                    </fieldset>
                                     <p class="description"><?php esc_html_e(
-                                        "Vous pouvez réserver l'enrichissement à certains contextes de vente seulement.",
+                                        "Le calendrier d'exclusion ci-contre reste prioritaire pour gérer les exceptions vente par vente.",
                                         "lmd-apps-ia",
                                     ); ?></p>
                                 </td>
@@ -595,11 +567,12 @@ $run_schema_json = !empty($run_stored["schema_payload"])
                 ); ?>">
                     <div class="lmd-seo-sale-filter-head">
                         <h3 class="lmd-ui-subsection"><?php esc_html_e(
-                            "Exclure des ventes",
+                            "Dans le planning des ventes à venir, y’a-t-il des ventes que vous
+                            souhaitez exclure de l’enrichissement SEO ?",
                             "lmd-apps-ia",
                         ); ?></h3>
                         <p class="description"><?php esc_html_e(
-                            "Les ventes cochées ici seront entièrement exclues du service SEO, pour les statistiques comme pour les traitements manuels et automatiques.",
+                            "Les ventes cochées ici seront entièrement exclues du service SEO, vous pourrez néanmoins choisir des lots qui échapperont à la règle d'exclusion",
                             "lmd-apps-ia",
                         ); ?></p>
                     </div>
@@ -642,7 +615,7 @@ $run_schema_json = !empty($run_stored["schema_payload"])
                         </div>
                         <div class="lmd-seo-sale-calendar-grid" data-sale-calendar-grid></div>
                     </div>
-                    <div class="lmd-seo-sale-day-box">
+                    <div class="lmd-seo-sale-day-box" data-sale-day-box hidden>
                         <p class="lmd-seo-sale-day-label" data-sale-day-label><?php esc_html_e(
                             "Sélectionnez une journée pour afficher les ventes correspondantes.",
                             "lmd-apps-ia",
@@ -670,67 +643,69 @@ $run_schema_json = !empty($run_stored["schema_payload"])
                     <?php endif; ?>
                 </div>
             </div>
-        </div>
 
-        <div class="lmd-ui-panel">
-            <h2 class="lmd-ui-section-title"><?php esc_html_e(
-                "Filtrer par catégorie de vente",
-                "lmd-apps-ia",
-            ); ?></h2>
-            <?php if ($categories_available): ?>
-            <div class="form-check form-switch lmd-seo-switch lmd-seo-switch--categories">
-                <input class="form-check-input" type="checkbox" role="switch" id="lmd-seo-limit-categories" name="limit_categories" value="1" <?php checked(
-                    !empty($lmd_seo_settings["limit_categories"]),
-                ); ?> />
-                <label class="form-check-label lmd-seo-switch-copy" for="lmd-seo-limit-categories">
-                    <span class="lmd-seo-switch-title"><?php esc_html_e(
-                        "Limiter l'enrichissement à certaines catégories de vente",
-                        "lmd-apps-ia",
-                    ); ?></span>
-                    <span class="lmd-seo-switch-help"><?php esc_html_e(
-                        "Quand ce filtre est activé, seuls les lots rattachés aux catégories cochées seront éligibles.",
-                        "lmd-apps-ia",
-                    ); ?></span>
-                </label>
-            </div>
-            <details class="lmd-seo-accordion">
-                <summary><?php esc_html_e(
-                    "Afficher les catégories",
+            <div class="lmd-seo-category-filter-block">
+                <h3 class="lmd-ui-subsection"><?php esc_html_e(
+                    "Filtrer par catégorie de vente",
                     "lmd-apps-ia",
-                ); ?></summary>
-                <div class="lmd-seo-accordion-body">
-                    <div class="lmd-seo-category-grid">
-                        <?php foreach ($lmd_seo_categories as $term): ?>
-                        <label class="lmd-seo-category-option">
-                            <input type="checkbox" name="allowed_categories[]" value="<?php echo esc_attr(
-                                $term->slug,
-                            ); ?>" <?php checked(
+                ); ?></h3>
+                <?php if ($categories_available): ?>
+                <div class="form-check form-switch lmd-seo-switch lmd-seo-switch--categories">
+                    <input class="form-check-input" type="checkbox" role="switch" id="lmd-seo-limit-categories" name="limit_categories" value="1" <?php checked(
+                        !empty($lmd_seo_settings["limit_categories"]),
+                    ); ?> />
+                    <label class="form-check-label lmd-seo-switch-copy" for="lmd-seo-limit-categories">
+                        <span class="lmd-seo-switch-title"><?php esc_html_e(
+                            "Limiter l'enrichissement à certaines catégories de vente",
+                            "lmd-apps-ia",
+                        ); ?></span>
+                        <span class="lmd-seo-switch-help"><?php esc_html_e(
+                            "Quand ce filtre est activé, seuls les lots rattachés aux catégories cochées seront éligibles.",
+                            "lmd-apps-ia",
+                        ); ?></span>
+                    </label>
+                </div>
+                <details class="lmd-seo-accordion">
+                    <summary><?php esc_html_e(
+                        "Afficher les catégories",
+                        "lmd-apps-ia",
+                    ); ?></summary>
+                    <div class="lmd-seo-accordion-body">
+                        <div class="lmd-seo-category-grid">
+                            <?php foreach ($lmd_seo_categories as $term): ?>
+                            <label class="lmd-seo-category-option">
+                                <input type="checkbox" name="allowed_categories[]" value="<?php echo esc_attr(
+                                    $term->slug,
+                                ); ?>" <?php checked(
     in_array($term->slug, $selected_categories, true),
 ); ?> />
-                            <span><?php echo esc_html($term->name); ?></span>
-                        </label>
-                        <?php endforeach; ?>
+                                <span><?php echo esc_html(
+                                    $term->name,
+                                ); ?></span>
+                            </label>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
+                </details>
+                <?php else: ?>
+                <div class="lmd-seo-callout lmd-seo-callout--neutral">
+                    <?php esc_html_e(
+                        "Les catégories de vente ne sont pas encore détectées sur ce site. Ce filtre s'activera automatiquement dès qu'elles seront disponibles.",
+                        "lmd-apps-ia",
+                    ); ?>
                 </div>
-            </details>
-            <?php else: ?>
-            <div class="lmd-seo-callout lmd-seo-callout--neutral">
-                <?php esc_html_e(
-                    "Les catégories de vente ne sont pas encore détectées sur ce site. Ce filtre s'activera automatiquement dès qu'elles seront disponibles.",
-                    "lmd-apps-ia",
-                ); ?>
+                <?php endif; ?>
             </div>
-            <?php endif; ?>
         </div>
 
     <div class="lmd-ui-panel" id="lmd-seo-force-app">
         <h2 class="lmd-ui-section-title"><?php esc_html_e(
-            "Forcer l'enrichissement SEO d'un lot",
+            "Définir les lots qui échappent aux règles et seront enrichis",
             "lmd-apps-ia",
         ); ?></h2>
         <p class="lmd-ui-prose">
             <?php esc_html_e(
-                "Choisissez d'abord une vente, puis recherchez un lot par son numéro pour lancer un enrichissement SEO même s'il est exclu par les filtres actuels.",
+                "Choisissez une vente, puis sélectionnez les lots exclus par les filtres actuels que vous souhaitez enrichir de force.",
                 "lmd-apps-ia",
             ); ?>
         </p>
@@ -749,87 +724,74 @@ $run_schema_json = !empty($run_stored["schema_payload"])
             <input type="hidden" name="lmd_seo_forced_lot_number" value="<?php echo esc_attr(
                 $lmd_seo_forced_lot_number,
             ); ?>" data-force-selected-lot-number-hidden />
+            <div data-force-selected-lot-inputs></div>
 
-            <div class="lmd-seo-test-grid lmd-seo-force-grid">
-                <div class="lmd-seo-preview-card">
-                    <div class="lmd-seo-force-field" data-force-sale-autocomplete>
-                        <label class="lmd-seo-force-label" for="lmd-seo-force-sale-search"><?php esc_html_e(
-                            "Choisir une vente",
-                            "lmd-apps-ia",
-                        ); ?></label>
-                        <input type="text" class="regular-text lmd-seo-force-input" id="lmd-seo-force-sale-search" value="<?php echo esc_attr(
-                            $lmd_seo_forced_sale_label,
-                        ); ?>" autocomplete="off" placeholder="<?php echo esc_attr__(
+            <div class="lmd-seo-force-field" data-force-sale-autocomplete>
+                <label class="lmd-seo-force-label" for="lmd-seo-force-sale-search"><?php esc_html_e(
+                    "Choisir une vente",
+                    "lmd-apps-ia",
+                ); ?></label>
+                <input type="text" class="regular-text lmd-seo-force-input" id="lmd-seo-force-sale-search" value="<?php echo esc_attr(
+                    $lmd_seo_forced_sale_label,
+                ); ?>" autocomplete="off" placeholder="<?php echo esc_attr__(
     "Nom de vente ou date",
     "lmd-apps-ia",
 ); ?>" data-force-sale-search />
-                        <p class="description"><?php esc_html_e(
-                            "Recherchez une vente par son nom ou sa date, puis choisissez-la dans la liste proposée.",
+                <p class="description"><?php esc_html_e(
+                    "Recherchez une vente par son nom ou sa date, puis choisissez-la dans la liste proposée.",
+                    "lmd-apps-ia",
+                ); ?></p>
+                <div class="lmd-seo-force-results" data-force-sale-results hidden></div>
+                <p class="lmd-seo-force-selected" data-force-sale-selected><?php echo esc_html(
+                    $lmd_seo_forced_sale_label !== ""
+                        ? sprintf(
+                            __("Vente sélectionnée : %s", "lmd-apps-ia"),
+                            $lmd_seo_forced_sale_label,
+                        )
+                        : __(
+                            "Aucune vente sélectionnée pour le moment.",
                             "lmd-apps-ia",
-                        ); ?></p>
-                        <div class="lmd-seo-force-results" data-force-sale-results hidden></div>
-                        <p class="lmd-seo-force-selected" data-force-sale-selected><?php echo esc_html(
-                            $lmd_seo_forced_sale_label !== ""
-                                ? sprintf(
-                                    __(
-                                        "Vente sélectionnée : %s",
-                                        "lmd-apps-ia",
-                                    ),
-                                    $lmd_seo_forced_sale_label,
-                                )
-                                : __(
-                                    "Aucune vente sélectionnée pour le moment.",
-                                    "lmd-apps-ia",
-                                ),
-                        ); ?></p>
-                    </div>
-
-                    <div class="lmd-seo-force-field">
-                        <label class="lmd-seo-force-label" for="lmd-seo-force-lot-number"><?php esc_html_e(
-                            "Numéro de lot",
-                            "lmd-apps-ia",
-                        ); ?></label>
-                        <input type="text" class="regular-text lmd-seo-force-input" id="lmd-seo-force-lot-number" value="<?php echo esc_attr(
-                            $lmd_seo_forced_lot_number,
-                        ); ?>" placeholder="<?php echo esc_attr__(
-    "Ex. 23 ou 23 bis",
-    "lmd-apps-ia",
-); ?>" data-force-lot-number />
-                        <p class="description"><?php esc_html_e(
-                            "Saisissez le numéro tel qu'il apparaît dans Interenchères ou dans le XML de la vente.",
-                            "lmd-apps-ia",
-                        ); ?></p>
-                    </div>
-
-                    <div class="lmd-seo-force-actions">
-                        <button type="button" class="button" data-force-lot-preview><?php esc_html_e(
-                            "Afficher le lot",
-                            "lmd-apps-ia",
-                        ); ?></button>
-                        <button type="submit" name="lmd_run_seo_enrichment" value="1" class="button button-primary" data-force-lot-submit disabled><?php esc_html_e(
-                            "Lancer l'enrichissement forcé",
-                            "lmd-apps-ia",
-                        ); ?></button>
-                    </div>
-                    <p class="description lmd-seo-force-note"><?php esc_html_e(
-                        "Le forçage prend le pas sur tous les filtres d'éligibilité du service SEO.",
-                        "lmd-apps-ia",
-                    ); ?></p>
-                </div>
-
-                <div class="lmd-seo-preview-card">
-                    <span class="lmd-seo-card-kicker"><?php esc_html_e(
-                        "Lot sélectionné",
-                        "lmd-apps-ia",
-                    ); ?></span>
-                    <div class="lmd-seo-force-preview" data-force-lot-preview-card>
-                        <p class="lmd-seo-preview-empty"><?php esc_html_e(
-                            "Choisissez d'abord une vente puis un numéro de lot pour vérifier que vous forcez bien le bon objet.",
-                            "lmd-apps-ia",
-                        ); ?></p>
-                    </div>
-                </div>
+                        ),
+                ); ?></p>
             </div>
+
+            <div class="lmd-seo-force-field" data-force-lot-search-field hidden>
+                <label class="lmd-seo-force-label" for="lmd-seo-force-lot-search"><?php esc_html_e(
+                    "Rechercher dans les lots exclus",
+                    "lmd-apps-ia",
+                ); ?></label>
+                <input type="search" class="regular-text lmd-seo-force-input" id="lmd-seo-force-lot-search" placeholder="<?php echo esc_attr__(
+                    "Numéro, objet ou description",
+                    "lmd-apps-ia",
+                ); ?>" data-force-lot-search disabled />
+                <p class="description"><?php esc_html_e(
+                    "La liste affiche uniquement les lots non éligibles et pas encore enrichis.",
+                    "lmd-apps-ia",
+                ); ?></p>
+            </div>
+
+            <div class="lmd-seo-force-actions" data-force-lot-controls hidden>
+                <button type="button" class="button" data-force-select-visible disabled><?php esc_html_e(
+                    "Tout sélectionner sur cette page",
+                    "lmd-apps-ia",
+                ); ?></button>
+                <button type="button" class="button" data-force-clear-selection disabled><?php esc_html_e(
+                    "Tout désélectionner",
+                    "lmd-apps-ia",
+                ); ?></button>
+                <button type="submit" name="lmd_run_seo_enrichment" value="1" class="button button-primary" data-force-lot-submit disabled><?php esc_html_e(
+                    "Enrichir les lots sélectionnés",
+                    "lmd-apps-ia",
+                ); ?></button>
+            </div>
+            <p class="lmd-seo-force-selected-count" data-force-lot-controls data-force-selected-count hidden><?php esc_html_e(
+                "0 lot sélectionné.",
+                "lmd-apps-ia",
+            ); ?></p>
+            <div class="lmd-seo-force-run-feedback" data-force-run-feedback hidden></div>
+            <div class="lmd-seo-force-preview" data-force-lot-list>
+            </div>
+            <div class="lmd-seo-force-pagination" data-force-lot-pagination hidden></div>
         <?php else: ?>
         <div class="lmd-seo-callout lmd-seo-callout--neutral">
             <?php esc_html_e(
@@ -841,18 +803,67 @@ $run_schema_json = !empty($run_stored["schema_payload"])
         <?php if (!empty($lmd_seo_run_result)): ?>
         <div class="lmd-seo-force-run-result">
             <div class="<?php echo esc_attr($run_notice_class); ?>">
-                <p><?php echo esc_html((string) ($lmd_seo_run_result["message"] ?? "")); ?></p>
+                <p><?php echo esc_html(
+                    (string) ($lmd_seo_run_result["message"] ?? ""),
+                ); ?></p>
             </div>
             <?php if (!empty($run_stored)): ?>
             <div class="lmd-seo-preview-card">
-                <span class="lmd-seo-card-kicker"><?php esc_html_e("Aperçu du résultat généré", "lmd-apps-ia"); ?></span>
-                <?php if ($run_lot_title !== ""): ?><p class="lmd-seo-preview-value"><strong><?php esc_html_e("Lot :", "lmd-apps-ia"); ?></strong> <?php echo esc_html($run_lot_title); ?></p><?php endif; ?>
-                <?php if (!empty($run_stored["title"])): ?><p class="lmd-seo-preview-value"><strong><?php esc_html_e("SEO title :", "lmd-apps-ia"); ?></strong> <?php echo esc_html((string) $run_stored["title"]); ?></p><?php endif; ?>
-                <?php if (!empty($run_stored["description"])): ?><p class="lmd-seo-preview-value"><strong><?php esc_html_e("Meta description :", "lmd-apps-ia"); ?></strong> <?php echo esc_html((string) $run_stored["description"]); ?></p><?php endif; ?>
-                <?php if (!empty($run_stored["canonical_label"])): ?><p class="lmd-seo-preview-value"><strong><?php esc_html_e("Label canonique :", "lmd-apps-ia"); ?></strong> <?php echo esc_html((string) $run_stored["canonical_label"]); ?></p><?php endif; ?>
-                <?php if (!empty($run_stored["alt_base"])): ?><p class="lmd-seo-preview-value"><strong><?php esc_html_e("Alt d'image principal :", "lmd-apps-ia"); ?></strong> <?php echo esc_html((string) $run_stored["alt_base"]); ?></p><?php endif; ?>
-                <?php if ($run_edit_link): ?><p class="lmd-seo-force-result-link"><a class="button button-secondary" href="<?php echo esc_url($run_edit_link); ?>"><?php esc_html_e("Ouvrir le lot", "lmd-apps-ia"); ?></a></p><?php endif; ?>
-                <?php if ($run_schema_json !== ""): ?><pre class="lmd-seo-preview-pre"><?php echo esc_html($run_schema_json); ?></pre><?php endif; ?>
+                <span class="lmd-seo-card-kicker"><?php esc_html_e(
+                    "Aperçu du résultat généré",
+                    "lmd-apps-ia",
+                ); ?></span>
+                <?php if (
+                    $run_lot_title !== ""
+                ): ?><p class="lmd-seo-preview-value"><strong><?php esc_html_e(
+    "Lot :",
+    "lmd-apps-ia",
+); ?></strong> <?php echo esc_html($run_lot_title); ?></p><?php endif; ?>
+                <?php if (
+                    !empty($run_stored["title"])
+                ): ?><p class="lmd-seo-preview-value"><strong><?php esc_html_e(
+    "SEO title :",
+    "lmd-apps-ia",
+); ?></strong> <?php echo esc_html(
+    (string) $run_stored["title"],
+); ?></p><?php endif; ?>
+                <?php if (
+                    !empty($run_stored["description"])
+                ): ?><p class="lmd-seo-preview-value"><strong><?php esc_html_e(
+    "Meta description :",
+    "lmd-apps-ia",
+); ?></strong> <?php echo esc_html(
+    (string) $run_stored["description"],
+); ?></p><?php endif; ?>
+                <?php if (
+                    !empty($run_stored["canonical_label"])
+                ): ?><p class="lmd-seo-preview-value"><strong><?php esc_html_e(
+    "Label canonique :",
+    "lmd-apps-ia",
+); ?></strong> <?php echo esc_html(
+    (string) $run_stored["canonical_label"],
+); ?></p><?php endif; ?>
+                <?php if (
+                    !empty($run_stored["alt_base"])
+                ): ?><p class="lmd-seo-preview-value"><strong><?php esc_html_e(
+    "Alt d'image principal :",
+    "lmd-apps-ia",
+); ?></strong> <?php echo esc_html(
+    (string) $run_stored["alt_base"],
+); ?></p><?php endif; ?>
+                <?php if (
+                    $run_edit_link
+                ): ?><p class="lmd-seo-force-result-link"><a class="button button-secondary" href="<?php echo esc_url(
+    $run_edit_link,
+); ?>"><?php esc_html_e(
+    "Ouvrir le lot",
+    "lmd-apps-ia",
+); ?></a></p><?php endif; ?>
+                <?php if (
+                    $run_schema_json !== ""
+                ): ?><pre class="lmd-seo-preview-pre"><?php echo esc_html(
+    $run_schema_json,
+); ?></pre><?php endif; ?>
             </div>
             <?php endif; ?>
         </div>
@@ -872,7 +883,9 @@ $run_schema_json = !empty($run_stored["schema_payload"])
     $batch_total = (int) ($lmd_seo_batch_state["total"] ?? 0);
     $batch_processed = (int) ($lmd_seo_batch_state["processed"] ?? 0);
     $batch_remaining = max($batch_total - $batch_processed, 0);
-    $batch_status = sanitize_key((string) ($lmd_seo_batch_state["status"] ?? "idle"));
+    $batch_status = sanitize_key(
+        (string) ($lmd_seo_batch_state["status"] ?? "idle"),
+    );
     $batch_status_label_map = [
         "idle" => __("Inactif", "lmd-apps-ia"),
         "ready" => __("Prêt", "lmd-apps-ia"),
@@ -881,13 +894,18 @@ $run_schema_json = !empty($run_stored["schema_payload"])
         "completed" => __("Terminé", "lmd-apps-ia"),
         "scheduled" => __("Planifié", "lmd-apps-ia"),
     ];
-    $batch_status_label = $batch_status_label_map[$batch_status] ?? ucfirst($batch_status);
-    $auto_status = sanitize_key((string) ($lmd_seo_auto_queue_state["status"] ?? "idle"));
-    $auto_status_label = $batch_status_label_map[$auto_status] ?? ucfirst($auto_status);
+    $batch_status_label =
+        $batch_status_label_map[$batch_status] ?? ucfirst($batch_status);
+    $auto_status = sanitize_key(
+        (string) ($lmd_seo_auto_queue_state["status"] ?? "idle"),
+    );
+    $auto_status_label =
+        $batch_status_label_map[$auto_status] ?? ucfirst($auto_status);
     $auto_next_run_ts = (int) ($lmd_seo_auto_queue_state["next_run_ts"] ?? 0);
-    $auto_next_run_label = $auto_next_run_ts > 0
-        ? wp_date("d/m/Y H:i", $auto_next_run_ts, wp_timezone())
-        : __("Aucune planification", "lmd-apps-ia");
+    $auto_next_run_label =
+        $auto_next_run_ts > 0
+            ? wp_date("d/m/Y H:i", $auto_next_run_ts, wp_timezone())
+            : __("Aucune planification", "lmd-apps-ia");
     ?>
     <div class="lmd-ui-panel" id="lmd-seo-batch-app">
         <div class="lmd-seo-batch-header">
@@ -926,22 +944,69 @@ $run_schema_json = !empty($run_stored["schema_payload"])
         <div class="lmd-seo-batch-progress">
             <div class="lmd-seo-batch-track"><span id="lmd-seo-batch-fill"></span></div>
             <div class="lmd-seo-batch-progress-meta">
-                <span data-batch-text="status_label"><?php echo esc_html($batch_status_label); ?></span>
-                <span data-batch-text="progress_label"><?php echo esc_html(sprintf(__('%1$d / %2$d lot(s)', "lmd-apps-ia"), $batch_processed, $batch_total)); ?></span>
+                <span data-batch-text="status_label"><?php echo esc_html(
+                    $batch_status_label,
+                ); ?></span>
+                <span data-batch-text="progress_label"><?php echo esc_html(
+                    sprintf(
+                        __('%1$d / %2$d lot(s)', "lmd-apps-ia"),
+                        $batch_processed,
+                        $batch_total,
+                    ),
+                ); ?></span>
             </div>
         </div>
 
         <div class="lmd-seo-overview-grid lmd-seo-batch-stats">
-            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e("Lots scannés", "lmd-apps-ia"); ?></span><p class="lmd-seo-card-title" data-batch-number="scanned"><?php echo esc_html((string) ((int) ($lmd_seo_batch_state["scanned"] ?? 0))); ?></p></div>
-            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e("En attente", "lmd-apps-ia"); ?></span><p class="lmd-seo-card-title" data-batch-number="remaining"><?php echo esc_html((string) $batch_remaining); ?></p></div>
-            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e("Traités", "lmd-apps-ia"); ?></span><p class="lmd-seo-card-title" data-batch-number="processed"><?php echo esc_html((string) $batch_processed); ?></p></div>
-            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e("Succès", "lmd-apps-ia"); ?></span><p class="lmd-seo-card-title" data-batch-number="success"><?php echo esc_html((string) ((int) ($lmd_seo_batch_state["success"] ?? 0))); ?></p></div>
-            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e("Erreurs", "lmd-apps-ia"); ?></span><p class="lmd-seo-card-title" data-batch-number="errors"><?php echo esc_html((string) ((int) ($lmd_seo_batch_state["errors"] ?? 0))); ?></p></div>
-            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e("Déjà à jour", "lmd-apps-ia"); ?></span><p class="lmd-seo-card-title" data-batch-number="up_to_date"><?php echo esc_html((string) (((int) ($lmd_seo_batch_state["up_to_date"] ?? 0)) + ((int) ($lmd_seo_batch_state["cached"] ?? 0)))); ?></p></div>
-            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e("Non éligibles", "lmd-apps-ia"); ?></span><p class="lmd-seo-card-title" data-batch-number="ineligible"><?php echo esc_html((string) ((int) ($lmd_seo_batch_state["ineligible"] ?? 0))); ?></p></div>
+            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e(
+                "Lots scannés",
+                "lmd-apps-ia",
+            ); ?></span><p class="lmd-seo-card-title" data-batch-number="scanned"><?php echo esc_html(
+    (string) ((int) ($lmd_seo_batch_state["scanned"] ?? 0)),
+); ?></p></div>
+            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e(
+                "En attente",
+                "lmd-apps-ia",
+            ); ?></span><p class="lmd-seo-card-title" data-batch-number="remaining"><?php echo esc_html(
+    (string) $batch_remaining,
+); ?></p></div>
+            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e(
+                "Traités",
+                "lmd-apps-ia",
+            ); ?></span><p class="lmd-seo-card-title" data-batch-number="processed"><?php echo esc_html(
+    (string) $batch_processed,
+); ?></p></div>
+            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e(
+                "Succès",
+                "lmd-apps-ia",
+            ); ?></span><p class="lmd-seo-card-title" data-batch-number="success"><?php echo esc_html(
+    (string) ((int) ($lmd_seo_batch_state["success"] ?? 0)),
+); ?></p></div>
+            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e(
+                "Erreurs",
+                "lmd-apps-ia",
+            ); ?></span><p class="lmd-seo-card-title" data-batch-number="errors"><?php echo esc_html(
+    (string) ((int) ($lmd_seo_batch_state["errors"] ?? 0)),
+); ?></p></div>
+            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e(
+                "Déjà à jour",
+                "lmd-apps-ia",
+            ); ?></span><p class="lmd-seo-card-title" data-batch-number="up_to_date"><?php echo esc_html(
+    (string) (((int) ($lmd_seo_batch_state["up_to_date"] ?? 0)) +
+        ((int) ($lmd_seo_batch_state["cached"] ?? 0))),
+); ?></p></div>
+            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e(
+                "Non éligibles",
+                "lmd-apps-ia",
+            ); ?></span><p class="lmd-seo-card-title" data-batch-number="ineligible"><?php echo esc_html(
+    (string) ((int) ($lmd_seo_batch_state["ineligible"] ?? 0)),
+); ?></p></div>
         </div>
 
-        <p class="description lmd-seo-batch-last" data-batch-text="last_message"><?php echo esc_html((string) ($lmd_seo_batch_state["last_message"] ?? __("Aucune file préparée pour le moment.", "lmd-apps-ia"))); ?></p>
+        <p class="description lmd-seo-batch-last" data-batch-text="last_message"><?php echo esc_html(
+            (string) ($lmd_seo_batch_state["last_message"] ??
+                __("Aucune file préparée pour le moment.", "lmd-apps-ia")),
+        ); ?></p>
     </div>
 
     <div class="lmd-ui-panel">
@@ -954,10 +1019,31 @@ $run_schema_json = !empty($run_stored["schema_payload"])
             "lmd-apps-ia",
         ); ?></p>
         <div class="lmd-seo-overview-grid">
-            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e("Statut", "lmd-apps-ia"); ?></span><p class="lmd-seo-card-title"><?php echo esc_html($auto_status_label); ?></p></div>
-            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e("Lots en attente", "lmd-apps-ia"); ?></span><p class="lmd-seo-card-title"><?php echo esc_html((string) ((int) ($lmd_seo_auto_queue_state["pending"] ?? 0))); ?></p></div>
-            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e("Prochain lancement", "lmd-apps-ia"); ?></span><p class="lmd-seo-card-copy"><?php echo esc_html($auto_next_run_label); ?></p></div>
-            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e("Dernier message", "lmd-apps-ia"); ?></span><p class="lmd-seo-card-copy"><?php echo esc_html((string) ($lmd_seo_auto_queue_state["last_message"] ?? __("Aucune activité enregistrée pour le moment.", "lmd-apps-ia"))); ?></p></div>
+            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e(
+                "Statut",
+                "lmd-apps-ia",
+            ); ?></span><p class="lmd-seo-card-title"><?php echo esc_html(
+    $auto_status_label,
+); ?></p></div>
+            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e(
+                "Lots en attente",
+                "lmd-apps-ia",
+            ); ?></span><p class="lmd-seo-card-title"><?php echo esc_html(
+    (string) ((int) ($lmd_seo_auto_queue_state["pending"] ?? 0)),
+); ?></p></div>
+            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e(
+                "Prochain lancement",
+                "lmd-apps-ia",
+            ); ?></span><p class="lmd-seo-card-copy"><?php echo esc_html(
+    $auto_next_run_label,
+); ?></p></div>
+            <div class="lmd-seo-overview-card"><span class="lmd-seo-card-kicker"><?php esc_html_e(
+                "Dernier message",
+                "lmd-apps-ia",
+            ); ?></span><p class="lmd-seo-card-copy"><?php echo esc_html(
+    (string) ($lmd_seo_auto_queue_state["last_message"] ??
+        __("Aucune activité enregistrée pour le moment.", "lmd-apps-ia")),
+); ?></p></div>
         </div>
     </div>
 
@@ -971,28 +1057,62 @@ $run_schema_json = !empty($run_stored["schema_payload"])
             "lmd-apps-ia",
         ); ?></p>
         <?php if (!empty($lmd_seo_purge_result)): ?>
-        <div class="<?php echo esc_attr($purge_notice_class); ?>"><p><?php echo esc_html((string) ($lmd_seo_purge_result["message"] ?? "")); ?></p></div>
+        <div class="<?php echo esc_attr(
+            $purge_notice_class,
+        ); ?>"><p><?php echo esc_html(
+    (string) ($lmd_seo_purge_result["message"] ?? ""),
+); ?></p></div>
         <?php endif; ?>
         <div class="lmd-seo-test-grid">
             <div class="lmd-seo-preview-card">
-                <span class="lmd-seo-card-kicker"><?php esc_html_e("Purge ciblée", "lmd-apps-ia"); ?></span>
+                <span class="lmd-seo-card-kicker"><?php esc_html_e(
+                    "Purge ciblée",
+                    "lmd-apps-ia",
+                ); ?></span>
                 <form method="post" action="">
                     <?php wp_nonce_field("lmd_purge_seo_lot"); ?>
-                    <input type="hidden" name="seo_month" value="<?php echo esc_attr($lmd_seo_stats_month); ?>" />
-                    <p><label for="lmd-seo-purge-lot-id"><?php esc_html_e("ID du lot", "lmd-apps-ia"); ?></label></p>
-                    <input type="text" class="regular-text" id="lmd-seo-purge-lot-id" name="lmd_seo_purge_lot_id" value="<?php echo esc_attr((string) $lmd_seo_purge_lot_id); ?>" />
-                    <p class="description"><?php esc_html_e("Supprime uniquement les données SEO générées pour ce lot.", "lmd-apps-ia"); ?></p>
-                    <p class="submit"><button class="button" type="submit" name="lmd_purge_seo_lot" value="1"><?php esc_html_e("Purger ce lot", "lmd-apps-ia"); ?></button></p>
+                    <input type="hidden" name="seo_month" value="<?php echo esc_attr(
+                        $lmd_seo_stats_month,
+                    ); ?>" />
+                    <p><label for="lmd-seo-purge-lot-id"><?php esc_html_e(
+                        "ID du lot",
+                        "lmd-apps-ia",
+                    ); ?></label></p>
+                    <input type="text" class="regular-text" id="lmd-seo-purge-lot-id" name="lmd_seo_purge_lot_id" value="<?php echo esc_attr(
+                        (string) $lmd_seo_purge_lot_id,
+                    ); ?>" />
+                    <p class="description"><?php esc_html_e(
+                        "Supprime uniquement les données SEO générées pour ce lot.",
+                        "lmd-apps-ia",
+                    ); ?></p>
+                    <p class="submit"><button class="button" type="submit" name="lmd_purge_seo_lot" value="1"><?php esc_html_e(
+                        "Purger ce lot",
+                        "lmd-apps-ia",
+                    ); ?></button></p>
                 </form>
             </div>
             <div class="lmd-seo-preview-card">
-                <span class="lmd-seo-card-kicker"><?php esc_html_e("Purge globale", "lmd-apps-ia"); ?></span>
+                <span class="lmd-seo-card-kicker"><?php esc_html_e(
+                    "Purge globale",
+                    "lmd-apps-ia",
+                ); ?></span>
                 <form method="post" action="">
                     <?php wp_nonce_field("lmd_purge_seo_all"); ?>
-                    <input type="hidden" name="seo_month" value="<?php echo esc_attr($lmd_seo_stats_month); ?>" />
-                    <p><label><input type="checkbox" name="lmd_seo_purge_confirm_all" value="1" /> <?php esc_html_e("Je confirme la purge de tous les enrichissements SEO du site.", "lmd-apps-ia"); ?></label></p>
-                    <p class="description"><?php esc_html_e("Cette action remet à zéro les données SEO générées sur tous les lots du site courant.", "lmd-apps-ia"); ?></p>
-                    <p class="submit"><button class="button button-secondary" type="submit" name="lmd_purge_seo_all" value="1"><?php esc_html_e("Tout purger sur ce site", "lmd-apps-ia"); ?></button></p>
+                    <input type="hidden" name="seo_month" value="<?php echo esc_attr(
+                        $lmd_seo_stats_month,
+                    ); ?>" />
+                    <p><label><input type="checkbox" name="lmd_seo_purge_confirm_all" value="1" /> <?php esc_html_e(
+                        "Je confirme la purge de tous les enrichissements SEO du site.",
+                        "lmd-apps-ia",
+                    ); ?></label></p>
+                    <p class="description"><?php esc_html_e(
+                        "Cette action remet à zéro les données SEO générées sur tous les lots du site courant.",
+                        "lmd-apps-ia",
+                    ); ?></p>
+                    <p class="submit"><button class="button button-secondary" type="submit" name="lmd_purge_seo_all" value="1"><?php esc_html_e(
+                        "Tout purger sur ce site",
+                        "lmd-apps-ia",
+                    ); ?></button></p>
                 </form>
             </div>
         </div>
@@ -1046,6 +1166,7 @@ jQuery(function ($) {
 
     const saleCalendarGrid = saleCalendarRoot.find("[data-sale-calendar-grid]");
     const saleCalendarLabel = saleCalendarRoot.find("[data-sale-calendar-label]");
+    const saleDayBox = saleCalendarRoot.find("[data-sale-day-box]");
     const saleDayLabel = saleCalendarRoot.find("[data-sale-day-label]");
     const saleDayList = saleCalendarRoot.find("[data-sale-day-list]");
     const saleSummary = saleCalendarRoot.find("[data-sale-selection-summary]");
@@ -1095,13 +1216,13 @@ jQuery(function ($) {
 
     function ensureSelectedSaleDate() {
         const dates = getSaleDatesForMonth(currentSaleMonth);
-        if (!dates.length) {
+        if (
+            !dates.length ||
+            !selectedSaleDate ||
+            selectedSaleDate.slice(0, 7) !== currentSaleMonth ||
+            dates.indexOf(selectedSaleDate) === -1
+        ) {
             selectedSaleDate = "";
-            return;
-        }
-
-        if (!selectedSaleDate || selectedSaleDate.slice(0, 7) !== currentSaleMonth || dates.indexOf(selectedSaleDate) === -1) {
-            selectedSaleDate = pickDefaultSaleDate(currentSaleMonth);
         }
     }
 
@@ -1157,7 +1278,17 @@ jQuery(function ($) {
         }
 
         const daySales = selectedSaleDate ? (salesByDate[selectedSaleDate] || []) : [];
-        if (!selectedSaleDate || !daySales.length) {
+        if (!selectedSaleDate) {
+            saleDayBox.attr("hidden", true);
+            saleDayLabel.text(getSaleDatesForMonth(currentSaleMonth).length
+                ? "Sélectionnez une journée pour afficher les ventes correspondantes."
+                : "Aucune vente CPT n'est disponible sur ce mois.");
+            saleDayList.empty();
+            return;
+        }
+
+        saleDayBox.removeAttr("hidden");
+        if (!daySales.length) {
             saleDayLabel.text(getSaleDatesForMonth(currentSaleMonth).length
                 ? "Sélectionnez une journée pour afficher les ventes correspondantes."
                 : "Aucune vente CPT n'est disponible sur ce mois.");
@@ -1285,7 +1416,7 @@ jQuery(function ($) {
 
     if (saleCalendarRoot.length) {
         currentSaleMonth = normalizeSaleMonth(currentSaleMonth) || getCurrentSaleMonth();
-        selectedSaleDate = pickDefaultSaleDate(currentSaleMonth);
+        selectedSaleDate = "";
         renderSaleHiddenInputs();
         renderSaleSummary();
         renderSaleCalendar();
@@ -1297,12 +1428,27 @@ jQuery(function ($) {
     const forceSaleSelectedCopy = forceRoot.find("[data-force-sale-selected]");
     const forceSaleIdInput = forceRoot.find("[data-force-selected-sale-id]");
     const forceSaleLabelInput = forceRoot.find("[data-force-selected-sale-label]");
-    const forceLotNumberInput = forceRoot.find("[data-force-lot-number]");
+    const forceLotSearchField = forceRoot.find("[data-force-lot-search-field]");
+    const forceLotSearchInput = forceRoot.find("[data-force-lot-search]");
     const forceLotNumberHidden = forceRoot.find("[data-force-selected-lot-number-hidden]");
     const forceLotIdInput = forceRoot.find("[data-force-selected-lot-id]");
-    const forceLotPreviewCard = forceRoot.find("[data-force-lot-preview-card]");
+    const forceLotList = forceRoot.find("[data-force-lot-list]");
+    const forceLotPagination = forceRoot.find("[data-force-lot-pagination]");
+    const forceSelectedLotInputs = forceRoot.find("[data-force-selected-lot-inputs]");
+    const forceLotControls = forceRoot.find("[data-force-lot-controls]");
+    const forceSelectedCount = forceRoot.find("[data-force-selected-count]");
+    const forceSelectVisible = forceRoot.find("[data-force-select-visible]");
+    const forceClearSelection = forceRoot.find("[data-force-clear-selection]");
     const forceLotSubmit = forceRoot.find("[data-force-lot-submit]");
+    const forceRunFeedback = forceRoot.find("[data-force-run-feedback]");
     const saleLookupById = Object.create(null);
+    const selectedForceLots = Object.create(null);
+    const forceLotFallbackIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image-icon lucide-image" aria-hidden="true" focusable="false"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>';
+    let forceLotSearchTimer = null;
+    let forceLotRequest = null;
+    let forceLastLotPayload = null;
+    let forceLotPage = 1;
+    let forceEnrichmentRunning = false;
     const today = new Date();
     const todaySaleKey = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
 
@@ -1358,19 +1504,136 @@ jQuery(function ($) {
         forceSaleResults.attr("hidden", true).empty();
     }
 
-    function setForcePreviewMessage(message, tone) {
-        if (!forceLotPreviewCard.length) {
+    function setForceListMessage(message, tone) {
+        if (!forceLotList.length) {
             return;
         }
         const extraClass = tone ? " lmd-seo-preview-empty--" + tone : "";
-        forceLotPreviewCard.html('<p class="lmd-seo-preview-empty' + extraClass + '">' + escapeHtml(message || "") + '</p>');
+        forceLotList.html('<p class="lmd-seo-preview-empty' + extraClass + '">' + escapeHtml(message || "") + '</p>');
+        forceLotPagination.attr("hidden", true).empty();
+    }
+
+    function buildForceLotTable(rowsHtml, skeleton) {
+        const skeletonClass = skeleton ? " lmd-seo-force-lot-table--loading" : "";
+        return [
+            '<div class="lmd-seo-force-lot-table-wrap">',
+                '<table class="widefat striped lmd-seo-force-lot-table' + skeletonClass + '">',
+                    '<thead><tr>',
+                        '<th class="check-column"></th>',
+                        '<th>Image</th>',
+                        '<th>Lot</th>',
+                        '<th>Objet</th>',
+                        '<th>Estimation basse</th>',
+                        '<th>Estimation haute</th>',
+                        '<th>Statut</th>',
+                    '</tr></thead>',
+                    '<tbody>' + rowsHtml + '</tbody>',
+                '</table>',
+            '</div>'
+        ].join("");
+    }
+
+    function setForceLoadingMessage(message) {
+        if (!forceLotList.length) {
+            return;
+        }
+        const currentItems = forceLastLotPayload && Array.isArray(forceLastLotPayload.items)
+            ? forceLastLotPayload.items
+            : [];
+        if (!currentItems.length) {
+            forceLotList.html([
+                '<div class="lmd-seo-force-loading" role="status" aria-live="polite">',
+                    '<span class="spinner is-active"></span>',
+                    '<span>' + escapeHtml(message || "Chargement des lots exclus…") + '</span>',
+                '</div>'
+            ].join(""));
+            forceLotPagination.attr("hidden", true).empty();
+            return;
+        }
+
+        const rows = currentItems.map(function () {
+            return [
+                '<tr aria-hidden="true">',
+                    '<td class="lmd-seo-force-lot-check"><span class="lmd-seo-force-skeleton lmd-seo-force-skeleton--check"></span></td>',
+                    '<td class="lmd-seo-force-lot-thumb-cell"><span class="lmd-seo-force-skeleton lmd-seo-force-skeleton--thumb"></span></td>',
+                    '<td><span class="lmd-seo-force-skeleton lmd-seo-force-skeleton--short"></span></td>',
+                    '<td><span class="lmd-seo-force-skeleton lmd-seo-force-skeleton--long"></span></td>',
+                    '<td><span class="lmd-seo-force-skeleton lmd-seo-force-skeleton--money"></span></td>',
+                    '<td><span class="lmd-seo-force-skeleton lmd-seo-force-skeleton--money"></span></td>',
+                    '<td><span class="lmd-seo-force-skeleton lmd-seo-force-skeleton--badge"></span></td>',
+                '</tr>'
+            ].join("");
+        }).join("");
+        forceLotList.html(
+            '<div class="lmd-seo-force-loading lmd-seo-force-loading--table" role="status" aria-live="polite">' +
+                '<span class="spinner is-active"></span>' +
+                '<span>' + escapeHtml(message || "Chargement des lots exclus…") + '</span>' +
+            '</div>' +
+            buildForceLotTable(rows, true)
+        );
+        forceLotPagination.find("button").prop("disabled", true);
+    }
+
+    function setForceRunFeedback(message, tone) {
+        if (!forceRunFeedback.length) {
+            return;
+        }
+        if (!message) {
+            forceRunFeedback.attr("hidden", true).removeClass().addClass("lmd-seo-force-run-feedback").empty();
+            return;
+        }
+        const feedbackClass = tone === "success"
+            ? "lmd-app-feedback lmd-app-feedback--success"
+            : tone === "error"
+                ? "lmd-app-feedback lmd-app-feedback--error"
+                : tone === "warning"
+                    ? "lmd-app-feedback lmd-app-feedback--warning"
+                    : "lmd-app-feedback lmd-app-feedback--info";
+        forceRunFeedback
+            .removeAttr("hidden")
+            .removeClass()
+            .addClass("lmd-seo-force-run-feedback " + feedbackClass)
+            .html('<p>' + escapeHtml(message) + '</p>');
+    }
+
+    function getSelectedForceLotIds() {
+        return Object.keys(selectedForceLots).filter(function (lotId) {
+            return !!selectedForceLots[lotId];
+        });
+    }
+
+    function updateForceSelectionState() {
+        const selectedIds = getSelectedForceLotIds();
+        forceSelectedLotInputs.empty();
+        selectedIds.forEach(function (lotId) {
+            forceSelectedLotInputs.append('<input type="hidden" name="lmd_seo_test_lot_ids[]" value="' + escapeHtml(lotId) + '" />');
+        });
+        forceLotIdInput.val(selectedIds[0] || "");
+        forceLotNumberHidden.val(selectedIds.length ? selectedIds.length + " lots sélectionnés" : "");
+        forceLotSubmit.prop("disabled", forceEnrichmentRunning || selectedIds.length === 0);
+        forceClearSelection.prop("disabled", forceEnrichmentRunning || selectedIds.length === 0);
+        forceSelectVisible.prop("disabled", forceEnrichmentRunning || !(forceLastLotPayload && Array.isArray(forceLastLotPayload.items) && forceLastLotPayload.items.length));
+        forceSelectedCount.text(selectedIds.length > 1
+            ? selectedIds.length + " lots sélectionnés."
+            : selectedIds.length + " lot sélectionné.");
     }
 
     function resetForceLotSelection(message, tone) {
+        Object.keys(selectedForceLots).forEach(function (lotId) {
+            delete selectedForceLots[lotId];
+        });
         forceLotIdInput.val("");
+        forceLotNumberHidden.val("");
         forceLotSubmit.prop("disabled", true);
-        forceLotNumberHidden.val(String(forceLotNumberInput.val() || "").trim());
-        setForcePreviewMessage(message || "Choisissez d'abord une vente puis un numéro de lot pour vérifier que vous forcez bien le bon objet.", tone);
+        forceSelectVisible.prop("disabled", true);
+        forceClearSelection.prop("disabled", true);
+        forceLotControls.attr("hidden", true);
+        forceLotSearchField.attr("hidden", true);
+        forceLotSearchInput.prop("disabled", true).val("");
+        forceLastLotPayload = null;
+        setForceRunFeedback("");
+        updateForceSelectionState();
+        setForceListMessage(message || "Choisissez d'abord une vente pour afficher les lots exclus par les filtres actuels.", tone);
     }
 
     function setSelectedForceSale(entry) {
@@ -1382,7 +1645,10 @@ jQuery(function ($) {
             ? "Vente sélectionnée : " + label
             : "Aucune vente sélectionnée pour le moment.");
         closeForceSaleResults();
-        resetForceLotSelection("Saisissez maintenant un numéro de lot puis cliquez sur Afficher le lot.");
+        resetForceLotSelection("Chargement des lots exclus de cette vente…");
+        forceLotControls.removeAttr("hidden");
+        forceLotSearchInput.prop("disabled", false);
+        loadForceLots(1);
     }
 
     function renderForceSaleResults(rawQuery) {
@@ -1417,87 +1683,195 @@ jQuery(function ($) {
         }).join("")).removeAttr("hidden");
     }
 
-    function renderForceLotPreview(payload) {
-        if (!forceLotPreviewCard.length) {
+    function renderForcePagination(payload) {
+        const totalPages = parseInt(payload && payload.total_pages, 10) || 1;
+        const page = parseInt(payload && payload.page, 10) || 1;
+        const total = parseInt(payload && payload.total, 10) || 0;
+        if (!forceLotPagination.length || totalPages <= 1) {
+            forceLotPagination.attr("hidden", true).empty();
             return;
         }
-
-        const isEligible = !!(payload && payload.eligible);
-        const isEnriched = !!(payload && payload.is_enriched);
-        const eligibilityBadgeClass = isEligible ? "lmd-seo-badge lmd-seo-badge--soft" : "lmd-seo-badge lmd-seo-badge--warning";
-        const eligibilityBadgeText = isEligible ? "Actuellement éligible" : "Actuellement exclu";
-        const enrichmentBadgeClass = isEnriched ? "lmd-seo-badge lmd-seo-badge--success-soft" : "lmd-seo-badge lmd-seo-badge--soft";
-        const enrichmentBadgeText = isEnriched ? "Déjà enrichi" : "Pas encore enrichi";
-        const enrichmentMeta = payload.enriched_at
-            ? '<p class="description lmd-seo-force-eligibility">Dernier traitement enregistré : ' + escapeHtml(payload.enriched_at) + '</p>'
-            : '';
-        const previewHtml = [
-            '<div class="lmd-seo-badge-row lmd-seo-badge-row--compact">',
-                '<span class="' + eligibilityBadgeClass + '">' + escapeHtml(eligibilityBadgeText) + '</span>',
-                '<span class="' + enrichmentBadgeClass + '">' + escapeHtml(enrichmentBadgeText) + '</span>',
-            '</div>',
-            '<dl class="lmd-seo-force-summary">',
-                '<div><dt>Vente</dt><dd>' + escapeHtml(payload.sale_label || "") + '</dd></div>',
-                '<div><dt>Lot</dt><dd>' + escapeHtml(payload.lot_number || "") + ' · ' + escapeHtml(payload.lot_title || "") + '</dd></div>',
-            '</dl>',
-            '<p class="lmd-seo-force-description"><strong>Début de description :</strong> ' + escapeHtml(payload.description_excerpt || "") + '</p>',
-            (payload.eligibility_message ? '<p class="description lmd-seo-force-eligibility">' + escapeHtml(payload.eligibility_message) + '</p>' : ''),
-            (payload.enrichment_label ? '<p class="description lmd-seo-force-eligibility">' + escapeHtml(payload.enrichment_label) + '</p>' : ''),
-            enrichmentMeta
-        ].join('');
-
-        forceLotPreviewCard.html(previewHtml);
+        forceLotPagination.html([
+            '<button type="button" class="button" data-force-lot-page="' + (page - 1) + '"' + (page <= 1 ? " disabled" : "") + '>Précédent</button>',
+            '<span>' + escapeHtml("Page " + page + " / " + totalPages + " · " + total + " lots") + '</span>',
+            '<button type="button" class="button" data-force-lot-page="' + (page + 1) + '"' + (page >= totalPages ? " disabled" : "") + '>Suivant</button>'
+        ].join("")).removeAttr("hidden");
     }
 
-    function runForceLotLookup() {
-        if (!forceRoot.length) {
+    function renderForceLotList(payload) {
+        forceLastLotPayload = payload || {};
+        const items = Array.isArray(forceLastLotPayload.items) ? forceLastLotPayload.items : [];
+        forceSelectVisible.prop("disabled", forceEnrichmentRunning || items.length === 0);
+        if (!items.length) {
+            if (!String(forceLotSearchInput.val() || "").trim()) {
+                forceLotSearchField.attr("hidden", true);
+            }
+            const message = String(forceLotSearchInput.val() || "").trim()
+                ? "Aucun lot exclu ne correspond à cette recherche."
+                : "Aucun lot à forcer : les lots de cette vente sont déjà éligibles ou déjà enrichis.";
+            setForceListMessage(message);
+            updateForceSelectionState();
             return;
         }
 
-        const saleId = parseInt(forceSaleIdInput.val(), 10) || 0;
-        const lotNumber = String(forceLotNumberInput.val() || "").trim();
-        forceLotNumberHidden.val(lotNumber);
+        forceLotSearchField.removeAttr("hidden");
+        const html = items.map(function (item) {
+            const lotId = String(item.lot_id || "");
+            const checked = selectedForceLots[lotId] ? " checked" : "";
+            const disabled = forceEnrichmentRunning ? " disabled" : "";
+            const reason = item.eligibility_message || "Lot exclu par les filtres SEO actuels.";
+            const thumbnail = item.thumbnail_url
+                ? '<img src="' + escapeHtml(item.thumbnail_url) + '" alt="" loading="lazy" />'
+                : forceLotFallbackIcon;
+            return [
+                '<tr>',
+                    '<td class="lmd-seo-force-lot-check"><input type="checkbox" value="' + escapeHtml(lotId) + '" aria-label="Sélectionner le lot ' + escapeHtml(item.lot_number || lotId) + '" data-force-lot-checkbox' + checked + disabled + ' /></td>',
+                    '<td class="lmd-seo-force-lot-thumb-cell"><span class="lmd-seo-force-lot-thumb">' + thumbnail + '</span></td>',
+                    '<td class="lmd-seo-force-lot-number">Lot ' + escapeHtml(item.lot_number || lotId) + '</td>',
+                    '<td class="lmd-seo-force-lot-desc">' + escapeHtml(item.description_excerpt || item.lot_title || "") + '</td>',
+                    '<td class="lmd-seo-force-lot-estimate">' + escapeHtml(item.estimate_low || "Non renseignée") + '</td>',
+                    '<td class="lmd-seo-force-lot-estimate">' + escapeHtml(item.estimate_high || "Non renseignée") + '</td>',
+                    '<td><span class="lmd-seo-badge lmd-seo-badge--warning lmd-seo-force-lot-reason" title="' + escapeHtml(reason) + '">Exclu</span></td>',
+                '</tr>'
+            ].join("");
+        }).join("");
 
+        forceLotList.html(buildForceLotTable(html, false));
+        renderForcePagination(forceLastLotPayload);
+        updateForceSelectionState();
+    }
+
+    function loadForceLots(page) {
+        const saleId = parseInt(forceSaleIdInput.val(), 10) || 0;
         if (!saleId) {
             resetForceLotSelection("Choisissez d'abord une vente dans la liste proposée.", "warning");
             return;
         }
-        if (!lotNumber) {
-            resetForceLotSelection("Saisissez un numéro de lot avant de lancer la recherche.", "warning");
-            return;
+        forceLotPage = Math.max(1, parseInt(page, 10) || 1);
+        if (forceLotRequest && forceLotRequest.readyState !== 4) {
+            forceLotRequest.abort();
         }
+        setForceLoadingMessage("Chargement des lots exclus…");
+        forceSelectVisible.prop("disabled", true);
 
-        forceLotSubmit.prop("disabled", true);
-        setForcePreviewMessage("Recherche du lot en cours…");
-
-        $.post(lmdAdmin.ajaxurl, {
-            action: "lmd_seo_lookup_sale_lot",
+        forceLotRequest = $.post(lmdAdmin.ajaxurl, {
+            action: "lmd_seo_list_sale_lots",
             nonce: lmdAdmin.nonce,
             sale_id: saleId,
-            lot_number: lotNumber
+            page: forceLotPage,
+            search: String(forceLotSearchInput.val() || "").trim()
         }).done(function (response) {
             const payload = response && response.success ? (response.data || {}) : null;
-            if (!payload || !payload.lot_id) {
-                resetForceLotSelection((payload && payload.message) || "Le lot demandé est introuvable dans cette vente.", "error");
+            if (!payload) {
+                setForceListMessage("Impossible de charger les lots de cette vente.", "error");
                 return;
             }
-
             if (payload.sale_label) {
                 forceSaleLabelInput.val(payload.sale_label);
                 forceSaleSearch.val(payload.sale_label);
                 forceSaleSelectedCopy.text("Vente sélectionnée : " + payload.sale_label);
             }
-            forceLotNumberInput.val(payload.lookup_value || lotNumber);
-            forceLotNumberHidden.val(payload.lookup_value || lotNumber);
-            forceLotIdInput.val(payload.lot_id);
-            forceLotSubmit.prop("disabled", !!payload.is_enriched);
-            renderForceLotPreview(payload);
-        }).fail(function (xhr) {
+            renderForceLotList(payload);
+        }).fail(function (xhr, status) {
+            if (status === "abort") {
+                return;
+            }
             const message = xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message
                 ? xhr.responseJSON.data.message
-                : "Le lot demandé est introuvable dans cette vente.";
-            resetForceLotSelection(message, "error");
+                : "Impossible de charger les lots de cette vente.";
+            setForceListMessage(message, "error");
         });
+    }
+
+    function selectVisibleForceLots() {
+        const items = forceLastLotPayload && Array.isArray(forceLastLotPayload.items)
+            ? forceLastLotPayload.items
+            : [];
+        items.forEach(function (item) {
+            if (item && item.lot_id) {
+                selectedForceLots[String(item.lot_id)] = true;
+            }
+        });
+        renderForceLotList(forceLastLotPayload);
+    }
+
+    function clearForceSelection() {
+        Object.keys(selectedForceLots).forEach(function (lotId) {
+            delete selectedForceLots[lotId];
+        });
+        renderForceLotList(forceLastLotPayload);
+    }
+
+    function setForceEnrichmentRunning(isRunning) {
+        forceEnrichmentRunning = !!isRunning;
+        forceRoot.find("[data-force-lot-checkbox]").prop("disabled", forceEnrichmentRunning);
+        forceLotSearchInput.prop("disabled", forceEnrichmentRunning || !(parseInt(forceSaleIdInput.val(), 10) || 0));
+        forceLotPagination.find("button").prop("disabled", forceEnrichmentRunning);
+        updateForceSelectionState();
+    }
+
+    function runForceEnrichmentQueue() {
+        const selectedIds = getSelectedForceLotIds();
+        const saleId = parseInt(forceSaleIdInput.val(), 10) || 0;
+        if (!selectedIds.length) {
+            setForceRunFeedback("Sélectionnez au moins un lot à enrichir.", "warning");
+            return;
+        }
+        if (!saleId) {
+            setForceRunFeedback("Choisissez d'abord une vente.", "warning");
+            return;
+        }
+        if (forceEnrichmentRunning) {
+            return;
+        }
+
+        let currentIndex = 0;
+        let successCount = 0;
+        let errorCount = 0;
+        const total = selectedIds.length;
+        setForceEnrichmentRunning(true);
+
+        function processNext() {
+            if (currentIndex >= total) {
+                setForceEnrichmentRunning(false);
+                updateForceSelectionState();
+                setForceRunFeedback(
+                    "Traitement terminé : " + successCount + " succès, " + errorCount + " erreur(s).",
+                    errorCount ? (successCount ? "warning" : "error") : "success"
+                );
+                loadForceLots(forceLotPage);
+                return;
+            }
+
+            const lotId = selectedIds[currentIndex];
+            setForceRunFeedback("Enrichissement du lot " + (currentIndex + 1) + " / " + total + "…", "info");
+            $.post(lmdAdmin.ajaxurl, {
+                action: "lmd_seo_force_lot",
+                nonce: lmdAdmin.nonce,
+                sale_id: saleId,
+                lot_id: lotId
+            }).done(function (response) {
+                const payload = response && response.data ? response.data : {};
+                if (response && response.success) {
+                    successCount++;
+                    delete selectedForceLots[String(lotId)];
+                } else {
+                    errorCount++;
+                    setForceRunFeedback((payload.message || "Erreur pendant l'enrichissement du lot.") + " Passage au lot suivant…", "warning");
+                }
+            }).fail(function (xhr) {
+                const message = xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message
+                    ? xhr.responseJSON.data.message
+                    : "Erreur pendant l'enrichissement du lot.";
+                errorCount++;
+                setForceRunFeedback(message + " Passage au lot suivant…", "warning");
+            }).always(function () {
+                currentIndex++;
+                window.setTimeout(processNext, 150);
+            });
+        }
+
+        processNext();
     }
 
     forceRoot.on("focus", "[data-force-sale-search]", function () {
@@ -1509,7 +1883,7 @@ jQuery(function ($) {
         forceSaleLabelInput.val("");
         forceSaleSelectedCopy.text("Aucune vente sélectionnée pour le moment.");
         renderForceSaleResults($(this).val());
-        resetForceLotSelection("Choisissez une vente dans la liste, puis recherchez le lot.");
+        resetForceLotSelection("Choisissez une vente dans la liste pour afficher les lots exclus.");
     });
 
     forceRoot.on("click", "[data-force-sale-option]", function () {
@@ -1520,24 +1894,61 @@ jQuery(function ($) {
         setSelectedForceSale(entry);
     });
 
-    forceRoot.on("input", "[data-force-lot-number]", function () {
-        if (forceLotIdInput.val()) {
-            resetForceLotSelection("Le numéro de lot a changé. Cliquez de nouveau sur Afficher le lot pour confirmer votre choix.");
-        } else {
-            forceLotNumberHidden.val(String($(this).val() || "").trim());
+    forceRoot.on("change", "[data-force-lot-checkbox]", function () {
+        const lotId = String($(this).val() || "");
+        if (!lotId) {
+            return;
         }
+        if (this.checked) {
+            selectedForceLots[lotId] = true;
+        } else {
+            delete selectedForceLots[lotId];
+        }
+        updateForceSelectionState();
     });
 
-    forceRoot.on("click", "[data-force-lot-preview]", function () {
-        runForceLotLookup();
+    forceRoot.on("click", "[data-force-select-visible]", function () {
+        selectVisibleForceLots();
     });
 
-    forceRoot.on("keydown", "[data-force-lot-number]", function (event) {
+    forceRoot.on("click", "[data-force-clear-selection]", function () {
+        clearForceSelection();
+    });
+
+    forceRoot.on("click", "[data-force-lot-page]", function () {
+        loadForceLots($(this).data("forceLotPage"));
+    });
+
+    forceRoot.on("click", "[data-force-lot-submit]", function (event) {
+        event.preventDefault();
+        runForceEnrichmentQueue();
+    });
+
+    forceRoot.on("input", "[data-force-lot-search]", function () {
+        window.clearTimeout(forceLotSearchTimer);
+        forceLotSearchTimer = window.setTimeout(function () {
+            loadForceLots(1);
+        }, 250);
+    });
+
+    forceRoot.on("keydown", "[data-force-lot-search]", function (event) {
         if (event.key !== "Enter") {
             return;
         }
         event.preventDefault();
-        runForceLotLookup();
+        loadForceLots(1);
+    });
+
+    forceRoot.closest("form").on("submit", function (event) {
+        const submitter = event.originalEvent && event.originalEvent.submitter
+            ? $(event.originalEvent.submitter)
+            : $();
+        if (submitter.is("[data-force-lot-submit]")) {
+            event.preventDefault();
+            runForceEnrichmentQueue();
+            return;
+        }
+        updateForceSelectionState();
     });
 
     $(document).on("click", function (event) {
@@ -1548,14 +1959,13 @@ jQuery(function ($) {
 
     if (forceRoot.length) {
         const initialSaleId = parseInt(forceSaleIdInput.val(), 10) || 0;
-        const initialLotNumber = String(forceLotNumberInput.val() || "").trim();
         if (initialSaleId && saleLookupById[String(initialSaleId)]) {
             const initialEntry = saleLookupById[String(initialSaleId)];
             forceSaleSearch.val(forceSaleLabelInput.val() || formatForceSaleLabel(initialEntry));
             forceSaleSelectedCopy.text("Vente sélectionnée : " + (forceSaleLabelInput.val() || formatForceSaleLabel(initialEntry)));
-        }
-        if (initialSaleId && initialLotNumber) {
-            runForceLotLookup();
+            forceLotControls.removeAttr("hidden");
+            forceLotSearchInput.prop("disabled", false);
+            loadForceLots(1);
         }
     }
 

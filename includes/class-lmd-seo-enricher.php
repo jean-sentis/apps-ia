@@ -1065,6 +1065,11 @@ class LMD_Seo_Enricher
         ];
     }
 
+    public function get_lot_context($lot_id)
+    {
+        return $this->collect_lot_context($lot_id);
+    }
+
     public function evaluate_lot_eligibility($context, $settings = null)
     {
         $settings = is_array($settings) ? $settings : $this->settings;
@@ -2054,78 +2059,28 @@ class LMD_Seo_Enricher
     private function has_sale_type_filter($settings)
     {
         $sale_types = (array) ($settings["sale_types"] ?? []);
-        return empty($sale_types["volontaire"]) || empty($sale_types["judiciaire"]);
+        return empty($sale_types["judiciaire"]);
     }
 
     private function passes_estimate_gate($context, $settings)
     {
-        $mode = sanitize_key($settings["estimate_gate"]["mode"] ?? "either");
-        $low_min = $this->parse_number(
+        $minimum_estimate = $this->parse_number(
             $settings["estimate_gate"]["low_min"] ?? "",
         );
-        $high_min = $this->parse_number(
-            $settings["estimate_gate"]["high_min"] ?? "",
-        );
+        if ($minimum_estimate === null) {
+            return ["eligible" => true, "message" => ""];
+        }
+
         $low_value = $context["estimates"]["low"] ?? null;
-        $high_value = $context["estimates"]["high"] ?? null;
 
-        $passes_low = $low_min === null || ($low_value !== null && $low_value >= $low_min);
-        $passes_high = $high_min === null || ($high_value !== null && $high_value >= $high_min);
-
-        if ($mode === "low") {
-            if ($low_min === null) {
-
-        return ["eligible" => true, "message" => ""];
-            }
-            return $passes_low
-                ? ["eligible" => true, "message" => ""]
-                : [
-                    "eligible" => false,
-                    "message" => __(
-                        "L'estimation basse de ce lot est sous le seuil SEO configure.",
-                        "lmd-apps-ia",
-                    ),
-                ];
+        if ($low_value !== null && $low_value >= $minimum_estimate) {
+            return ["eligible" => true, "message" => ""];
         }
-
-        if ($mode === "high") {
-            if ($high_min === null) {
-
-        return ["eligible" => true, "message" => ""];
-            }
-            return $passes_high
-                ? ["eligible" => true, "message" => ""]
-                : [
-                    "eligible" => false,
-                    "message" => __(
-                        "L'estimation haute de ce lot est sous le seuil SEO configure.",
-                        "lmd-apps-ia",
-                    ),
-                ];
-        }
-
-        $checks = [];
-        if ($low_min !== null) {
-            $checks[] = $passes_low;
-        }
-        if ($high_min !== null) {
-            $checks[] = $passes_high;
-        }
-        if (empty($checks)) {
-
-        return ["eligible" => true, "message" => ""];
-        }
-
-        if (in_array(true, $checks, true)) {
-
-        return ["eligible" => true, "message" => ""];
-        }
-
 
         return [
             "eligible" => false,
             "message" => __(
-                "Ce lot ne franchit aucun des seuils d'estimation SEO configures.",
+                "L'estimation minimum de ce lot est sous le seuil SEO configure.",
                 "lmd-apps-ia",
             ),
         ];

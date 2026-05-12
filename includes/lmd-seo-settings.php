@@ -13,7 +13,7 @@ function lmd_get_seo_settings_defaults() {
     return [
         'enabled' => false,
         'estimate_gate' => [
-            'mode' => 'either',
+            'mode' => 'low',
             'low_min' => '',
             'high_min' => '',
         ],
@@ -117,11 +117,6 @@ function lmd_normalize_seo_threshold_value($value) {
 
 function lmd_save_seo_settings($raw) {
     $defaults = lmd_get_seo_settings_defaults();
-    $estimate_modes = ['low', 'high', 'either'];
-    $selected_mode = sanitize_key($raw['estimate_gate']['mode'] ?? $defaults['estimate_gate']['mode']);
-    if (!in_array($selected_mode, $estimate_modes, true)) {
-        $selected_mode = $defaults['estimate_gate']['mode'];
-    }
 
     $allowed_category_slugs = [];
     foreach (lmd_get_seo_sale_category_terms() as $term) {
@@ -142,12 +137,12 @@ function lmd_save_seo_settings($raw) {
     $settings = [
         'enabled' => !empty($raw['enabled']),
         'estimate_gate' => [
-            'mode' => $selected_mode,
+            'mode' => 'low',
             'low_min' => lmd_normalize_seo_threshold_value($raw['estimate_gate']['low_min'] ?? ''),
-            'high_min' => lmd_normalize_seo_threshold_value($raw['estimate_gate']['high_min'] ?? ''),
+            'high_min' => '',
         ],
         'sale_types' => [
-            'volontaire' => !empty($raw['sale_types']['volontaire']),
+            'volontaire' => true,
             'judiciaire' => !empty($raw['sale_types']['judiciaire']),
         ],
         'excluded_sale_ids' => $excluded_sale_ids,
