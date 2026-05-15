@@ -133,5 +133,171 @@
           $submit.prop("disabled", false);
         });
     });
+
+    function lmdTextToParagraphs(text) {
+      return String(text || "")
+        .split(/\n{2,}/)
+        .map(function (part) {
+          return part.trim();
+        })
+        .filter(Boolean);
+    }
+
+    function lmdRenderExpertiseResult($result, payload, meta) {
+      $result.empty().removeClass("is-error is-loading").addClass("is-ready");
+
+      var $title = $("<h3>").text("Avis de l'expert IA");
+      var $body = $("<div>").addClass("lmd-expertise-section");
+      $body.append($("<h4>").text("Explication"));
+
+      var paragraphs = lmdTextToParagraphs(payload.explication);
+      if (!paragraphs.length) {
+        paragraphs = [
+          typeof lmdPublic !== "undefined" && lmdPublic.expertiseMessages
+            ? lmdPublic.expertiseMessages.empty
+            : "Aucune analyse disponible pour ce lot.",
+        ];
+      }
+      paragraphs.forEach(function (paragraph) {
+        $body.append($("<p>").text(paragraph));
+      });
+
+      if (payload.createur) {
+        var $creator = $("<div>").addClass("lmd-expertise-section");
+        $creator.append($("<h4>").text("Créateur, atelier ou manufacture"));
+        lmdTextToParagraphs(payload.createur).forEach(function (paragraph) {
+          $creator.append($("<p>").text(paragraph));
+        });
+        $body.append($creator);
+      }
+
+      if (meta && meta.cached) {
+        $result.append($("<p>").addClass("lmd-expertise-meta").text("Analyse déjà disponible."));
+      }
+      $result.append($title, $body);
+    }
+
+    function lmdRenderExpertiseMessage($result, message, type) {
+      $result
+        .empty()
+        .removeClass("is-ready is-loading is-error")
+        .addClass(type === "error" ? "is-error" : "is-loading")
+        .append($("<p>").text(message));
+    }
+
+    function lmdGetExpertiseContext($trigger) {
+      var lotId =
+        parseInt($trigger.attr("data-lot-id"), 10) ||
+        (typeof lmdPublic !== "undefined" ? parseInt(lmdPublic.lotId, 10) : 0);
+      var targetSelector = $trigger.attr("data-result-target");
+      var $result = targetSelector ? $(targetSelector).first() : $("#ai-response").first();
+
+      if (!$result.length) {
+        $result = $('<div id="lmd-ai-analysis-result" class="lmd-expertise-result" aria-live="polite"></div>');
+        $trigger.after($result);
+      } else {
+        $result.addClass("lmd-expertise-result").attr("aria-live", "polite");
+      }
+
+      if (!$trigger.attr("role")) {
+        $trigger.attr("role", "button");
+      }
+      if (!$trigger.attr("tabindex")) {
+        $trigger.attr("tabindex", "0");
+      }
+
+      return {
+        lotId: lotId,
+        $result: $result,
+      };
+    }
+
+    function runLotExpertiseRequest($trigger) {
+      if ($trigger.data("lmdExpertiseInFlight")) return;
+
+      var context = lmdGetExpertiseContext($trigger);
+      var loadingMessage =
+        typeof lmdPublic !== "undefined" && lmdPublic.expertiseMessages
+          ? lmdPublic.expertiseMessages.loading
+          : "Analyse en cours...";
+      var errorMessage =
+        typeof lmdPublic !== "undefined" && lmdPublic.expertiseMessages
+          ? lmdPublic.expertiseMessages.error
+          : "Impossible de générer l'analyse IA pour le moment.";
+
+      if (!context.lotId) {
+        lmdRenderExpertiseMessage(context.$result, "Lot introuvable.", "error");
+        return;
+      }
+
+      $trigger
+        .data("lmdExpertiseInFlight", true)
+        .addClass("lmd-expertise-trigger--loading")
+        .attr("aria-busy", "true");
+      lmdRenderExpertiseMessage(context.$result, loadingMessage, "loading");
+
+      $.ajax({
+        url: typeof lmdPublic !== "undefined" ? lmdPublic.ajaxurl : "",
+        type: "POST",
+        data: {
+          action:
+            typeof lmdPublic !== "undefined" && lmdPublic.expertiseAction
+              ? lmdPublic.expertiseAction
+              : "lmd_generate_lot_expertise",
+          lmd_nonce: typeof lmdPublic !== "undefined" ? lmdPublic.nonce : "",
+          lot_id: context.lotId,
+        },
+      })
+        .done(function (response) {
+          if (response && response.success && response.data && response.data.payload) {
+            lmdRenderExpertiseResult(context.$result, response.data.payload, response.data);
+            return;
+          }
+          lmdRenderExpertiseMessage(
+            context.$result,
+            response && response.data && response.data.message
+              ? response.data.message
+              : errorMessage,
+            "error",
+          );
+        })
+        .fail(function (xhr) {
+          var message =
+            xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message
+              ? xhr.responseJSON.data.message
+              : errorMessage;
+          lmdRenderExpertiseMessage(context.$result, message, "error");
+        })
+        .always(function () {
+          $trigger
+            .removeData("lmdExpertiseInFlight")
+            .removeClass("lmd-expertise-trigger--loading")
+            .removeAttr("aria-busy");
+        });
+    }
+
+    function initLotExpertiseTrigger() {
+      $(document)
+        .off("click.lmdExpertise", "#trigger-ai-analysis")
+        .on("click.lmdExpertise", "#trigger-ai-analysis", function (e) {
+          e.preventDefault();
+          runLotExpertiseRequest($(this));
+        });
+
+      $(document)
+        .off("keydown.lmdExpertise", "#trigger-ai-analysis")
+        .on("keydown.lmdExpertise", "#trigger-ai-analysis", function (e) {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            runLotExpertiseRequest($(this));
+          }
+        });
+
+      $("#trigger-ai-analysis").each(function () {
+        lmdGetExpertiseContext($(this));
+      });
+    }
+
+    initLotExpertiseTrigger();
   });
 })(jQuery);

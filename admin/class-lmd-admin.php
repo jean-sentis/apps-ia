@@ -87,6 +87,14 @@ class LMD_Admin
             $this,
             "handle_import_full_copy",
         ]);
+        add_action("admin_post_lmd_save_expertise_settings", [
+            $this,
+            "handle_save_expertise_settings",
+        ]);
+        add_action("admin_post_lmd_purge_expertise_lot", [
+            $this,
+            "handle_purge_expertise_lot",
+        ]);
         add_action("wp_ajax_lmd_seo_prepare_batch", [$this, "ajax_seo_prepare_batch"]);
         add_action("wp_ajax_lmd_seo_resume_batch", [$this, "ajax_seo_resume_batch"]);
         add_action("wp_ajax_lmd_seo_pause_batch", [$this, "ajax_seo_pause_batch"]);
@@ -321,6 +329,7 @@ class LMD_Admin
                 "Site ID",
                 "Estimations",
                 "Lots SEO",
+                "Expertises IA",
                 "SerpAPI (unités)",
                 'SerpAPI ($)',
                 "Firecrawl (unités)",
@@ -339,6 +348,7 @@ class LMD_Admin
                 $c["site_id"],
                 ($c["services"]["estimation"]["items_count"] ?? $c["analyses_count"]),
                 ($c["services"]["seo"]["items_count"] ?? 0),
+                ($c["services"]["expertise"]["items_count"] ?? 0),
                 $c["by_api"]["serpapi"]["units"],
                 $c["by_api"]["serpapi"]["cost_usd"],
                 $c["by_api"]["firecrawl"]["units"],
@@ -358,6 +368,7 @@ class LMD_Admin
                 "",
                 ($agg["services"]["estimation"]["items_count"] ?? $agg["analyses_count"]),
                 ($agg["services"]["seo"]["items_count"] ?? 0),
+                ($agg["services"]["expertise"]["items_count"] ?? 0),
                 $agg["by_api"]["serpapi"]["units"],
                 $agg["by_api"]["serpapi"]["cost_usd"],
                 $agg["by_api"]["firecrawl"]["units"],
@@ -930,6 +941,55 @@ class LMD_Admin
 
         return in_array("lmd_client", $roles, true) ||
             (in_array("editor", $roles, true) && !current_user_can("manage_options"));
+    }
+
+    public function handle_save_expertise_settings()
+    {
+        if (
+            !$this->current_user_can_access_seo_app() ||
+            !check_admin_referer("lmd_save_expertise_settings")
+        ) {
+            wp_die(esc_html__("Non autorisé.", "lmd-apps-ia"));
+        }
+
+        if (function_exists("lmd_save_expertise_settings")) {
+            lmd_save_expertise_settings($_POST);
+        }
+
+        $redirect = wp_get_referer() ?: admin_url("admin.php?page=lmd-apps-ia");
+        $redirect = remove_query_arg("expertise_saved", $redirect);
+        wp_safe_redirect(add_query_arg("expertise_saved", "1", $redirect));
+        exit();
+    }
+
+    public function handle_purge_expertise_lot()
+    {
+        if (
+            !$this->current_user_can_access_seo_app() ||
+            !check_admin_referer("lmd_purge_expertise_lot")
+        ) {
+            wp_die(esc_html__("Non autorisé.", "lmd-apps-ia"));
+        }
+
+        $lot_id = isset($_POST["lot_id"])
+            ? absint(wp_unslash($_POST["lot_id"]))
+            : 0;
+        $purged = false;
+
+        if ($lot_id && get_post_type($lot_id) === "lot" && class_exists("LMD_Expertise_Analyzer")) {
+            $analyzer = new LMD_Expertise_Analyzer();
+            $purged = (bool) $analyzer->purge_lot($lot_id);
+        }
+
+        $redirect = wp_get_referer() ?: admin_url("admin.php?page=lmd-apps-ia");
+        $redirect = remove_query_arg(["expertise_purged", "expertise_purge_error"], $redirect);
+        $redirect = add_query_arg(
+            $purged ? "expertise_purged" : "expertise_purge_error",
+            $lot_id ?: "1",
+            $redirect,
+        );
+        wp_safe_redirect($redirect);
+        exit();
     }
 
     public function render_hub()

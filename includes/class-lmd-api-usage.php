@@ -214,9 +214,14 @@ class LMD_Api_Usage
         return in_array($name, $allowed, true) ? $name : "";
     }
 
+    public static function get_service_names()
+    {
+        return ["estimation", "seo", "expertise"];
+    }
+
     private function sanitize_service_name($name)
     {
-        $allowed = ["estimation", "seo"];
+        $allowed = self::get_service_names();
         $name = strtolower(trim((string) $name));
         return in_array($name, $allowed, true) ? $name : "";
     }
@@ -521,7 +526,7 @@ class LMD_Api_Usage
             );
 
             $out = [];
-            foreach (["estimation", "seo"] as $service) {
+            foreach (self::get_service_names() as $service) {
                 $r = $rows[$service] ?? null;
                 $out[$service] = [
                     "items_count" => (int) ($r->items_count ?? 0),
@@ -531,6 +536,11 @@ class LMD_Api_Usage
             $seo_fallback = $this->get_fallback_seo_count_for_month($month_ym);
             if ($seo_fallback > ($out["seo"]["items_count"] ?? 0)) {
                 $out["seo"]["items_count"] = $seo_fallback;
+            }
+
+            $expertise_fallback = $this->get_fallback_expertise_count_for_month($month_ym);
+            if ($expertise_fallback > ($out["expertise"]["items_count"] ?? 0)) {
+                $out["expertise"]["items_count"] = $expertise_fallback;
             }
 
             return $out;
@@ -579,11 +589,55 @@ class LMD_Api_Usage
             )
         );
     }
+
+    private function get_fallback_expertise_count_for_month($month_ym)
+    {
+        if (!preg_match('/^\d{4}-\d{2}$/', (string) $month_ym)) {
+            return 0;
+        }
+
+        $meta_keys = class_exists("LMD_Expertise_Analyzer")
+            ? LMD_Expertise_Analyzer::get_meta_keys()
+            : [
+                "status" => "_lmd_expertise_status",
+                "generated_at" => "_lmd_expertise_generated_at",
+            ];
+
+        $posts_table = $this->wpdb->posts;
+        $postmeta_table = $this->wpdb->postmeta;
+        $month_start = $month_ym . "-01 00:00:00";
+        $month_end = date("Y-m-t 23:59:59", strtotime($month_ym . "-01"));
+
+        return (int) $this->wpdb->get_var(
+            $this->wpdb->prepare(
+                "SELECT COUNT(DISTINCT p.ID)
+                 FROM $posts_table p
+                 INNER JOIN $postmeta_table status_meta
+                    ON status_meta.post_id = p.ID
+                   AND status_meta.meta_key = %s
+                   AND status_meta.meta_value = %s
+                 INNER JOIN $postmeta_table date_meta
+                    ON date_meta.post_id = p.ID
+                   AND date_meta.meta_key = %s
+                   AND date_meta.meta_value >= %s
+                   AND date_meta.meta_value <= %s
+                 WHERE p.post_type = %s",
+                $meta_keys["status"],
+                "done",
+                $meta_keys["generated_at"],
+                $month_start,
+                $month_end,
+                "lot"
+            )
+        );
+    }
+
     public static function get_service_labels()
     {
         return [
             "estimation" => "Aide a l'estimation",
             "seo" => "Enrichissement SEO",
+            "expertise" => "Expertise IA",
         ];
     }
     public function get_all_clients_consumption($month, $all_clients = true)
@@ -651,16 +705,16 @@ class LMD_Api_Usage
         ];
         $total_usd = 0;
         $analyses_count = 0;
-        $services = [
-            "estimation" => ["items_count" => 0],
-            "seo" => ["items_count" => 0],
-        ];
+        $services = [];
+        foreach (self::get_service_names() as $service) {
+            $services[$service] = ["items_count" => 0];
+        }
         foreach ($clients as $c) {
             foreach ($c["by_api"] as $api => $d) {
                 $by_api[$api]["units"] += $d["units"];
                 $by_api[$api]["cost_usd"] += $d["cost_usd"];
             }
-            foreach (["estimation", "seo"] as $service) {
+            foreach (self::get_service_names() as $service) {
                 $services[$service]["items_count"] += (int) ($c["services"][$service]["items_count"] ?? 0);
             }
             $total_usd += $c["total_usd"];

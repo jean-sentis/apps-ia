@@ -260,6 +260,63 @@
     display: none;
 }
 
+#trigger-ai-analysis {
+    cursor: pointer;
+}
+
+#trigger-ai-analysis.lmd-expertise-trigger--loading {
+    cursor: wait;
+    opacity: 0.68;
+    pointer-events: none;
+}
+
+.lmd-expertise-result {
+    margin-top: 18px;
+    color: var(--wp--preset--color--custom-text-primary, #1a1a1a);
+}
+
+.lmd-expertise-result.is-loading,
+.lmd-expertise-result.is-error,
+.lmd-expertise-result.is-ready {
+    border-left: 3px solid var(--wp--preset--color--custom-border-accent, #ec1d77);
+    padding-left: 16px;
+}
+
+.lmd-expertise-result.is-error {
+    border-left-color: #dc2626;
+    color: #991b1b;
+}
+
+.lmd-expertise-result h3,
+.lmd-expertise-result h4,
+.lmd-expertise-result p {
+    margin-top: 0;
+}
+
+.lmd-expertise-result h3 {
+    margin-bottom: 12px;
+    font-size: clamp(1.1rem, 1rem + 0.2vw, 1.25rem);
+}
+
+.lmd-expertise-result h4 {
+    margin-bottom: 8px;
+    font-size: 1rem;
+}
+
+.lmd-expertise-result p {
+    line-height: 1.65;
+}
+
+.lmd-expertise-section + .lmd-expertise-section {
+    margin-top: 18px;
+}
+
+.lmd-expertise-meta {
+    margin-bottom: 8px;
+    color: var(--wp--preset--color--custom-text-secondary, #737373);
+    font-size: 0.875rem;
+}
+
 .lmd-form-wrapper .lmd-vignette-wrap {
     width: 78px;
     height: 78px;

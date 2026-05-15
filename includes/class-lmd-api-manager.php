@@ -133,14 +133,17 @@ class LMD_Api_Manager
      *
      * @param string $prompt Prompt texte
      * @param array $images Tableau de chemins de fichiers ou URLs d'images
+     * @param array $args Options ponctuelles : model, generationConfig
      * @return array ['text' => string] ou ['error' => string]
      */
-    public function call_gemini($prompt, $images = [])
+    public function call_gemini($prompt, $images = [], $args = [])
     {
         $key = $this->get_gemini_key();
         if (empty($key)) {
             return ["error" => "Clé Gemini non configurée"];
         }
+
+        $args = is_array($args) ? $args : [];
 
         $parts = [["text" => $prompt]];
 
@@ -151,18 +154,26 @@ class LMD_Api_Manager
             }
         }
 
+        $generation_config = [
+            "temperature" => 0.3,
+            "topK" => 40,
+            "topP" => 0.95,
+            "maxOutputTokens" => 8192,
+            "responseMimeType" => "application/json",
+        ];
+        if (isset($args["generationConfig"]) && is_array($args["generationConfig"])) {
+            $generation_config = array_merge(
+                $generation_config,
+                $args["generationConfig"],
+            );
+        }
+
         $body = [
             "contents" => [["parts" => $parts]],
-            "generationConfig" => [
-                "temperature" => 0.3,
-                "topK" => 40,
-                "topP" => 0.95,
-                "maxOutputTokens" => 8192,
-                "responseMimeType" => "application/json",
-            ],
+            "generationConfig" => $generation_config,
         ];
 
-        $model = $this->get_gemini_model();
+        $model = isset($args["model"]) ? (string) $args["model"] : $this->get_gemini_model();
         $model =
             preg_replace("/[^a-z0-9.\-]/", "", strtolower(trim($model))) ?:
             "gemini-2.5-pro";
@@ -196,7 +207,7 @@ class LMD_Api_Manager
             return ["error" => "Réponse Gemini vide"];
         }
 
-        return ["text" => $text];
+        return ["text" => $text, "model" => $model];
     }
 
     /**

@@ -70,8 +70,10 @@ $files_to_load = [
     "includes/lmd-tag-categories.php",
     "includes/lmd-preferences.php",
     "includes/lmd-seo-settings.php",
+    "includes/lmd-expertise-settings.php",
     "includes/class-lmd-seo-enricher.php",
     "includes/class-lmd-seo-renderer.php",
+    "includes/class-lmd-expertise-analyzer.php",
     "admin/class-lmd-admin.php",
     "admin/class-lmd-ajax.php",
     "admin/ajax-handlers.php",
@@ -243,15 +245,20 @@ function lmd_send_monthly_consumption_report()
         $usage = new LMD_Api_Usage();
         $clients = $usage->get_all_clients_consumption($month);
         $agg = $usage->get_aggregate_consumption($month);
+        $estimation_total = (int) ($agg["services"]["estimation"]["items_count"] ?? $agg["analyses_count"]);
+        $seo_total = (int) ($agg["services"]["seo"]["items_count"] ?? 0);
+        $expertise_total = (int) ($agg["services"]["expertise"]["items_count"] ?? 0);
 
         $lines = [];
         $lines[] =
-            "Client;Site ID;Analyses;SerpAPI (unités);SerpAPI ($);Firecrawl (unités);Firecrawl ($);ImgBB (unités);ImgBB ($);Gemini (unités);Gemini ($);Total ($)";
+            "Client;Site ID;Estimations;Lots SEO;Expertises IA;SerpAPI (unités);SerpAPI ($);Firecrawl (unités);Firecrawl ($);ImgBB (unités);ImgBB ($);Gemini (unités);Gemini ($);Total ($)";
         foreach ($clients as $c) {
             $row = [
                 $c["site_name"],
                 $c["site_id"],
-                $c["analyses_count"],
+                ($c["services"]["estimation"]["items_count"] ?? $c["analyses_count"]),
+                ($c["services"]["seo"]["items_count"] ?? 0),
+                ($c["services"]["expertise"]["items_count"] ?? 0),
                 $c["by_api"]["serpapi"]["units"],
                 $c["by_api"]["serpapi"]["cost_usd"],
                 $c["by_api"]["firecrawl"]["units"],
@@ -275,7 +282,11 @@ function lmd_send_monthly_consumption_report()
         }
         $lines[] =
             "TOTAL;;" .
-            $agg["analyses_count"] .
+            $estimation_total .
+            ";" .
+            $seo_total .
+            ";" .
+            $expertise_total .
             ";" .
             $agg["by_api"]["serpapi"]["units"] .
             ";" .
@@ -303,8 +314,12 @@ function lmd_send_monthly_consumption_report()
             ".\n\n" .
             count($clients) .
             " client(s), " .
-            $agg["analyses_count"] .
-            " analyse(s), " .
+            $estimation_total .
+            " estimation(s), " .
+            $seo_total .
+            " lot(s) SEO, " .
+            $expertise_total .
+            " expertise(s) IA, " .
             number_format($agg["total_usd"], 4) .
             " $ total.\n\nLe fichier CSV est joint.";
         $filename = "consommation-ia-" . $month . ".csv";
