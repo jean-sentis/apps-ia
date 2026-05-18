@@ -700,7 +700,15 @@ class LMD_Admin
             "edit_posts",
             "lmd-app-seo",
             [$this, "render_app_seo"],
-        );
+        );
+        add_submenu_page(
+            "lmd-apps-ia",
+            "Expertise IA",
+            "Expertise IA",
+            "edit_posts",
+            "lmd-app-expertise",
+            [$this, "render_app_expertise"],
+        );
 
         if ($is_parent) {
             add_submenu_page(
@@ -1007,6 +1015,104 @@ class LMD_Admin
         } else {
             echo '<div class="wrap"><h1>LMD Apps IA</h1></div>';
         }
+    }
+
+    public function render_app_expertise()
+    {
+        if (!$this->current_user_can_access_seo_app()) {
+            wp_die(esc_html__("Non autorisé.", "lmd-apps-ia"));
+        }
+
+        $lmd_expertise_settings = function_exists("lmd_get_expertise_settings")
+            ? lmd_get_expertise_settings()
+            : ["enabled" => false];
+        $lmd_expertise_stats = $this->get_expertise_admin_stats();
+
+        $view = LMD_PLUGIN_DIR . "admin/views/app-expertise.php";
+        if (file_exists($view)) {
+            include $view;
+        } else {
+            echo '<div class="wrap"><h1>Expertise IA</h1></div>';
+        }
+    }
+
+    private function get_expertise_admin_stats()
+    {
+        global $wpdb;
+
+        $meta_keys = class_exists("LMD_Expertise_Analyzer")
+            ? LMD_Expertise_Analyzer::get_meta_keys()
+            : [
+                "status" => "_lmd_expertise_status",
+                "generated_at" => "_lmd_expertise_generated_at",
+            ];
+
+        $posts_table = $wpdb->posts;
+        $postmeta_table = $wpdb->postmeta;
+        $month_ym = wp_date("Y-m", null, wp_timezone());
+        $month_start = $month_ym . "-01 00:00:00";
+        $month_end = date("Y-m-t 23:59:59", strtotime($month_ym . "-01"));
+
+        $total_done = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(DISTINCT p.ID)
+                 FROM $posts_table p
+                 INNER JOIN $postmeta_table status_meta
+                    ON status_meta.post_id = p.ID
+                   AND status_meta.meta_key = %s
+                   AND status_meta.meta_value = %s
+                 WHERE p.post_type = %s",
+                $meta_keys["status"],
+                "done",
+                "lot",
+            ),
+        );
+
+        $month_done = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(DISTINCT p.ID)
+                 FROM $posts_table p
+                 INNER JOIN $postmeta_table status_meta
+                    ON status_meta.post_id = p.ID
+                   AND status_meta.meta_key = %s
+                   AND status_meta.meta_value = %s
+                 INNER JOIN $postmeta_table date_meta
+                    ON date_meta.post_id = p.ID
+                   AND date_meta.meta_key = %s
+                   AND date_meta.meta_value >= %s
+                   AND date_meta.meta_value <= %s
+                 WHERE p.post_type = %s",
+                $meta_keys["status"],
+                "done",
+                $meta_keys["generated_at"],
+                $month_start,
+                $month_end,
+                "lot",
+            ),
+        );
+
+        $recent = get_posts([
+            "post_type" => "lot",
+            "post_status" => "any",
+            "posts_per_page" => 8,
+            "meta_key" => $meta_keys["generated_at"],
+            "orderby" => "meta_value",
+            "order" => "DESC",
+            "meta_query" => [
+                [
+                    "key" => $meta_keys["status"],
+                    "value" => "done",
+                ],
+            ],
+        ]);
+
+        return [
+            "total_done" => $total_done,
+            "month_done" => $month_done,
+            "month_ym" => $month_ym,
+            "recent" => is_array($recent) ? $recent : [],
+            "meta_keys" => $meta_keys,
+        ];
     }
 
 

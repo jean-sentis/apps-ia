@@ -28,6 +28,8 @@ if ($lmd_hub_is_admin && $is_parent && class_exists('LMD_Activity_Analytics')) {
     $hub_act = new LMD_Activity_Analytics();
     $hub_feature_usage = $hub_act->get_feature_usage(date('Y-m'), is_multisite() && get_current_blog_id() === 1);
 }
+$lmd_seo_settings = function_exists('lmd_get_seo_settings') ? lmd_get_seo_settings() : ['enabled' => false];
+$lmd_seo_enabled = !empty($lmd_seo_settings['enabled']);
 $lmd_expertise_settings = function_exists('lmd_get_expertise_settings') ? lmd_get_expertise_settings() : ['enabled' => false];
 $lmd_expertise_enabled = !empty($lmd_expertise_settings['enabled']);
 ?>
@@ -96,6 +98,11 @@ $lmd_expertise_enabled = !empty($lmd_expertise_settings['enabled']);
                 <div class="lmd-suite-hub-card-icon dashicons dashicons-chart-line" aria-hidden="true"></div>
                 <h3>Enrichissement SEO</h3>
                 <p><?php esc_html_e('Réglages d’éligibilité et de génération SEO pour les CPT lot.', 'lmd-apps-ia'); ?></p>
+                <p style="margin:0 0 12px;">
+                    <span style="display:inline-flex;align-items:center;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;background:<?php echo $lmd_seo_enabled ? '#ecfdf5' : '#f3f4f6'; ?>;color:<?php echo $lmd_seo_enabled ? '#047857' : '#4b5563'; ?>;">
+                        <?php echo esc_html($lmd_seo_enabled ? __('Actif', 'lmd-apps-ia') : __('Inactif', 'lmd-apps-ia')); ?>
+                    </span>
+                </p>
                 <a class="button button-primary" href="<?php echo esc_url(admin_url('admin.php?page=lmd-app-seo')); ?>"><?php esc_html_e('Ouvrir l’application', 'lmd-apps-ia'); ?></a>
             </article>
             <article class="lmd-suite-hub-card lmd-suite-hub-card--app">
@@ -107,28 +114,7 @@ $lmd_expertise_enabled = !empty($lmd_expertise_settings['enabled']);
                         <?php echo esc_html($lmd_expertise_enabled ? __('Actif', 'lmd-apps-ia') : __('Inactif', 'lmd-apps-ia')); ?>
                     </span>
                 </p>
-                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:grid;gap:10px;">
-                    <input type="hidden" name="action" value="lmd_save_expertise_settings" />
-                    <input type="hidden" name="enabled" value="0" />
-                    <?php wp_nonce_field('lmd_save_expertise_settings'); ?>
-                    <label style="display:flex;gap:8px;align-items:flex-start;margin:0;">
-                        <input type="checkbox" name="enabled" value="1" <?php checked($lmd_expertise_enabled); ?> />
-                        <span><?php esc_html_e('Activer le bouton d’analyse IA sur les lots de ce site', 'lmd-apps-ia'); ?></span>
-                    </label>
-                    <button class="button" type="submit"><?php esc_html_e('Enregistrer', 'lmd-apps-ia'); ?></button>
-                </form>
-                <details style="margin-top:12px;">
-                    <summary style="cursor:pointer;font-weight:600;"><?php esc_html_e('Outils de test', 'lmd-apps-ia'); ?></summary>
-                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:grid;gap:8px;margin-top:10px;">
-                        <input type="hidden" name="action" value="lmd_purge_expertise_lot" />
-                        <?php wp_nonce_field('lmd_purge_expertise_lot'); ?>
-                        <label style="display:grid;gap:6px;margin:0;">
-                            <span><?php esc_html_e('ID du lot à purger', 'lmd-apps-ia'); ?></span>
-                            <input type="number" min="1" step="1" name="lot_id" class="small-text" />
-                        </label>
-                        <button class="button" type="submit"><?php esc_html_e('Purger l’analyse du lot', 'lmd-apps-ia'); ?></button>
-                    </form>
-                </details>
+                <a class="button button-primary" href="<?php echo esc_url(admin_url('admin.php?page=lmd-app-expertise')); ?>"><?php esc_html_e('Ouvrir l’application', 'lmd-apps-ia'); ?></a>
             </article>
         </div>
     </section>

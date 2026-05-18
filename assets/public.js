@@ -143,6 +143,18 @@
         .filter(Boolean);
     }
 
+    function lmdGetExpertiseMessage(key, fallback) {
+      if (
+        typeof lmdPublic !== "undefined" &&
+        lmdPublic.expertiseMessages &&
+        lmdPublic.expertiseMessages[key]
+      ) {
+        return lmdPublic.expertiseMessages[key];
+      }
+
+      return fallback;
+    }
+
     function lmdRenderExpertiseResult($result, payload, meta) {
       $result.empty().removeClass("is-error is-loading").addClass("is-ready");
 
@@ -178,10 +190,17 @@
     }
 
     function lmdRenderExpertiseMessage($result, message, type) {
+      var stateClass = "is-loading";
+      if (type === "error") {
+        stateClass = "is-error";
+      } else if (type === "ready") {
+        stateClass = "is-ready";
+      }
+
       $result
         .empty()
         .removeClass("is-ready is-loading is-error")
-        .addClass(type === "error" ? "is-error" : "is-loading")
+        .addClass(stateClass)
         .append($("<p>").text(message));
     }
 
@@ -212,28 +231,55 @@
       };
     }
 
-    function runLotExpertiseRequest($trigger) {
-      if ($trigger.data("lmdExpertiseInFlight")) return;
+    function lmdSetExpertiseTriggerBusy($trigger, isBusy) {
+      if (isBusy) {
+        $trigger
+          .data("lmdExpertiseInFlight", true)
+          .addClass("lmd-expertise-trigger--loading")
+          .attr("aria-busy", "true")
+          .attr("aria-disabled", "true");
 
-      var context = lmdGetExpertiseContext($trigger);
-      var loadingMessage =
-        typeof lmdPublic !== "undefined" && lmdPublic.expertiseMessages
-          ? lmdPublic.expertiseMessages.loading
-          : "Analyse en cours...";
-      var errorMessage =
-        typeof lmdPublic !== "undefined" && lmdPublic.expertiseMessages
-          ? lmdPublic.expertiseMessages.error
-          : "Impossible de générer l'analyse IA pour le moment.";
+        if ($trigger.is("button,input,select,textarea")) {
+          $trigger.prop("disabled", true);
+        }
 
-      if (!context.lotId) {
-        lmdRenderExpertiseMessage(context.$result, "Lot introuvable.", "error");
         return;
       }
 
       $trigger
-        .data("lmdExpertiseInFlight", true)
-        .addClass("lmd-expertise-trigger--loading")
-        .attr("aria-busy", "true");
+        .removeData("lmdExpertiseInFlight")
+        .removeClass("lmd-expertise-trigger--loading")
+        .removeAttr("aria-busy")
+        .removeAttr("aria-disabled");
+
+      if ($trigger.is("button,input,select,textarea")) {
+        $trigger.prop("disabled", false);
+      }
+    }
+
+    function runLotExpertiseRequest($trigger) {
+      if ($trigger.data("lmdExpertiseInFlight")) return;
+
+      var context = lmdGetExpertiseContext($trigger);
+      var loadingMessage = lmdGetExpertiseMessage(
+        "loading",
+        "Analyse en cours...",
+      );
+      var errorMessage = lmdGetExpertiseMessage(
+        "error",
+        "Impossible de générer l'analyse IA pour le moment.",
+      );
+
+      if (!context.lotId) {
+        lmdRenderExpertiseMessage(
+          context.$result,
+          lmdGetExpertiseMessage("lotMissing", "Lot introuvable."),
+          "error",
+        );
+        return;
+      }
+
+      lmdSetExpertiseTriggerBusy($trigger, true);
       lmdRenderExpertiseMessage(context.$result, loadingMessage, "loading");
 
       $.ajax({
@@ -265,14 +311,38 @@
           var message =
             xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message
               ? xhr.responseJSON.data.message
-              : errorMessage;
+              : "";
+
+          if (!message && xhr.status === 429) {
+            message = lmdGetExpertiseMessage(
+              "rateLimited",
+              "Trop de demandes d'analyse IA. Réessayez dans quelques instants.",
+            );
+          } else if (!message && xhr.status === 409) {
+            message = lmdGetExpertiseMessage(
+              "processing",
+              "Une analyse IA est déjà en cours pour ce lot.",
+            );
+          } else if (!message && xhr.status === 403) {
+            message = lmdGetExpertiseMessage(
+              "disabled",
+              "Le service Expertise IA est désactivé sur ce site.",
+            );
+          } else if (!message) {
+            message = lmdGetExpertiseMessage(
+              "network",
+              "Erreur réseau. Réessayez dans quelques instants.",
+            );
+          }
+
+          if (!message) {
+            message = errorMessage;
+          }
+
           lmdRenderExpertiseMessage(context.$result, message, "error");
         })
         .always(function () {
-          $trigger
-            .removeData("lmdExpertiseInFlight")
-            .removeClass("lmd-expertise-trigger--loading")
-            .removeAttr("aria-busy");
+          lmdSetExpertiseTriggerBusy($trigger, false);
         });
     }
 

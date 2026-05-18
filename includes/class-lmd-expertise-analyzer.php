@@ -70,6 +70,42 @@ class LMD_Expertise_Analyzer
         ];
     }
 
+    public function get_current_cached_result($lot_id)
+    {
+        $lot_id = absint($lot_id);
+        if (!$lot_id) {
+            return null;
+        }
+
+        $context = $this->collect_lot_context($lot_id);
+        if (!$context) {
+            return null;
+        }
+
+        $source_hash = $this->build_source_hash($context);
+        $stored = $this->get_stored_output($lot_id);
+        if (
+            !empty($stored["payload"]) &&
+            !empty($stored["source_hash"]) &&
+            $stored["source_hash"] === $source_hash &&
+            ($stored["status"] ?? "") === "done"
+        ) {
+            return [
+                "success" => true,
+                "cached" => true,
+                "message" => __(
+                    "Expertise IA deja disponible pour ce lot.",
+                    "lmd-apps-ia",
+                ),
+                "lot_id" => $lot_id,
+                "context" => $context,
+                "stored" => $stored,
+            ];
+        }
+
+        return null;
+    }
+
     public function analyze_lot($lot_id, $args = [])
     {
         $lot_id = absint($lot_id);
