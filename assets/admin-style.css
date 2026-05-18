@@ -894,6 +894,25 @@ body.wp-admin #wpbody-content .lmd-suite-hub {
     color: #64748b;
     line-height: 1.45;
 }
+.lmd-suite-status-badge-row {
+    margin: 0 0 12px;
+}
+.lmd-suite-status-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 700;
+}
+.lmd-suite-status-badge--active {
+    background: #ecfdf5;
+    color: #047857;
+}
+.lmd-suite-status-badge--inactive {
+    background: #f3f4f6;
+    color: #4b5563;
+}
 .lmd-suite-hub-soon {
     font-style: italic;
     color: #94a3b8 !important;
@@ -2385,4 +2404,13 @@ body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-badge-row--force-result {
 }
 body.lmd-suite-admin .wrap.lmd-app-shell--seo .lmd-seo-force-result-link {
     margin: 16px 0 0;
+}
+body.lmd-suite-admin .wrap.lmd-app-shell--seo.lmd-expertise-app .lmd-seo-overview-card .lmd-seo-badge {
+    margin-top: 12px;
+}
+body.lmd-suite-admin .wrap.lmd-app-shell--seo.lmd-expertise-app .lmd-seo-overview-grid + .lmd-ui-prose {
+    margin-top: 16px;
+}
+body.lmd-suite-admin .wrap.lmd-app-shell--seo.lmd-expertise-app .lmd-expertise-purge-form {
+    align-items: flex-end;
 }

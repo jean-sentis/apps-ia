@@ -277,9 +277,10 @@
 #ai-response {
     max-height: 400px;
     overflow-y: scroll;
-    &:empty {
-        display: none;
-    }
+}
+
+#ai-response:empty {
+    display: none;
 }
 
 .lmd-expertise-result {
@@ -319,6 +320,24 @@
     }
 }
 
+.lmd-expertise-card {
+    display: grid;
+    gap: 18px;
+}
+
+.lmd-expertise-header {
+    display: grid;
+    gap: 4px;
+}
+
+.lmd-expertise-kicker {
+    color: var(--wp--preset--color--custom-text-secondary, #737373);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
 .lmd-expertise-result h3,
 .lmd-expertise-result h4,
 .lmd-expertise-result p {
@@ -326,7 +345,7 @@
 }
 
 .lmd-expertise-result h3 {
-    margin-bottom: 12px;
+    margin-bottom: 0;
     font-size: clamp(1.1rem, 1rem + 0.2vw, 1.25rem);
 }
 
@@ -340,11 +359,12 @@
 }
 
 .lmd-expertise-section + .lmd-expertise-section {
-    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid
+        var(--wp--preset--color--custom-border, rgba(115, 115, 115, 0.18));
 }
 
 .lmd-expertise-meta {
-    margin-bottom: 8px;
     color: var(--wp--preset--color--custom-text-secondary, #737373);
     font-size: 0.875rem;
 }

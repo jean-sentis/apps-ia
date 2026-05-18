@@ -1091,6 +1091,37 @@ class LMD_Admin
             ),
         );
 
+        $service_month_done = 0;
+        $billing_month_done = $month_done;
+        if (class_exists("LMD_Api_Usage")) {
+            $usage = new LMD_Api_Usage();
+            if (method_exists($usage, "ensure_service_usage_table_exists")) {
+                $usage->ensure_service_usage_table_exists();
+            }
+
+            $service_table = $wpdb->prefix . "lmd_service_usage";
+            $service_month_done = (int) $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT COUNT(*)
+                     FROM $service_table
+                     WHERE site_id = %d
+                       AND service = %s
+                       AND month_ym = %s",
+                    get_current_blog_id(),
+                    "expertise",
+                    $month_ym,
+                ),
+            );
+
+            if (method_exists($usage, "get_service_consumption_for_period")) {
+                $services = $usage->get_service_consumption_for_period(
+                    get_current_blog_id(),
+                    $month_ym,
+                );
+                $billing_month_done = (int) ($services["expertise"]["items_count"] ?? $service_month_done);
+            }
+        }
+
         $recent = get_posts([
             "post_type" => "lot",
             "post_status" => "any",
@@ -1109,6 +1140,9 @@ class LMD_Admin
         return [
             "total_done" => $total_done,
             "month_done" => $month_done,
+            "service_month_done" => $service_month_done,
+            "billing_month_done" => max($billing_month_done, $month_done),
+            "billing_source" => $service_month_done >= $month_done ? "journal" : "fallback_meta",
             "month_ym" => $month_ym,
             "recent" => is_array($recent) ? $recent : [],
             "meta_keys" => $meta_keys,

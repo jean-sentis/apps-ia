@@ -155,38 +155,88 @@
       return fallback;
     }
 
+    function lmdHasExpertiseText(text) {
+      var value = String(text || "").trim().toLowerCase();
+      return (
+        value !== "" &&
+        value !== "null" &&
+        value !== "aucun" &&
+        value !== "aucune" &&
+        value !== "non renseigné" &&
+        value !== "non renseigne"
+      );
+    }
+
+    function lmdFormatExpertiseDate(value) {
+      if (!value) return "";
+
+      var normalized = String(value).replace(" ", "T");
+      var date = new Date(normalized);
+      if (Number.isNaN(date.getTime())) {
+        return String(value);
+      }
+
+      return date.toLocaleDateString("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    }
+
+    function lmdAppendExpertiseParagraphs($section, paragraphs) {
+      paragraphs.forEach(function (paragraph) {
+        $section.append($("<p>").text(paragraph));
+      });
+    }
+
     function lmdRenderExpertiseResult($result, payload, meta) {
       $result.empty().removeClass("is-error is-loading").addClass("is-ready");
-
-      var $title = $("<h3>").text("Avis de l'expert IA");
-      var $body = $("<div>").addClass("lmd-expertise-section");
-      $body.append($("<h4>").text("Explication"));
 
       var paragraphs = lmdTextToParagraphs(payload.explication);
       if (!paragraphs.length) {
         paragraphs = [
-          typeof lmdPublic !== "undefined" && lmdPublic.expertiseMessages
-            ? lmdPublic.expertiseMessages.empty
-            : "Aucune analyse disponible pour ce lot.",
+          lmdGetExpertiseMessage(
+            "empty",
+            "Aucune analyse disponible pour ce lot.",
+          ),
         ];
       }
-      paragraphs.forEach(function (paragraph) {
-        $body.append($("<p>").text(paragraph));
-      });
 
-      if (payload.createur) {
-        var $creator = $("<div>").addClass("lmd-expertise-section");
-        $creator.append($("<h4>").text("Créateur, atelier ou manufacture"));
-        lmdTextToParagraphs(payload.createur).forEach(function (paragraph) {
-          $creator.append($("<p>").text(paragraph));
-        });
-        $body.append($creator);
+      var $article = $("<article>").addClass("lmd-expertise-card");
+      var $header = $("<div>").addClass("lmd-expertise-header");
+      var $kicker = $("<p>").addClass("lmd-expertise-kicker").text("Expertise IA");
+      var $title = $("<h3>").text("Avis sur le lot");
+      var metaParts = [
+        meta && meta.cached ? "Analyse déjà disponible" : "Analyse générée",
+      ];
+      var generatedAt = lmdFormatExpertiseDate(meta && meta.generated_at);
+      if (generatedAt) {
+        metaParts.push(generatedAt);
       }
 
-      if (meta && meta.cached) {
-        $result.append($("<p>").addClass("lmd-expertise-meta").text("Analyse déjà disponible."));
+      $header.append(
+        $kicker,
+        $title,
+        $("<p>").addClass("lmd-expertise-meta").text(metaParts.join(" · ")),
+      );
+
+      var $explanation = $("<section>").addClass("lmd-expertise-section");
+      $explanation.append($("<h4>").text("Explication"));
+      lmdAppendExpertiseParagraphs($explanation, paragraphs);
+
+      $article.append($header, $explanation);
+
+      if (lmdHasExpertiseText(payload.createur)) {
+        var creatorParagraphs = lmdTextToParagraphs(payload.createur);
+        if (creatorParagraphs.length) {
+          var $creator = $("<section>").addClass("lmd-expertise-section");
+          $creator.append($("<h4>").text("Créateur, atelier ou manufacture"));
+          lmdAppendExpertiseParagraphs($creator, creatorParagraphs);
+          $article.append($creator);
+        }
       }
-      $result.append($title, $body);
+
+      $result.append($article);
     }
 
     function lmdRenderExpertiseMessage($result, message, type) {

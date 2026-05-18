@@ -98,8 +98,8 @@ $lmd_expertise_enabled = !empty($lmd_expertise_settings['enabled']);
                 <div class="lmd-suite-hub-card-icon dashicons dashicons-chart-line" aria-hidden="true"></div>
                 <h3>Enrichissement SEO</h3>
                 <p><?php esc_html_e('Réglages d’éligibilité et de génération SEO pour les CPT lot.', 'lmd-apps-ia'); ?></p>
-                <p style="margin:0 0 12px;">
-                    <span style="display:inline-flex;align-items:center;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;background:<?php echo $lmd_seo_enabled ? '#ecfdf5' : '#f3f4f6'; ?>;color:<?php echo $lmd_seo_enabled ? '#047857' : '#4b5563'; ?>;">
+                <p class="lmd-suite-status-badge-row">
+                    <span class="lmd-suite-status-badge <?php echo $lmd_seo_enabled ? 'lmd-suite-status-badge--active' : 'lmd-suite-status-badge--inactive'; ?>">
                         <?php echo esc_html($lmd_seo_enabled ? __('Actif', 'lmd-apps-ia') : __('Inactif', 'lmd-apps-ia')); ?>
                     </span>
                 </p>
@@ -109,8 +109,8 @@ $lmd_expertise_enabled = !empty($lmd_expertise_settings['enabled']);
                 <div class="lmd-suite-hub-card-icon dashicons dashicons-welcome-learn-more" aria-hidden="true"></div>
                 <h3><?php esc_html_e('Expertise IA', 'lmd-apps-ia'); ?></h3>
                 <p><?php esc_html_e('Avis IA public sur les lots, généré à la demande puis servi depuis le cache du lot.', 'lmd-apps-ia'); ?></p>
-                <p style="margin:0 0 12px;">
-                    <span style="display:inline-flex;align-items:center;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;background:<?php echo $lmd_expertise_enabled ? '#ecfdf5' : '#f3f4f6'; ?>;color:<?php echo $lmd_expertise_enabled ? '#047857' : '#4b5563'; ?>;">
+                <p class="lmd-suite-status-badge-row">
+                    <span class="lmd-suite-status-badge <?php echo $lmd_expertise_enabled ? 'lmd-suite-status-badge--active' : 'lmd-suite-status-badge--inactive'; ?>">
                         <?php echo esc_html($lmd_expertise_enabled ? __('Actif', 'lmd-apps-ia') : __('Inactif', 'lmd-apps-ia')); ?>
                     </span>
                 </p>

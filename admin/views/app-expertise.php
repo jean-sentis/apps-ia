@@ -17,6 +17,12 @@ $lmd_expertise_stats = isset($lmd_expertise_stats) && is_array($lmd_expertise_st
     : [];
 $lmd_expertise_enabled = !empty($lmd_expertise_settings["enabled"]);
 $recent_lots = is_array($lmd_expertise_stats["recent"] ?? null) ? $lmd_expertise_stats["recent"] : [];
+$month_done = (int) ($lmd_expertise_stats["month_done"] ?? 0);
+$total_done = (int) ($lmd_expertise_stats["total_done"] ?? 0);
+$billing_month_done = (int) ($lmd_expertise_stats["billing_month_done"] ?? $month_done);
+$service_month_done = (int) ($lmd_expertise_stats["service_month_done"] ?? 0);
+$billing_source = (string) ($lmd_expertise_stats["billing_source"] ?? "fallback_meta");
+$billing_is_direct = $billing_source === "journal";
 $meta_keys = is_array($lmd_expertise_stats["meta_keys"] ?? null) ? $lmd_expertise_stats["meta_keys"] : [
     "generated_at" => "_lmd_expertise_generated_at",
     "model" => "_lmd_expertise_model",
@@ -61,7 +67,7 @@ $meta_keys = is_array($lmd_expertise_stats["meta_keys"] ?? null) ? $lmd_expertis
                                 <input class="form-check-input" type="checkbox" role="switch" id="lmd-expertise-enabled" name="enabled" value="1" <?php checked($lmd_expertise_enabled); ?> />
                                 <label class="form-check-label lmd-seo-switch-copy" for="lmd-expertise-enabled">
                                     <span class="lmd-seo-switch-title"><?php esc_html_e("Activer le service d’analyse IA sur les lots de ce site", "lmd-apps-ia"); ?></span>
-                                    
+                                    <span class="lmd-seo-switch-help"><?php esc_html_e("Si cette option est désactivée, aucun avis IA ne sera généré depuis le front.", "lmd-apps-ia"); ?></span>
                                 </label>
                             </div>
                         </td>
@@ -76,20 +82,39 @@ $meta_keys = is_array($lmd_expertise_stats["meta_keys"] ?? null) ? $lmd_expertis
 
     <div class="lmd-ui-panel">
         <h2 class="lmd-ui-section-title"><?php esc_html_e("Statistiques d’utilisation", "lmd-apps-ia"); ?></h2>
-        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;max-width:900px;">
-            <div style="padding:16px;border:1px solid #e5e7eb;background:#fff;">
-                <span class="description"><?php esc_html_e("Service", "lmd-apps-ia"); ?></span>
-                <p style="margin:6px 0 0;font-size:22px;font-weight:700;"><?php echo esc_html($lmd_expertise_enabled ? __("Actif", "lmd-apps-ia") : __("Inactif", "lmd-apps-ia")); ?></p>
+        <div class="lmd-seo-overview-grid">
+            <div class="lmd-seo-overview-card">
+                <span class="lmd-seo-card-kicker"><?php esc_html_e("Service", "lmd-apps-ia"); ?></span>
+                <h3 class="lmd-seo-card-title"><?php echo esc_html($lmd_expertise_enabled ? __("Actif", "lmd-apps-ia") : __("Inactif", "lmd-apps-ia")); ?></h3>
+                <p class="lmd-seo-card-copy"><?php esc_html_e("État du bouton d’analyse IA sur les pages lot.", "lmd-apps-ia"); ?></p>
             </div>
-            <div style="padding:16px;border:1px solid #e5e7eb;background:#fff;">
-                <span class="description"><?php esc_html_e("Analyses ce mois", "lmd-apps-ia"); ?></span>
-                <p style="margin:6px 0 0;font-size:22px;font-weight:700;"><?php echo (int) ($lmd_expertise_stats["month_done"] ?? 0); ?></p>
+            <div class="lmd-seo-overview-card">
+                <span class="lmd-seo-card-kicker"><?php esc_html_e("Analyses ce mois", "lmd-apps-ia"); ?></span>
+                <h3 class="lmd-seo-card-title"><?php echo esc_html(number_format_i18n($month_done)); ?></h3>
+                <p class="lmd-seo-card-copy"><?php esc_html_e("Lots dont une analyse IA a été générée ce mois-ci.", "lmd-apps-ia"); ?></p>
             </div>
-            <div style="padding:16px;border:1px solid #e5e7eb;background:#fff;">
-                <span class="description"><?php esc_html_e("Analyses stockées", "lmd-apps-ia"); ?></span>
-                <p style="margin:6px 0 0;font-size:22px;font-weight:700;"><?php echo (int) ($lmd_expertise_stats["total_done"] ?? 0); ?></p>
+            <div class="lmd-seo-overview-card">
+                <span class="lmd-seo-card-kicker"><?php esc_html_e("Facturation ce mois", "lmd-apps-ia"); ?></span>
+                <h3 class="lmd-seo-card-title"><?php echo esc_html(number_format_i18n($billing_month_done)); ?></h3>
+                <p class="lmd-seo-card-copy"><?php esc_html_e("Compteur Expertise IA repris dans Consommation IA.", "lmd-apps-ia"); ?></p>
+                <span class="lmd-seo-badge <?php echo $billing_is_direct ? "lmd-seo-badge--success-soft" : "lmd-seo-badge--soft"; ?>">
+                    <?php echo esc_html($billing_is_direct ? __("Journal direct OK", "lmd-apps-ia") : __("Fallback metas actif", "lmd-apps-ia")); ?>
+                </span>
+            </div>
+            <div class="lmd-seo-overview-card">
+                <span class="lmd-seo-card-kicker"><?php esc_html_e("Analyses stockées", "lmd-apps-ia"); ?></span>
+                <h3 class="lmd-seo-card-title"><?php echo esc_html(number_format_i18n($total_done)); ?></h3>
+                <p class="lmd-seo-card-copy"><?php esc_html_e("Lots avec une réponse Expertise IA disponible en cache.", "lmd-apps-ia"); ?></p>
             </div>
         </div>
+        <p class="lmd-ui-prose">
+            <?php
+            $validation_copy = __("Validation conso : ", "lmd-apps-ia") .
+                number_format_i18n($service_month_done) .
+                __(" entrée(s) journalisée(s) directement ce mois. Les réponses servies depuis le cache ne relancent pas Gemini et ne créent pas de nouvelle ligne facturable.", "lmd-apps-ia");
+            echo esc_html($validation_copy);
+            ?>
+        </p>
     </div>
 
     <div class="lmd-ui-panel">
@@ -107,18 +132,33 @@ $meta_keys = is_array($lmd_expertise_stats["meta_keys"] ?? null) ? $lmd_expertis
             <tbody>
                 <?php foreach ($recent_lots as $lot) : ?>
                 <?php
+                $lot = $lot instanceof WP_Post ? $lot : get_post($lot);
+                if (!$lot) {
+                    continue;
+                }
+
                 $lot_id = (int) $lot->ID;
                 $generated_at = (string) get_post_meta($lot_id, $meta_keys["generated_at"] ?? "_lmd_expertise_generated_at", true);
                 $model = (string) get_post_meta($lot_id, $meta_keys["model"] ?? "_lmd_expertise_model", true);
+                $edit_link = current_user_can("edit_post", $lot_id)
+                    ? admin_url("post.php?post=" . $lot_id . "&action=edit")
+                    : "";
+                $view_link = get_post_status($lot_id) === "publish" ? get_permalink($lot_id) : "";
                 ?>
                 <tr>
                     <td><strong><?php echo esc_html(get_the_title($lot_id)); ?></strong><br /><span class="description">#<?php echo (int) $lot_id; ?></span></td>
                     <td><?php echo esc_html($generated_at ?: "—"); ?></td>
                     <td><?php echo esc_html($model ?: "—"); ?></td>
                     <td>
-                        <a href="<?php echo esc_url(get_edit_post_link($lot_id)); ?>"><?php esc_html_e("Éditer", "lmd-apps-ia"); ?></a>
-                        <?php if (get_permalink($lot_id)) : ?>
-                            · <a href="<?php echo esc_url(get_permalink($lot_id)); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e("Voir", "lmd-apps-ia"); ?></a>
+                        <?php if ($edit_link !== "") : ?>
+                            <a href="<?php echo esc_url($edit_link); ?>"><?php esc_html_e("Éditer", "lmd-apps-ia"); ?></a>
+                        <?php endif; ?>
+                        <?php if ($view_link) : ?>
+                            <?php if ($edit_link !== "") : ?> · <?php endif; ?>
+                            <a href="<?php echo esc_url($view_link); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e("Voir", "lmd-apps-ia"); ?></a>
+                        <?php endif; ?>
+                        <?php if ($edit_link === "" && !$view_link) : ?>
+                            <span class="description">—</span>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -132,7 +172,7 @@ $meta_keys = is_array($lmd_expertise_stats["meta_keys"] ?? null) ? $lmd_expertis
 
     <div class="lmd-ui-panel">
         <h2 class="lmd-ui-section-title"><?php esc_html_e("Outils de test", "lmd-apps-ia"); ?></h2>
-        <form method="post" action="<?php echo esc_url(admin_url("admin-post.php")); ?>" style="display:flex;flex-wrap:wrap;gap:10px;align-items:end;">
+        <form method="post" action="<?php echo esc_url(admin_url("admin-post.php")); ?>" class="lmd-ui-toolbar lmd-expertise-purge-form">
             <input type="hidden" name="action" value="lmd_purge_expertise_lot" />
             <?php wp_nonce_field("lmd_purge_expertise_lot"); ?>
             <label>
