@@ -11,7 +11,7 @@ if (!defined("ABSPATH")) {
 
 class LMD_Expertise_Analyzer
 {
-    const PROMPT_VERSION = "expertise-v1";
+    const PROMPT_VERSION = "expertise-v2-md";
     const MODEL = "gemini-2.5-flash";
     const MAX_GEMINI_IMAGES = 3;
 
@@ -491,26 +491,7 @@ class LMD_Expertise_Analyzer
 
     private function build_gemini_prompt($context)
     {
-        $seed = <<<'PROMPT'
-Tu es un expert en art et antiquites pour une maison de ventes aux encheres.
-
-Ta mission : aider les acheteurs potentiels a comprendre le lot qu'ils consultent.
-
-Tu dois fournir :
-1. **Explication** : Explique de quoi il s'agit. Quel type d'objet ? A quoi
-   servait-il ? Dans quel contexte etait-il utilise ? Quelle est sa valeur
-   artistique ou historique ? Rends l'objet vivant et interessant pour un
-   amateur d'art.
-
-2. **Informations sur le createur** (si mentionne) : Si un artiste, un atelier,
-   une manufacture ou un lieu de production est mentionne dans le lot, donne
-   des informations biographiques ou historiques sur celui-ci. Par exemple :
-   dates de vie de l'artiste, mouvement artistique, oeuvres celebres, histoire
-   de la manufacture, etc. Si aucun createur n'est mentionne, retourne null.
-
-Style : Sois informatif et accessible, comme un guide de musee passionne.
-Evite le jargon technique excessif. 2-3 paragraphes maximum pour chaque section.
-PROMPT;
+        $seed = $this->get_prompt_seed();
 
         return implode(
             "\n",
@@ -520,8 +501,8 @@ PROMPT;
                 "Retourne uniquement un JSON valide, sans markdown.",
                 "Structure JSON attendue :",
                 "{",
-                '  "explication": "2-3 paragraphes maximum",',
-                '  "createur": null',
+                '  "explanation": "exactement deux paragraphes separes par \\n\\n",',
+                '  "creator_info": null',
                 "}",
                 "",
                 "Contexte du lot :",
@@ -540,10 +521,34 @@ PROMPT;
         );
     }
 
+    private function get_prompt_seed()
+    {
+        $path = $this->get_prompt_path();
+        if ($path && file_exists($path) && is_readable($path)) {
+            $content = file_get_contents($path);
+            if (is_string($content) && trim($content) !== "") {
+                return trim($content);
+            }
+        }
+
+        return "Tu es un expert généraliste en art, antiquités et objets de collection. Produis une explication en deux paragraphes et une notice créateur si elle est pertinente.";
+    }
+
+    private function get_prompt_path()
+    {
+        if (defined("LMD_PLUGIN_DIR")) {
+            return LMD_PLUGIN_DIR . "prompts/expertise-ia.md";
+        }
+
+        return dirname(__DIR__) . "/prompts/expertise-ia.md";
+    }
+
     private function normalize_output($raw)
     {
-        $explication = $this->clean_response_text($raw["explication"] ?? "");
-        $createur_raw = $raw["createur"] ?? null;
+        $explication = $this->clean_response_text(
+            $raw["explanation"] ?? ($raw["explication"] ?? ""),
+        );
+        $createur_raw = $raw["creator_info"] ?? ($raw["createur"] ?? null);
 
         $createur = null;
         if (is_array($createur_raw)) {
@@ -585,6 +590,7 @@ PROMPT;
     {
         $hash_source = [
             "prompt_version" => self::PROMPT_VERSION,
+            "prompt_hash" => md5($this->get_prompt_seed()),
             "model" => self::MODEL,
             "lot_title" => $context["lot_title"],
             "lot_description_text" => $context["lot_description_text"],
