@@ -27,6 +27,18 @@ $meta_keys = is_array($lmd_expertise_stats["meta_keys"] ?? null) ? $lmd_expertis
     "generated_at" => "_lmd_expertise_generated_at",
     "model" => "_lmd_expertise_model",
 ];
+$can_edit_prompt = current_user_can("manage_options");
+$prompt_path = class_exists("LMD_Expertise_Analyzer")
+    ? LMD_Expertise_Analyzer::get_prompt_file_path()
+    : LMD_PLUGIN_DIR . "prompts/expertise-ia.md";
+$prompt_content = "";
+$prompt_readable = $prompt_path && file_exists($prompt_path) && is_readable($prompt_path);
+$prompt_writable = $prompt_path && file_exists($prompt_path) && is_writable($prompt_path);
+if ($prompt_readable) {
+    $prompt_raw = file_get_contents($prompt_path);
+    $prompt_content = is_string($prompt_raw) ? $prompt_raw : "";
+}
+$prompt_hash = $prompt_content !== "" ? substr(md5($prompt_content), 0, 10) : "";
 ?>
 <div class="wrap lmd-page lmd-app-shell--seo lmd-expertise-app">
     <div class="lmd-suite-app-banner" role="banner">
@@ -48,6 +60,12 @@ $meta_keys = is_array($lmd_expertise_stats["meta_keys"] ?? null) ? $lmd_expertis
     <?php endif; ?>
     <?php if (isset($_GET["expertise_purge_error"])) : ?>
     <div class="notice notice-error is-dismissible"><p><?php esc_html_e("Impossible de purger l’analyse Expertise IA pour ce lot.", "lmd-apps-ia"); ?></p></div>
+    <?php endif; ?>
+    <?php if (isset($_GET["expertise_prompt_saved"])) : ?>
+    <div class="notice notice-success is-dismissible"><p><?php esc_html_e("Prompt Expertise IA enregistré.", "lmd-apps-ia"); ?></p></div>
+    <?php endif; ?>
+    <?php if (isset($_GET["expertise_prompt_error"])) : ?>
+    <div class="notice notice-error is-dismissible"><p><?php esc_html_e("Impossible d’enregistrer le prompt Expertise IA. Vérifiez les droits d’écriture du fichier.", "lmd-apps-ia"); ?></p></div>
     <?php endif; ?>
 
     <div class="lmd-ui-panel">
@@ -170,6 +188,7 @@ $meta_keys = is_array($lmd_expertise_stats["meta_keys"] ?? null) ? $lmd_expertis
         <?php endif; ?>
     </div>
 
+    <?php if ($can_edit_prompt) : ?>
     <div class="lmd-ui-panel">
         <h2 class="lmd-ui-section-title"><?php esc_html_e("Outils de test", "lmd-apps-ia"); ?></h2>
         <form method="post" action="<?php echo esc_url(admin_url("admin-post.php")); ?>" class="lmd-ui-toolbar lmd-expertise-purge-form">
@@ -182,4 +201,41 @@ $meta_keys = is_array($lmd_expertise_stats["meta_keys"] ?? null) ? $lmd_expertis
             <button class="button" type="submit"><?php esc_html_e("Purger l’analyse du lot", "lmd-apps-ia"); ?></button>
         </form>
     </div>
+
+    <div class="lmd-ui-panel">
+        <h2 class="lmd-ui-section-title"><?php esc_html_e("Prompt Expertise IA", "lmd-apps-ia"); ?></h2>
+        <p class="lmd-ui-prose">
+            <?php esc_html_e("Modifiez ici le fichier Markdown utilisé par le service Expertise IA pour construire le prompt Gemini. Toute modification change le hash du prompt et peut déclencher une nouvelle génération pour les lots demandés ensuite.", "lmd-apps-ia"); ?>
+        </p>
+        <p class="description">
+            <?php esc_html_e("Fichier :", "lmd-apps-ia"); ?>
+            <code><?php echo esc_html(str_replace(ABSPATH, "", $prompt_path)); ?></code>
+            <?php if ($prompt_hash) : ?>
+                <span><?php echo esc_html("· hash " . $prompt_hash); ?></span>
+            <?php endif; ?>
+        </p>
+        <?php if (!$prompt_readable) : ?>
+            <div class="notice notice-error inline"><p><?php esc_html_e("Le fichier de prompt est introuvable ou illisible.", "lmd-apps-ia"); ?></p></div>
+        <?php endif; ?>
+        <?php if ($prompt_readable && !$prompt_writable) : ?>
+            <div class="notice notice-warning inline"><p><?php esc_html_e("Le fichier est lisible mais pas inscriptible par WordPress. L’enregistrement échouera tant que les droits fichier ne sont pas corrigés.", "lmd-apps-ia"); ?></p></div>
+        <?php endif; ?>
+        <form method="post" action="<?php echo esc_url(admin_url("admin-post.php")); ?>">
+            <input type="hidden" name="action" value="lmd_save_expertise_prompt" />
+            <?php wp_nonce_field("lmd_save_expertise_prompt"); ?>
+            <textarea
+                name="prompt_content"
+                class="large-text code"
+                rows="28"
+                spellcheck="false"
+                <?php disabled(!$prompt_readable); ?>
+            ><?php echo esc_textarea($prompt_content); ?></textarea>
+            <p class="submit">
+                <button class="button button-primary" type="submit" <?php disabled(!$prompt_readable || !$prompt_writable); ?>>
+                    <?php esc_html_e("Enregistrer le prompt", "lmd-apps-ia"); ?>
+                </button>
+            </p>
+        </form>
+    </div>
+    <?php endif; ?>
 </div>

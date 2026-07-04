@@ -37,6 +37,15 @@ class LMD_Expertise_Analyzer
         ];
     }
 
+    public static function get_prompt_file_path()
+    {
+        if (defined("LMD_PLUGIN_DIR")) {
+            return LMD_PLUGIN_DIR . "prompts/expertise-ia.md";
+        }
+
+        return dirname(__DIR__) . "/prompts/expertise-ia.md";
+    }
+
     public function get_stored_output($lot_id)
     {
         $lot_id = absint($lot_id);
@@ -536,11 +545,7 @@ class LMD_Expertise_Analyzer
 
     private function get_prompt_path()
     {
-        if (defined("LMD_PLUGIN_DIR")) {
-            return LMD_PLUGIN_DIR . "prompts/expertise-ia.md";
-        }
-
-        return dirname(__DIR__) . "/prompts/expertise-ia.md";
+        return self::get_prompt_file_path();
     }
 
     private function normalize_output($raw)

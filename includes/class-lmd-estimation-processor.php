@@ -640,7 +640,7 @@ class LMD_Estimation_Processor
         Expert commissaire-priseur. Analyse croisée : photos → correspondances visuelles → recherche web.
 
         RÈGLES IMPÉRATIVES :
-        - Ne JAMAIS se paraphraser : chaque information doit apparaître UNE SEULE FOIS, dans le champ le plus approprié. Pas de répétition entre summary, identity, condition, market_results.
+        - Ne JAMAIS se paraphraser ou se répéter : chaque information doit apparaître UNE SEULE FOIS, dans le champ le plus approprié. Pas de répétition entre summary, identity, condition, market_results.
         - Analyse visuelle INDÉPENDANTE d'abord, puis confronte aux sources web.
         - Ignore le titre d'un éventuel "lot similaire" mentionné par le propriétaire.
         - Jamais de certitude sur un artiste sauf signature lisible ou sources convergentes.

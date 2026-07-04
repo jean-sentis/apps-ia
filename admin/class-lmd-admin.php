@@ -95,6 +95,10 @@ class LMD_Admin
             $this,
             "handle_purge_expertise_lot",
         ]);
+        add_action("admin_post_lmd_save_expertise_prompt", [
+            $this,
+            "handle_save_expertise_prompt",
+        ]);
         add_action("wp_ajax_lmd_seo_prepare_batch", [$this, "ajax_seo_prepare_batch"]);
         add_action("wp_ajax_lmd_seo_resume_batch", [$this, "ajax_seo_resume_batch"]);
         add_action("wp_ajax_lmd_seo_pause_batch", [$this, "ajax_seo_pause_batch"]);
@@ -973,7 +977,7 @@ class LMD_Admin
     public function handle_purge_expertise_lot()
     {
         if (
-            !$this->current_user_can_access_seo_app() ||
+            !current_user_can("manage_options") ||
             !check_admin_referer("lmd_purge_expertise_lot")
         ) {
             wp_die(esc_html__("Non autorisé.", "lmd-apps-ia"));
@@ -994,6 +998,61 @@ class LMD_Admin
         $redirect = add_query_arg(
             $purged ? "expertise_purged" : "expertise_purge_error",
             $lot_id ?: "1",
+            $redirect,
+        );
+        wp_safe_redirect($redirect);
+        exit();
+    }
+
+    public function handle_save_expertise_prompt()
+    {
+        if (
+            !current_user_can("manage_options") ||
+            !check_admin_referer("lmd_save_expertise_prompt")
+        ) {
+            wp_die(esc_html__("Non autorisé.", "lmd-apps-ia"));
+        }
+
+        $content = isset($_POST["prompt_content"])
+            ? (string) wp_unslash($_POST["prompt_content"])
+            : "";
+        $content = str_replace(["\r\n", "\r"], "\n", $content);
+        $content = rtrim($content) . "\n";
+        $saved = false;
+
+        if (trim($content) !== "") {
+            $path = class_exists("LMD_Expertise_Analyzer")
+                ? LMD_Expertise_Analyzer::get_prompt_file_path()
+                : LMD_PLUGIN_DIR . "prompts/expertise-ia.md";
+            $prompt_dir = LMD_PLUGIN_DIR . "prompts";
+
+            if (!is_dir($prompt_dir)) {
+                wp_mkdir_p($prompt_dir);
+            }
+
+            $real_dir = realpath($prompt_dir);
+            $target_dir = realpath(dirname($path));
+            $can_write_prompt = file_exists($path)
+                ? is_writable($path)
+                : ($target_dir && is_writable($target_dir));
+            if (
+                $real_dir &&
+                $target_dir &&
+                $real_dir === $target_dir &&
+                $can_write_prompt
+            ) {
+                $saved = file_put_contents($path, $content, LOCK_EX) !== false;
+            }
+        }
+
+        $redirect = wp_get_referer() ?: admin_url("admin.php?page=lmd-apps-ia-expertise");
+        $redirect = remove_query_arg(
+            ["expertise_prompt_saved", "expertise_prompt_error"],
+            $redirect,
+        );
+        $redirect = add_query_arg(
+            $saved ? "expertise_prompt_saved" : "expertise_prompt_error",
+            "1",
             $redirect,
         );
         wp_safe_redirect($redirect);
